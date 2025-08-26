@@ -1,0 +1,679 @@
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormDescription,
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import { useAuthStore } from '@/stores/auth-store'
+import { ConfigService } from '@/services/config-service'
+import { Apple } from '@/components/platform-icon'
+import { requireApp } from '@/utils/app-utils'
+import { toast } from 'sonner'
+import type { AppConfig } from '@/types/api'
+
+// 通用编辑配置表单验证
+const editConfigSchema = z.object({
+  // iOS APNs 字段
+  key_id: z.string().optional(),
+  team_id: z.string().optional(),
+  bundle_id: z.string().optional(),
+  private_key: z.string().optional(),
+  production: z.boolean().optional(),
+  // Android 通用字段
+  server_key: z.string().optional(), // FCM
+  sender_id: z.string().optional(),   // FCM
+  app_id: z.string().optional(),      // 华为/小米/OPPO/VIVO/荣耀/三星
+  app_key: z.string().optional(),     // 小米/OPPO/VIVO/荣耀/三星
+  app_secret: z.string().optional(),  // 华为/小米/VIVO/荣耀/三星
+  master_secret: z.string().optional(), // OPPO
+})
+
+type EditConfigFormData = z.infer<typeof editConfigSchema>
+
+interface EditConfigDialogProps {
+  config: AppConfig
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSuccess: () => void
+}
+
+export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: EditConfigDialogProps) {
+  const { currentApp } = useAuthStore()
+  const [loading, setLoading] = useState(false)
+  // 跟踪哪些字段是隐藏状态
+  const [hiddenFields, setHiddenFields] = useState<Set<string>>(new Set())
+
+  const form = useForm<EditConfigFormData>({
+    resolver: zodResolver(editConfigSchema),
+    defaultValues: {
+      key_id: '',
+      team_id: '',
+      bundle_id: '',
+      private_key: '',
+      production: false,
+      server_key: '',
+      sender_id: '',
+      app_id: '',
+      app_key: '',
+      app_secret: '',
+      master_secret: '',
+    },
+  })
+
+  // 当配置数据变化时解析并填充表单
+  useEffect(() => {
+    if (config && open) {
+      try {
+        const configData = JSON.parse(config.config)
+        const newHiddenFields = new Set<string>()
+        
+        // 重置所有字段
+        form.reset({
+          key_id: '',
+          team_id: '',
+          bundle_id: '',
+          private_key: '',
+          production: false,
+          server_key: '',
+          sender_id: '',
+          app_id: '',
+          app_key: '',
+          app_secret: '',
+          master_secret: '',
+        })
+        
+        // 检查隐藏字段的函数
+        const checkAndSetField = (fieldName: string, value: unknown) => {
+          if (typeof value === 'string' && value === '[REDACTED]') {
+            newHiddenFields.add(fieldName)
+            form.setValue(fieldName as keyof EditConfigFormData, '' as never)
+          } else {
+            form.setValue(fieldName as keyof EditConfigFormData, (value || '') as never)
+          }
+        }
+        
+        // 根据平台和通道填充对应的字段
+        if (config.platform === 'ios') {
+          checkAndSetField('key_id', configData.key_id)
+          checkAndSetField('team_id', configData.team_id)
+          checkAndSetField('bundle_id', configData.bundle_id)
+          checkAndSetField('private_key', configData.private_key)
+          form.setValue('production', configData.production || false)
+        } else if (config.platform === 'android') {
+          switch (config.channel) {
+            case 'fcm':
+              checkAndSetField('server_key', configData.server_key)
+              checkAndSetField('sender_id', configData.sender_id)
+              break
+            case 'huawei':
+              checkAndSetField('app_id', configData.app_id)
+              checkAndSetField('app_secret', configData.app_secret)
+              break
+            case 'xiaomi':
+              checkAndSetField('app_id', configData.app_id)
+              checkAndSetField('app_key', configData.app_key)
+              checkAndSetField('app_secret', configData.app_secret)
+              break
+            case 'oppo':
+              checkAndSetField('app_id', configData.app_id)
+              checkAndSetField('app_key', configData.app_key)
+              checkAndSetField('master_secret', configData.master_secret)
+              break
+            case 'vivo':
+            case 'honor':
+            case 'samsung':
+              checkAndSetField('app_id', configData.app_id)
+              checkAndSetField('app_key', configData.app_key)
+              checkAndSetField('app_secret', configData.app_secret)
+              break
+          }
+        }
+        
+        setHiddenFields(newHiddenFields)
+      } catch (error) {
+        console.error('解析配置数据失败:', error)
+        toast.error('配置数据格式错误')
+      }
+    }
+  }, [config, form, open])
+
+  const onSubmit = async (data: EditConfigFormData) => {
+    if (!requireApp(currentApp)) {
+      return
+    }
+
+    try {
+      setLoading(true)
+      
+      // 根据平台和通道构建配置字段，对于隐藏的字段使用特殊处理
+      const buildFieldValue = (fieldName: string, newValue: string | boolean) => {
+        // 如果字段被隐藏且用户没有输入新值，发送隐藏标记让后端保持原值
+        if (hiddenFields.has(fieldName) && (!newValue || newValue === '')) {
+          return '[REDACTED]'
+        }
+        return newValue
+      }
+      
+      let configData: Record<string, unknown> = {}
+      
+      if (config.platform === 'ios' && config.channel === 'apns') {
+        configData = {
+          key_id: buildFieldValue('key_id', data.key_id || ''),
+          team_id: buildFieldValue('team_id', data.team_id || ''),
+          bundle_id: buildFieldValue('bundle_id', data.bundle_id || ''),
+          private_key: buildFieldValue('private_key', data.private_key || ''),
+          production: data.production || false
+        }
+      } else if (config.platform === 'android') {
+        switch (config.channel) {
+          case 'fcm':
+            configData = {
+              server_key: buildFieldValue('server_key', data.server_key || ''),
+              sender_id: buildFieldValue('sender_id', data.sender_id || '')
+            }
+            break
+          case 'huawei':
+            configData = {
+              app_id: buildFieldValue('app_id', data.app_id || ''),
+              app_secret: buildFieldValue('app_secret', data.app_secret || '')
+            }
+            break
+          case 'xiaomi':
+            configData = {
+              app_id: buildFieldValue('app_id', data.app_id || ''),
+              app_key: buildFieldValue('app_key', data.app_key || ''),
+              app_secret: buildFieldValue('app_secret', data.app_secret || '')
+            }
+            break
+          case 'oppo':
+            configData = {
+              app_id: buildFieldValue('app_id', data.app_id || ''),
+              app_key: buildFieldValue('app_key', data.app_key || ''),
+              master_secret: buildFieldValue('master_secret', data.master_secret || '')
+            }
+            break
+          case 'vivo':
+          case 'honor':
+          case 'samsung':
+            configData = {
+              app_id: buildFieldValue('app_id', data.app_id || ''),
+              app_key: buildFieldValue('app_key', data.app_key || ''),
+              app_secret: buildFieldValue('app_secret', data.app_secret || '')
+            }
+            break
+        }
+      }
+      
+      const configJson = JSON.stringify(configData)
+      
+      await ConfigService.updateConfig(currentApp.id, config.id, {
+        config: configJson
+      })
+      
+      toast.success('配置更新成功')
+      onSuccess()
+    } catch (error) {
+      toast.error((error as Error).message || '更新配置失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleClose = () => {
+    if (!loading) {
+      onOpenChange(false)
+      setTimeout(() => {
+        setHiddenFields(new Set())
+      }, 300)
+    }
+  }
+
+  // 获取字段的占位符文本
+  const getFieldPlaceholder = (fieldName: string, defaultPlaceholder: string) => {
+    if (hiddenFields.has(fieldName)) {
+      return '保持现有值不变，或输入新值进行修改'
+    }
+    return defaultPlaceholder
+  }
+
+  // 获取字段的描述文本
+  const getFieldDescription = (fieldName: string, defaultDescription: string) => {
+    if (hiddenFields.has(fieldName)) {
+      return '当前值已隐藏，留空保持不变，或输入新值进行修改'
+    }
+    return defaultDescription
+  }
+
+  const getChannelInfo = (channel: string) => {
+    const channelMap: Record<string, { name: string; icon: React.ReactNode }> = {
+      apns: { name: 'Apple Push', icon: <Apple className="h-6 w-6" /> },
+      fcm: { name: 'Firebase Cloud Messaging', icon: '🔥' },
+      huawei: { name: '华为推送', icon: '📱' },
+      xiaomi: { name: '小米推送', icon: '📱' },
+      oppo: { name: 'OPPO推送', icon: '📱' },
+      vivo: { name: 'VIVO推送', icon: '📱' },
+    }
+    return channelMap[channel] || { name: channel, icon: '📱' }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>编辑推送配置</DialogTitle>
+          <DialogDescription>
+            修改 {getChannelInfo(config.channel).name} 的配置内容
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-auto -mx-6 px-6">
+          {/* 配置信息显示 */}
+          <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-3">
+              {getChannelInfo(config.channel).icon}
+              <div>
+                <div className="font-medium">{getChannelInfo(config.channel).name}</div>
+                <div className="text-sm text-muted-foreground">
+                  {config.platform.toUpperCase()} • 创建于 {new Date(config.created_at).toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* iOS APNs 配置字段 */}
+              {config.platform === 'ios' && config.channel === 'apns' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="key_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Key ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('key_id', '输入 APNs Key ID')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('key_id', '从Apple Developer中心获取的APNs密钥ID')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="team_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Team ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('team_id', '输入 Apple Team ID')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('team_id', 'Apple Developer账号的Team ID')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="bundle_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bundle ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('bundle_id', 'com.example.app')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('bundle_id', '应用的Bundle Identifier')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+              <FormField
+                control={form.control}
+                    name="private_key"
+                render={({ field }) => (
+                  <FormItem>
+                        <FormLabel>Private Key *</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                            placeholder={getFieldPlaceholder('private_key', '-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----')}
+                        className="resize-none font-mono text-sm"
+                            rows={6}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                          {getFieldDescription('private_key', 'APNs私钥内容，包含BEGIN和END标签')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="production"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>生产环境</FormLabel>
+                          <FormDescription>
+                            勾选表示使用生产环境APNs，否则使用开发环境
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {/* Android FCM 配置字段 */}
+              {config.platform === 'android' && config.channel === 'fcm' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="server_key"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Server Key *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('server_key', '输入FCM Server Key')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('server_key', '从Firebase控制台获取的服务器密钥')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="sender_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sender ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('sender_id', '输入 FCM Sender ID')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('sender_id', 'Firebase项目的发送者ID')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {/* Android 华为配置字段 */}
+              {config.platform === 'android' && config.channel === 'huawei' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="app_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_id', '输入华为 App ID')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_id', '华为开发者联盟的应用ID')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_secret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Secret *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_secret', '输入华为 App Secret')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_secret', '华为开发者联盟的应用密钥')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {/* Android 小米配置字段 */}
+              {config.platform === 'android' && config.channel === 'xiaomi' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="app_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_id', '输入小米 App ID')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_id', '小米开发者平台的应用ID')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_key"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Key *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_key', '输入小米 App Key')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_key', '小米开发者平台的应用密钥')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_secret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Secret *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_secret', '输入小米 App Secret')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_secret', '小米开发者联盟的应用密钥')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {/* Android OPPO配置字段 */}
+              {config.platform === 'android' && config.channel === 'oppo' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="app_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_id', '输入 OPPO App ID')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_id', 'OPPO开发者平台的应用ID')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_key"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Key *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_key', '输入 OPPO App Key')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_key', 'OPPO开发者平台的应用密钥')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="master_secret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Master Secret *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('master_secret', '输入 OPPO Master Secret')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('master_secret', 'OPPO开发者联盟的主密钥')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {/* Android VIVO/荣耀/三星配置字段 */}
+              {config.platform === 'android' && (config.channel === 'vivo' || config.channel === 'honor' || config.channel === 'samsung') && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="app_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_id', `输入 ${config.channel.toUpperCase()} App ID`)} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_id', `${config.channel.toUpperCase()}开发者平台的应用ID`)}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_key"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Key *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_key', `输入 ${config.channel.toUpperCase()} App Key`)} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_key', `${config.channel.toUpperCase()}开发者平台的应用密钥`)}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_secret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Secret *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_secret', `输入 ${config.channel.toUpperCase()} App Secret`)} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_secret', `${config.channel.toUpperCase()}开发者平台的应用密钥`)}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+                </>
+              )}
+            </form>
+          </Form>
+        </div>
+
+        <DialogFooter>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleClose}
+            disabled={loading}
+          >
+            取消
+          </Button>
+          <Button 
+            onClick={form.handleSubmit(onSubmit)}
+            disabled={loading}
+          >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            保存修改
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

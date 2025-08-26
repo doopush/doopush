@@ -1,0 +1,27 @@
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+    ports:
+      - "${DB_PORT}:3306"
+    volumes:
+      - ./.data/mysql:/var/lib/mysql
+    command: 
+      - --character-set-server=${DB_CHARSET}
+      - --collation-server=${DB_COLLATION}
+      - --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+
+  # Redis 缓存和队列
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - ./.data/redis:/data
+    command: redis-server
+    restart: unless-stopped
+
