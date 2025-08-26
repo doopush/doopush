@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 import { AuthService } from '@/services/auth-service'
+import { useAuthStore } from '@/stores/auth-store'
 
 const formSchema = z
   .object({
@@ -38,6 +39,7 @@ export function SignUpForm({
 }: React.HTMLAttributes<HTMLFormElement>) {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const setAuth = useAuthStore((state) => state.setAuth)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,20 +54,43 @@ export function SignUpForm({
   async function onSubmit(data: z.infer<typeof formSchema>) {
     try {
       setIsLoading(true)
+      
+      // 1. 注册用户
       await AuthService.register({
         username: data.username,
         email: data.email,
         password: data.password,
       })
       
-      toast.success('注册成功，请登录')
-      
-      // 跳转到登录页面
-      router.navigate({ to: '/sign-in' })
+      try {
+        // 2. 自动登录
+        const loginResponse = await AuthService.login({
+          username: data.username,
+          password: data.password,
+        })
+        
+        // 3. 保存认证状态
+        setAuth(loginResponse.user, loginResponse.token)
+        
+        toast.success('注册成功')
+        
+        // 4. 跳转到主页面
+        router.navigate({ to: '/' })
+      } catch (loginError) {
+        // 注册成功但自动登录失败
+        console.error('自动登录失败:', loginError)
+        toast.success('注册成功')
+        
+        // 跳转到登录页面
+        router.navigate({ to: '/sign-in' })
+      }
     } catch (error) {
+      // 注册失败
       toast.error((error as Error).message || '注册失败')
     } finally {
-      setIsLoading(false)
+      setTimeout(() => {
+        setIsLoading(false)
+      }, 1000);
     }
   }
 

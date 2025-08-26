@@ -62,7 +62,9 @@ export function UserAuthForm({
     } catch (error) {
       toast.error((error as Error).message || '登录失败')
     } finally {
-      setIsLoading(false)
+      setTimeout(() => {
+        setIsLoading(false)
+      }, 1000);
     }
   }
 
