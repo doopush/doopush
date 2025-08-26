@@ -6,6 +6,7 @@ import (
 
 	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/response"
+	"github.com/doopush/doopush/api/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -45,14 +46,25 @@ type CreateScheduledPushRequest struct {
 
 // UpdateScheduledPushRequest 更新定时推送请求
 type UpdateScheduledPushRequest struct {
-	Name         string `json:"name" binding:"required"`
-	TemplateID   *uint  `json:"template_id"`
-	TargetType   string `json:"target_type" binding:"required,oneof=group tag all"`
-	TargetValue  string `json:"target_value"`
-	ScheduleTime string `json:"schedule_time" binding:"required"`
-	Timezone     string `json:"timezone"`
-	RepeatType   string `json:"repeat_type" binding:"required,oneof=once daily weekly monthly"`
-	CronExpr     string `json:"cron_expr"`
+	// 前端字段（保持与创建请求一致）
+	Title        string `json:"title" binding:"required" example:"推送标题"`
+	Content      string `json:"content" binding:"required" example:"推送内容"`
+	Payload      string `json:"payload" example:"{}"`
+	ScheduledAt  string `json:"scheduled_at" binding:"required" example:"2024-01-01T10:00:00Z"`
+	PushType     string `json:"push_type" binding:"required" example:"single"`
+	TargetConfig string `json:"target_config" example:"device_token_or_config"`
+	RepeatType   string `json:"repeat_type" binding:"required,oneof=none once daily weekly monthly" example:"none"`
+	RepeatConfig string `json:"repeat_config" example:""`
+	Timezone     string `json:"timezone" example:"Asia/Shanghai"`
+	Status       string `json:"status" binding:"oneof=pending paused completed failed" example:"pending"`
+
+	// 后端内部字段（可选，向后兼容）
+	Name         string `json:"name" example:"每日活动推送"`
+	TemplateID   *uint  `json:"template_id" example:"1"`
+	TargetType   string `json:"target_type" example:"all"`
+	TargetValue  string `json:"target_value" example:"vip_users"`
+	ScheduleTime string `json:"schedule_time" example:"2024-01-01T10:00:00Z"`
+	CronExpr     string `json:"cron_expr" example:"0 10 * * *"`
 }
 
 // CreateScheduledPush 创建定时推送
@@ -140,10 +152,21 @@ func (ctrl *SchedulerController) CreateScheduledPush(ctx *gin.Context) {
 		timezone = "UTC"
 	}
 
+	// 处理 payload，确保为有效的 JSON 格式
+	payload := req.Payload
+	if payload == "" {
+		payload = "{}" // 空字符串时设置为空 JSON 对象
+	}
+	// 验证 payload 是否为有效的 JSON 格式
+	if !utils.StringIsValidJSON(payload) {
+		response.BadRequest(ctx, "附加数据必须是有效的JSON格式")
+		return
+	}
+
 	// 创建定时推送任务，包含推送内容
 	push, err := ctrl.schedulerService.CreateScheduledPushWithContent(
-		uint(appID), userID, name, req.Title, req.Content, req.Payload,
-		targetType, targetValue, scheduleTime, timezone, repeatType, req.CronExpr,
+		uint(appID), userID, name, req.Title, req.Content, payload,
+		targetType, targetValue, scheduleTime, timezone, repeatType, req.RepeatConfig, req.CronExpr,
 	)
 	if err != nil {
 		response.BadRequest(ctx, err.Error())
@@ -193,7 +216,7 @@ func (ctrl *SchedulerController) GetScheduledPushes(ctx *gin.Context) {
 	}
 
 	response.Success(ctx, gin.H{
-		"pushes":    pushes,
+		"data":      pushes,
 		"total":     total,
 		"page":      page,
 		"page_size": pageSize,
@@ -270,8 +293,49 @@ func (ctrl *SchedulerController) UpdateScheduledPush(ctx *gin.Context) {
 		return
 	}
 
+	// 字段映射和转换（与创建逻辑保持一致）
+	name := req.Name
+	if name == "" {
+		name = req.Title // 使用title作为name
+	}
+
+	scheduleTimeStr := req.ScheduleTime
+	if scheduleTimeStr == "" {
+		scheduleTimeStr = req.ScheduledAt // 使用前端字段
+	}
+
+	targetType := req.TargetType
+	targetValue := req.TargetValue
+	repeatType := req.RepeatType
+
+	// 前端字段转换
+	if targetType == "" {
+		switch req.PushType {
+		case "single":
+			targetType = "devices"
+			targetValue = req.TargetConfig
+		case "all":
+			targetType = "all"
+			targetValue = ""
+		case "group":
+			targetType = "groups"
+			targetValue = req.TargetConfig
+		case "tag":
+			targetType = "tags"
+			targetValue = req.TargetConfig
+		default:
+			targetType = "all"
+			targetValue = ""
+		}
+	}
+
+	// repeat_type转换：前端"none" -> 后端"once"
+	if repeatType == "none" {
+		repeatType = "once"
+	}
+
 	// 解析调度时间
-	scheduleTime, err := time.Parse(time.RFC3339, req.ScheduleTime)
+	scheduleTime, err := time.Parse(time.RFC3339, scheduleTimeStr)
 	if err != nil {
 		response.BadRequest(ctx, "调度时间格式错误")
 		return
@@ -282,9 +346,20 @@ func (ctrl *SchedulerController) UpdateScheduledPush(ctx *gin.Context) {
 		timezone = "UTC"
 	}
 
-	push, err := ctrl.schedulerService.UpdateScheduledPush(
-		uint(appID), uint(pushID), req.Name, req.TemplateID, req.TargetType, req.TargetValue,
-		scheduleTime, timezone, req.RepeatType, req.CronExpr,
+	// 处理 payload，确保为有效的 JSON 格式
+	payload := req.Payload
+	if payload == "" {
+		payload = "{}" // 空字符串时设置为空 JSON 对象
+	}
+	// 验证 payload 是否为有效的 JSON 格式
+	if !utils.StringIsValidJSON(payload) {
+		response.BadRequest(ctx, "附加数据必须是有效的JSON格式")
+		return
+	}
+
+	push, err := ctrl.schedulerService.UpdateScheduledPushWithContent(
+		uint(appID), uint(pushID), name, req.Title, req.Content, payload,
+		targetType, targetValue, scheduleTime, timezone, repeatType, req.RepeatConfig, req.CronExpr, req.Status,
 	)
 	if err != nil {
 		response.BadRequest(ctx, err.Error())
@@ -400,4 +475,43 @@ func (ctrl *SchedulerController) ResumeScheduledPush(ctx *gin.Context) {
 	}
 
 	response.Success(ctx, gin.H{"message": "任务恢复成功"})
+}
+
+// ExecuteScheduledPush 立即执行定时推送
+// @Summary 立即执行定时推送
+// @Description 立即执行指定的定时推送任务
+// @Tags 定时推送
+// @Accept json
+// @Produce json
+// @Param appId path int true "应用ID"
+// @Param id path int true "任务ID"
+// @Success 200 {object} response.APIResponse "任务执行成功"
+// @Failure 400 {object} response.APIResponse "请求参数错误"
+// @Failure 401 {object} response.APIResponse "未认证"
+// @Failure 403 {object} response.APIResponse "无权限"
+// @Failure 404 {object} response.APIResponse "任务不存在"
+// @Router /apps/{appId}/scheduled-pushes/{id}/execute [post]
+func (ctrl *SchedulerController) ExecuteScheduledPush(ctx *gin.Context) {
+	appID, err := strconv.ParseUint(ctx.Param("appId"), 10, 64)
+	if err != nil {
+		response.BadRequest(ctx, "无效的应用ID")
+		return
+	}
+
+	pushID, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(ctx, "无效的任务ID")
+		return
+	}
+
+	// 执行定时推送任务（包含应用权限验证）
+	err = ctrl.schedulerService.ExecuteScheduledPush(uint(appID), uint(pushID))
+	if err != nil {
+		response.BadRequest(ctx, err.Error())
+		return
+	}
+
+	response.Success(ctx, gin.H{
+		"message": "任务执行成功",
+	})
 }

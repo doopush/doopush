@@ -183,16 +183,21 @@ export interface DeviceGroup {
 export interface ScheduledPush {
   id: number
   app_id: number
+  name: string
   title: string
   content: string
   payload?: string
   template_id: number | null
   push_type: 'single' | 'batch' | 'broadcast'
+  target_type: string
   target_config: string
   scheduled_at: string
   timezone: string
-  repeat_type: 'none' | 'daily' | 'weekly' | 'monthly'
+  repeat_type: 'once' | 'daily' | 'weekly' | 'monthly'
   repeat_config?: string
+  cron_expr?: string
+  next_run_at?: string
+  last_run_at?: string
   status: 'pending' | 'running' | 'paused' | 'completed' | 'failed'
   created_by: number
   created_at: string

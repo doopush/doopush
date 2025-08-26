@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -19,11 +20,11 @@ func NewSchedulerService() *SchedulerService {
 
 // CreateScheduledPush 创建定时推送
 func (s *SchedulerService) CreateScheduledPush(appID uint, userID uint, name string, templateID *uint, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, cronExpr string) (*models.ScheduledPush, error) {
-	return s.CreateScheduledPushWithContent(appID, userID, name, "", "", "", targetType, targetValue, scheduleTime, timezone, repeatType, cronExpr)
+	return s.CreateScheduledPushWithContent(appID, userID, name, "", "", "", targetType, targetValue, scheduleTime, timezone, repeatType, "", cronExpr)
 }
 
 // CreateScheduledPushWithContent 创建包含推送内容的定时推送
-func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uint, name, title, content, payload, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, cronExpr string) (*models.ScheduledPush, error) {
+func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uint, name, title, content, payload, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, repeatConfig, cronExpr string) (*models.ScheduledPush, error) {
 	// 检查任务名是否重复
 	var existingPush models.ScheduledPush
 	err := database.DB.Where("app_id = ? AND name = ?", appID, name).First(&existingPush).Error
@@ -31,8 +32,27 @@ func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uin
 		return nil, fmt.Errorf("任务名称已存在")
 	}
 
+	// 处理和验证 payload
+	if payload == "" {
+		payload = "{}" // 确保空字符串被设置为空 JSON 对象
+	}
+	if !utils.StringIsValidJSON(payload) {
+		return nil, fmt.Errorf("payload必须是有效的JSON格式")
+	}
+
 	// 计算下次执行时间
 	nextRunAt := s.calculateNextRunTime(scheduleTime, repeatType, cronExpr)
+
+	// 推断 push_type
+	pushType := "broadcast" // 默认值
+	switch targetType {
+	case "devices":
+		pushType = "single"
+	case "groups", "tags":
+		pushType = "batch"
+	case "all":
+		pushType = "broadcast"
+	}
 
 	scheduledPush := &models.ScheduledPush{
 		AppID:        appID,
@@ -40,11 +60,13 @@ func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uin
 		Title:        title,   // 推送标题
 		Content:      content, // 推送内容
 		Payload:      payload, // 推送载荷
+		PushType:     pushType,
 		TargetType:   targetType,
 		TargetValue:  targetValue,
 		ScheduleTime: scheduleTime,
 		Timezone:     timezone,
 		RepeatType:   repeatType,
+		RepeatConfig: repeatConfig,
 		CronExpr:     cronExpr,
 		NextRunAt:    &nextRunAt,
 		Status:       "pending",
@@ -124,6 +146,75 @@ func (s *SchedulerService) UpdateScheduledPush(appID uint, pushID uint, name str
 	return &push, nil
 }
 
+// UpdateScheduledPushWithContent 更新包含推送内容的定时推送
+func (s *SchedulerService) UpdateScheduledPushWithContent(appID uint, pushID uint, name, title, content, payload, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, repeatConfig, cronExpr, status string) (*models.ScheduledPush, error) {
+	var push models.ScheduledPush
+	err := database.DB.Where("app_id = ? AND id = ?", appID, pushID).First(&push).Error
+	if err != nil {
+		return nil, fmt.Errorf("定时推送不存在")
+	}
+
+	// 检查名称是否与其他任务冲突
+	if name != push.Name {
+		var existingPush models.ScheduledPush
+		err := database.DB.Where("app_id = ? AND name = ? AND id != ?", appID, name, pushID).First(&existingPush).Error
+		if err == nil {
+			return nil, fmt.Errorf("任务名称已存在")
+		}
+	}
+
+	// 处理和验证 payload
+	if payload == "" {
+		payload = "{}" // 确保空字符串被设置为空 JSON 对象
+	}
+	if !utils.StringIsValidJSON(payload) {
+		return nil, fmt.Errorf("payload必须是有效的JSON格式")
+	}
+
+	// 推断 push_type
+	pushType := push.PushType // 保持现有值
+	if pushType == "" {
+		pushType = "broadcast" // 默认值
+		switch targetType {
+		case "devices":
+			pushType = "single"
+		case "groups", "tags":
+			pushType = "batch"
+		case "all":
+			pushType = "broadcast"
+		}
+	}
+
+	// 更新任务信息（包含推送内容）
+	push.Name = name
+	push.Title = title
+	push.Content = content
+	push.Payload = payload
+	push.PushType = pushType
+	push.TargetType = targetType
+	push.TargetValue = targetValue
+	push.ScheduleTime = scheduleTime
+	push.Timezone = timezone
+	push.RepeatType = repeatType
+	push.RepeatConfig = repeatConfig
+	push.CronExpr = cronExpr
+
+	// 更新状态（如果提供了）
+	if status != "" {
+		push.Status = status
+	}
+
+	// 重新计算下次执行时间
+	nextRunAt := s.calculateNextRunTime(scheduleTime, repeatType, cronExpr)
+	push.NextRunAt = &nextRunAt
+
+	if err := database.DB.Save(&push).Error; err != nil {
+		return nil, fmt.Errorf("更新定时推送失败: %v", err)
+	}
+
+	return &push, nil
+}
+
 // DeleteScheduledPush 删除定时推送
 func (s *SchedulerService) DeleteScheduledPush(appID uint, pushID uint) error {
 	result := database.DB.Where("app_id = ? AND id = ?", appID, pushID).Delete(&models.ScheduledPush{})
@@ -172,11 +263,11 @@ func (s *SchedulerService) ResumeScheduledPush(appID uint, pushID uint) error {
 }
 
 // ExecuteScheduledPush 执行定时推送
-func (s *SchedulerService) ExecuteScheduledPush(pushID uint) error {
+func (s *SchedulerService) ExecuteScheduledPush(appID uint, pushID uint) error {
 	var push models.ScheduledPush
-	err := database.DB.Where("id = ? AND status = ?", pushID, "active").First(&push).Error
+	err := database.DB.Where("app_id = ? AND id = ? AND status IN ?", appID, pushID, []string{"pending", "active"}).First(&push).Error
 	if err != nil {
-		return fmt.Errorf("定时推送不存在或状态错误")
+		return fmt.Errorf("定时推送不存在或状态不允许执行")
 	}
 
 	// 更新执行时间
@@ -197,8 +288,14 @@ func (s *SchedulerService) ExecuteScheduledPush(pushID uint) error {
 		return fmt.Errorf("更新定时推送状态失败: %v", err)
 	}
 
-	// TODO: 实际执行推送逻辑
-	// 这里应该调用推送服务发送消息，基于 targetType 和 targetValue
+	// 执行实际推送
+	err = s.executeActualPush(push)
+	if err != nil {
+		// 推送失败时更新状态
+		push.Status = "failed"
+		database.DB.Save(&push)
+		return fmt.Errorf("推送执行失败: %v", err)
+	}
 
 	return nil
 }
@@ -244,4 +341,84 @@ func (s *SchedulerService) calculateNextRunTime(scheduleTime time.Time, repeatTy
 		// 目前返回原始时间
 		return scheduleTime
 	}
+}
+
+// executeActualPush 执行实际的推送操作
+func (s *SchedulerService) executeActualPush(push models.ScheduledPush) error {
+	pushService := NewPushService()
+
+	// 解析payload
+	var payloadMap map[string]interface{}
+	if push.Payload != "" && push.Payload != "{}" {
+		if err := json.Unmarshal([]byte(push.Payload), &payloadMap); err != nil {
+			return fmt.Errorf("payload JSON 解析失败: %v", err)
+		}
+	}
+
+	// 构建推送目标
+	target, err := s.buildPushTarget(push)
+	if err != nil {
+		return fmt.Errorf("构建推送目标失败: %v", err)
+	}
+
+	// 构建推送请求
+	pushRequest := PushRequest{
+		Title:   push.Title,
+		Content: push.Content,
+		Payload: payloadMap,
+		Target:  target,
+		// Schedule 为 nil 表示立即推送
+	}
+
+	// 执行推送（使用创建者ID作为用户ID）
+	_, err = pushService.SendPush(push.AppID, push.CreatedBy, pushRequest)
+	if err != nil {
+		return fmt.Errorf("推送发送失败: %v", err)
+	}
+
+	return nil
+}
+
+// buildPushTarget 根据定时推送配置构建推送目标
+func (s *SchedulerService) buildPushTarget(push models.ScheduledPush) (PushTarget, error) {
+	target := PushTarget{}
+
+	switch push.TargetType {
+	case "all":
+		target.Type = "all"
+	case "devices":
+		target.Type = "devices"
+		// target_config 应该包含设备ID列表
+		var deviceIDs []uint
+		if push.TargetValue != "" {
+			if err := json.Unmarshal([]byte(push.TargetValue), &deviceIDs); err != nil {
+				return target, fmt.Errorf("devices目标配置解析失败: %v", err)
+			}
+		}
+		target.DeviceIDs = deviceIDs
+	case "groups":
+		target.Type = "groups"
+		// target_config 应该包含分组ID列表
+		var groupIDs []uint
+		if push.TargetValue != "" {
+			if err := json.Unmarshal([]byte(push.TargetValue), &groupIDs); err != nil {
+				return target, fmt.Errorf("groups目标配置解析失败: %v", err)
+			}
+		}
+		target.GroupIDs = groupIDs
+	case "tags":
+		target.Type = "tags"
+		// target_config 应该包含标签ID列表
+		var tagIDs []uint
+		if push.TargetValue != "" {
+			if err := json.Unmarshal([]byte(push.TargetValue), &tagIDs); err != nil {
+				return target, fmt.Errorf("tags目标配置解析失败: %v", err)
+			}
+		}
+		target.TagIDs = tagIDs
+	default:
+		return target, fmt.Errorf("不支持的目标类型: %s", push.TargetType)
+	}
+
+	return target, nil
 }

@@ -18,11 +18,13 @@ type ScheduledPush struct {
 	Payload string `gorm:"type:json;comment:推送载荷" json:"payload" example:"{\"action\":\"open_signin\"}"`
 
 	TemplateID   *uint          `gorm:"comment:模板ID" json:"template_id"`
+	PushType     string         `gorm:"size:20;not null;comment:推送类型" json:"push_type" example:"broadcast"`
 	TargetType   string         `gorm:"size:20;not null;comment:目标类型" json:"target_type" example:"all" binding:"required"`
-	TargetValue  string         `gorm:"size:200;comment:目标值" json:"target_value" example:"vip_users"`
-	ScheduleTime time.Time      `gorm:"not null;comment:调度时间" json:"schedule_time" binding:"required"`
+	TargetValue  string         `gorm:"size:200;comment:目标值" json:"target_config" example:"vip_users"`
+	ScheduleTime time.Time      `gorm:"not null;comment:调度时间" json:"scheduled_at" binding:"required"`
 	Timezone     string         `gorm:"size:50;default:UTC;comment:时区" json:"timezone" example:"Asia/Shanghai"`
 	RepeatType   string         `gorm:"size:20;default:once;comment:重复类型" json:"repeat_type" example:"daily"`
+	RepeatConfig string         `gorm:"size:200;comment:重复配置" json:"repeat_config" example:"1,3,5"`
 	CronExpr     string         `gorm:"size:200;comment:Cron表达式" json:"cron_expr" example:"0 9 * * *"`
 	NextRunAt    *time.Time     `gorm:"comment:下次运行时间" json:"next_run_at"`
 	LastRunAt    *time.Time     `gorm:"comment:上次运行时间" json:"last_run_at"`

@@ -167,6 +167,7 @@ func startServer() {
 			authenticated.DELETE("/apps/:appId/scheduled-pushes/:id", schedulerCtrl.DeleteScheduledPush)
 			authenticated.POST("/apps/:appId/scheduled-pushes/:id/pause", schedulerCtrl.PauseScheduledPush)
 			authenticated.POST("/apps/:appId/scheduled-pushes/:id/resume", schedulerCtrl.ResumeScheduledPush)
+			authenticated.POST("/apps/:appId/scheduled-pushes/:id/execute", schedulerCtrl.ExecuteScheduledPush)
 
 			// 审计日志管理
 			authenticated.GET("/audit-logs", auditCtrl.GetGlobalAuditLogs)

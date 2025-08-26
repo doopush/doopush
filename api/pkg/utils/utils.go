@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/md5"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
@@ -45,4 +46,10 @@ func TimeNow() time.Time {
 func RandomBool(probability float64) bool {
 	n, _ := rand.Int(rand.Reader, big.NewInt(100))
 	return float64(n.Int64()) < probability*100
+}
+
+// StringIsValidJSON 验证字符串是否为有效的 JSON 格式
+func StringIsValidJSON(str string) bool {
+	var js interface{}
+	return json.Unmarshal([]byte(str), &js) == nil
 }

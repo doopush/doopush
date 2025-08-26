@@ -44,10 +44,11 @@ const editScheduledPushSchema = z.object({
   content: z.string().min(1, '请输入推送内容').max(1000, '内容不超过1000个字符'),
   payload: z.string().optional(),
   scheduled_at: z.string().min(1, '请选择执行时间'),
+  push_type: z.enum(['single', 'batch', 'broadcast']),
+  target_config: z.string().min(1, '请配置推送目标'),
   repeat_type: z.enum(['none', 'daily', 'weekly', 'monthly']),
   repeat_config: z.string().optional(),
   timezone: z.string().optional(),
-  target_config: z.string().min(1, '请配置推送目标'),
   status: z.enum(['pending', 'running', 'paused', 'completed', 'failed']),
 })
 
@@ -71,10 +72,11 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
       content: '',
       payload: '',
       scheduled_at: '',
+      push_type: 'broadcast',
+      target_config: '',
       repeat_type: 'none',
       repeat_config: '',
       timezone: 'Asia/Shanghai',
-      target_config: '',
       status: 'pending',
     },
   })
@@ -82,16 +84,35 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
   // 当推送数据变化时更新表单
   useEffect(() => {
     if (push) {
+      // 安全地处理时间字段
+      const getFormattedScheduledAt = () => {
+        if (!push.scheduled_at) return ''
+        try {
+          const date = new Date(push.scheduled_at)
+          return isNaN(date.getTime()) ? '' : date.toISOString()
+        } catch (error) {
+          console.warn('Invalid scheduled_at value:', push.scheduled_at)
+          return ''
+        }
+      }
+
+      // 转换后端的repeat_type: "once" -> 前端的"none"
+      const getFrontendRepeatType = (backendRepeatType: string) => {
+        if (backendRepeatType === 'once') return 'none'
+        return backendRepeatType as 'none' | 'daily' | 'weekly' | 'monthly'
+      }
+
       form.reset({
-        title: push.title,
-        content: push.content,
+        title: push.title || '',
+        content: push.content || '',
         payload: push.payload || '',
-        scheduled_at: new Date(push.scheduled_at).toISOString().slice(0, 16),
-        repeat_type: push.repeat_type,
+        scheduled_at: getFormattedScheduledAt(),
+        push_type: push.push_type || 'broadcast',
+        target_config: push.target_config || '',
+        repeat_type: getFrontendRepeatType(push.repeat_type || 'once'),
         repeat_config: push.repeat_config || '',
         timezone: push.timezone || 'Asia/Shanghai',
-        target_config: push.target_config,
-        status: push.status,
+        status: push.status || 'pending',
       })
     }
   }, [push, form])
@@ -309,25 +330,50 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                 )}
               </div>
 
-              {/* 目标配置 */}
-              <FormField
-                control={form.control}
-                name="target_config"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>目标配置 *</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="推送目标的配置"
-                        className="resize-none font-mono text-sm"
-                        rows={4}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* 推送目标 */}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="push_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>推送类型 *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="选择推送类型" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="single">单设备推送</SelectItem>
+                          <SelectItem value="batch">批量推送</SelectItem>
+                          <SelectItem value="broadcast">广播推送</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="target_config"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>目标配置 *</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="推送目标的配置"
+                          className="resize-none font-mono text-sm"
+                          rows={4}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {/* 状态控制 */}
               <FormField
@@ -345,10 +391,12 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                       <SelectContent>
                         <SelectItem value="pending">等待中</SelectItem>
                         <SelectItem value="paused">已暂停</SelectItem>
+                        <SelectItem value="completed">已完成</SelectItem>
+                        <SelectItem value="failed">失败</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      只能在等待中和已暂停状态之间切换
+                      可以更改任务状态，运行中状态不可编辑
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

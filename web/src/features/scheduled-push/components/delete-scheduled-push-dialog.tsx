@@ -83,9 +83,9 @@ export function DeleteScheduledPushDialog({ push, open, onOpenChange, onSuccess 
           </DialogDescription>
         </DialogHeader>
 
-        <Alert className="border-red-200 bg-red-50">
-          <AlertTriangle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-800">
+        <Alert variant="destructive" className="border-destructive/20 bg-destructive/5 dark:border-destructive/20 dark:bg-destructive/5">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-destructive dark:text-destructive">
             <strong>警告：</strong>删除定时推送任务将会：
             <ul className="mt-2 ml-4 list-disc space-y-1">
               <li>永久删除任务配置和历史记录</li>
@@ -120,13 +120,20 @@ export function DeleteScheduledPushDialog({ push, open, onOpenChange, onSuccess 
               <div>
                 <span className="text-muted-foreground">执行时间：</span>
                 <span className="font-medium ml-1">
-                  {new Date(push.scheduled_at).toLocaleString('zh-CN', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {(() => {
+                    try {
+                      const date = new Date(push.scheduled_at)
+                      return isNaN(date.getTime()) ? '无效时间' : date.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    } catch {
+                      return '无效时间'
+                    }
+                  })()}
                 </span>
               </div>
               <div>

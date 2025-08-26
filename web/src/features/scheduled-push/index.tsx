@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search as SearchIcon, Plus, Clock, Play, Pause, Trash2, MoreHorizontal } from 'lucide-react'
+import { Search as SearchIcon, Plus, Clock, Play, Pause, Trash2, MoreHorizontal, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -420,6 +420,7 @@ export function ScheduledPush() {
                           )}
 
                           <DropdownMenuItem onClick={() => setEditPush(push)}>
+                            <Pencil className="mr-2 h-4 w-4" />
                             编辑任务
                           </DropdownMenuItem>
                           
