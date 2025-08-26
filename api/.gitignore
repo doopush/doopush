@@ -1,4 +1,5 @@
 docs/
+!docs/package.go
 tmp/
 uploads/
 release/
