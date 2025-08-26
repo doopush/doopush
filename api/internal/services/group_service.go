@@ -165,16 +165,6 @@ func (s *GroupService) GetGroupDevices(appID uint, groupID uint, page, pageSize 
 	return devices, total, err
 }
 
-// calculateGroupDeviceCount 计算分组设备数量
-func (s *GroupService) calculateGroupDeviceCount(appID uint, filterRules []FilterRule) int {
-	query := database.DB.Model(&models.Device{}).Where("app_id = ?", appID)
-	query = s.applyFilterRules(query, filterRules)
-
-	var count int64
-	query.Count(&count)
-	return int(count)
-}
-
 // applyFilterRules 应用筛选规则到查询
 func (s *GroupService) applyFilterRules(query *gorm.DB, filterRules []FilterRule) *gorm.DB {
 	for _, rule := range filterRules {

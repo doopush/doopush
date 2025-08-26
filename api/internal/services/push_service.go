@@ -296,3 +296,203 @@ func (s *PushService) GetPushLogsWithFilters(appID uint, userID uint, page, page
 
 	return pushLogs, total, nil
 }
+
+// PushStatisticsResponse 推送统计响应
+type PushStatisticsResponse struct {
+	// 总体统计
+	TotalPushes   int64 `json:"total_pushes"`
+	SuccessPushes int64 `json:"success_pushes"`
+	FailedPushes  int64 `json:"failed_pushes"`
+	TotalDevices  int64 `json:"total_devices"`
+
+	// 参与度统计
+	TotalClicks int64 `json:"total_clicks"`
+	TotalOpens  int64 `json:"total_opens"`
+
+	// 时间序列数据
+	DailyStats []DailyStat `json:"daily_stats"`
+
+	// 平台分布
+	PlatformStats []PlatformStat `json:"platform_stats"`
+}
+
+// DailyStat 每日统计
+type DailyStat struct {
+	Date          string `json:"date"`
+	TotalPushes   int    `json:"total_pushes"`
+	SuccessPushes int    `json:"success_pushes"`
+	FailedPushes  int    `json:"failed_pushes"`
+	ClickCount    int    `json:"click_count"`
+	OpenCount     int    `json:"open_count"`
+}
+
+// PlatformStat 平台统计
+type PlatformStat struct {
+	Platform      string `json:"platform"`
+	TotalPushes   int64  `json:"total_pushes"`
+	SuccessPushes int64  `json:"success_pushes"`
+	FailedPushes  int64  `json:"failed_pushes"`
+}
+
+// GetPushStatistics 获取推送统计数据
+func (s *PushService) GetPushStatistics(appID uint, days int) (*PushStatisticsResponse, error) {
+	// 计算时间范围
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -days+1)
+
+	// 总体统计
+	var totalPushes, successPushes, failedPushes, totalDevices int64
+
+	// 统计推送总数
+	database.DB.Model(&models.PushLog{}).
+		Where("app_id = ? AND created_at >= ?", appID, startDate).
+		Count(&totalPushes)
+
+	// 统计成功推送
+	database.DB.Model(&models.PushLog{}).
+		Where("app_id = ? AND status = 'sent' AND created_at >= ?", appID, startDate).
+		Count(&successPushes)
+
+	// 统计失败推送
+	database.DB.Model(&models.PushLog{}).
+		Where("app_id = ? AND status = 'failed' AND created_at >= ?", appID, startDate).
+		Count(&failedPushes)
+
+	// 统计设备总数
+	database.DB.Model(&models.Device{}).
+		Where("app_id = ? AND status = 1", appID).
+		Count(&totalDevices)
+
+	// 获取每日统计数据
+	dailyStats := s.getDailyStats(appID, startDate, endDate)
+
+	// 获取平台统计数据
+	platformStats := s.getPlatformStats(appID, startDate)
+
+	// 计算总点击数和打开数（从已有的统计表或模拟）
+	var totalClicks, totalOpens int64
+	database.DB.Model(&models.PushStatistics{}).
+		Where("app_id = ? AND date >= ?", appID, startDate).
+		Select("COALESCE(SUM(click_count), 0)").
+		Scan(&totalClicks)
+
+	database.DB.Model(&models.PushStatistics{}).
+		Where("app_id = ? AND date >= ?", appID, startDate).
+		Select("COALESCE(SUM(open_count), 0)").
+		Scan(&totalOpens)
+
+	return &PushStatisticsResponse{
+		TotalPushes:   totalPushes,
+		SuccessPushes: successPushes,
+		FailedPushes:  failedPushes,
+		TotalDevices:  totalDevices,
+		TotalClicks:   totalClicks,
+		TotalOpens:    totalOpens,
+		DailyStats:    dailyStats,
+		PlatformStats: platformStats,
+	}, nil
+}
+
+// getDailyStats 获取每日统计数据
+func (s *PushService) getDailyStats(appID uint, startDate, endDate time.Time) []DailyStat {
+	var dailyStats []DailyStat
+
+	// 生成日期范围
+	for d := startDate; d.Before(endDate) || d.Equal(endDate); d = d.AddDate(0, 0, 1) {
+		dateStr := d.Format("2006-01-02")
+		nextDay := d.AddDate(0, 0, 1)
+
+		// 查询当日推送统计
+		var totalPushes, successPushes, failedPushes int64
+		database.DB.Model(&models.PushLog{}).
+			Where("app_id = ? AND created_at >= ? AND created_at < ?", appID, d, nextDay).
+			Count(&totalPushes)
+
+		database.DB.Model(&models.PushLog{}).
+			Where("app_id = ? AND status = 'sent' AND created_at >= ? AND created_at < ?", appID, d, nextDay).
+			Count(&successPushes)
+
+		database.DB.Model(&models.PushLog{}).
+			Where("app_id = ? AND status = 'failed' AND created_at >= ? AND created_at < ?", appID, d, nextDay).
+			Count(&failedPushes)
+
+		// 查询点击和打开数据（从统计表）
+		var clickCount, openCount int
+		var stat models.PushStatistics
+		err := database.DB.Where("app_id = ? AND date = ?", appID, d).First(&stat).Error
+		if err == nil {
+			clickCount = stat.ClickCount
+			openCount = stat.OpenCount
+		}
+
+		dailyStats = append(dailyStats, DailyStat{
+			Date:          dateStr,
+			TotalPushes:   int(totalPushes),
+			SuccessPushes: int(successPushes),
+			FailedPushes:  int(failedPushes),
+			ClickCount:    clickCount,
+			OpenCount:     openCount,
+		})
+	}
+
+	return dailyStats
+}
+
+// getPlatformStats 获取平台统计数据
+func (s *PushService) getPlatformStats(appID uint, startDate time.Time) []PlatformStat {
+	var platformStats []PlatformStat
+
+	// 查询iOS平台统计
+	var iosTotal, iosSuccess, iosFailed int64
+	database.DB.Model(&models.PushLog{}).
+		Joins("JOIN devices ON push_logs.device_id = devices.id").
+		Where("push_logs.app_id = ? AND devices.platform = 'ios' AND push_logs.created_at >= ?", appID, startDate).
+		Count(&iosTotal)
+
+	database.DB.Model(&models.PushLog{}).
+		Joins("JOIN devices ON push_logs.device_id = devices.id").
+		Where("push_logs.app_id = ? AND devices.platform = 'ios' AND push_logs.status = 'sent' AND push_logs.created_at >= ?", appID, startDate).
+		Count(&iosSuccess)
+
+	database.DB.Model(&models.PushLog{}).
+		Joins("JOIN devices ON push_logs.device_id = devices.id").
+		Where("push_logs.app_id = ? AND devices.platform = 'ios' AND push_logs.status = 'failed' AND push_logs.created_at >= ?", appID, startDate).
+		Count(&iosFailed)
+
+	// 查询Android平台统计
+	var androidTotal, androidSuccess, androidFailed int64
+	database.DB.Model(&models.PushLog{}).
+		Joins("JOIN devices ON push_logs.device_id = devices.id").
+		Where("push_logs.app_id = ? AND devices.platform = 'android' AND push_logs.created_at >= ?", appID, startDate).
+		Count(&androidTotal)
+
+	database.DB.Model(&models.PushLog{}).
+		Joins("JOIN devices ON push_logs.device_id = devices.id").
+		Where("push_logs.app_id = ? AND devices.platform = 'android' AND push_logs.status = 'sent' AND push_logs.created_at >= ?", appID, startDate).
+		Count(&androidSuccess)
+
+	database.DB.Model(&models.PushLog{}).
+		Joins("JOIN devices ON push_logs.device_id = devices.id").
+		Where("push_logs.app_id = ? AND devices.platform = 'android' AND push_logs.status = 'failed' AND push_logs.created_at >= ?", appID, startDate).
+		Count(&androidFailed)
+
+	if iosTotal > 0 {
+		platformStats = append(platformStats, PlatformStat{
+			Platform:      "ios",
+			TotalPushes:   iosTotal,
+			SuccessPushes: iosSuccess,
+			FailedPushes:  iosFailed,
+		})
+	}
+
+	if androidTotal > 0 {
+		platformStats = append(platformStats, PlatformStat{
+			Platform:      "android",
+			TotalPushes:   androidTotal,
+			SuccessPushes: androidSuccess,
+			FailedPushes:  androidFailed,
+		})
+	}
+
+	return platformStats
+}

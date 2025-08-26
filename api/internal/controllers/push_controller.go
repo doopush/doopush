@@ -48,6 +48,43 @@ type PushLogsResponse struct {
 	PageSize int           `json:"page_size" example:"20"`
 }
 
+// PushStatisticsResponse 推送统计响应
+type PushStatisticsResponse struct {
+	// 总体统计
+	TotalPushes   int64 `json:"total_pushes" example:"1000"`
+	SuccessPushes int64 `json:"success_pushes" example:"950"`
+	FailedPushes  int64 `json:"failed_pushes" example:"50"`
+	TotalDevices  int64 `json:"total_devices" example:"500"`
+
+	// 参与度统计
+	TotalClicks int64 `json:"total_clicks" example:"150"`
+	TotalOpens  int64 `json:"total_opens" example:"300"`
+
+	// 时间序列数据
+	DailyStats []DailyStat `json:"daily_stats"`
+
+	// 平台分布
+	PlatformStats []PlatformStat `json:"platform_stats"`
+}
+
+// DailyStat 每日统计
+type DailyStat struct {
+	Date          string `json:"date" example:"2024-01-01"`
+	TotalPushes   int    `json:"total_pushes" example:"100"`
+	SuccessPushes int    `json:"success_pushes" example:"95"`
+	FailedPushes  int    `json:"failed_pushes" example:"5"`
+	ClickCount    int    `json:"click_count" example:"15"`
+	OpenCount     int    `json:"open_count" example:"60"`
+}
+
+// PlatformStat 平台统计
+type PlatformStat struct {
+	Platform      string `json:"platform" example:"ios"`
+	TotalPushes   int64  `json:"total_pushes" example:"600"`
+	SuccessPushes int64  `json:"success_pushes" example:"580"`
+	FailedPushes  int64  `json:"failed_pushes" example:"20"`
+}
+
 // SendPush 发送推送
 // @Summary 发送推送
 // @Description 向指定目标发送推送通知
@@ -244,8 +281,8 @@ func (p *PushController) GetPushLogs(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param appId path int true "应用ID"
-// @Param date query string false "统计日期" example:"2024-01-01"
-// @Success 200 {object} response.APIResponse{data=map[string]interface{}}
+// @Param days query int false "统计天数" default(30) example:30
+// @Success 200 {object} response.APIResponse{data=PushStatisticsResponse}
 // @Failure 401 {object} response.APIResponse
 // @Failure 403 {object} response.APIResponse
 // @Router /apps/{appId}/push/statistics [get]
@@ -254,6 +291,12 @@ func (p *PushController) GetPushStatistics(c *gin.Context) {
 	if err != nil {
 		response.BadRequest(c, "无效的应用ID")
 		return
+	}
+
+	// 获取查询参数
+	days, _ := strconv.Atoi(c.DefaultQuery("days", "30"))
+	if days <= 0 || days > 365 {
+		days = 30
 	}
 
 	// 检查用户权限
@@ -269,25 +312,12 @@ func (p *PushController) GetPushStatistics(c *gin.Context) {
 		return
 	}
 
-	// 获取统计数据 (简化版本)
-	var stats struct {
-		TotalPushes   int64 `json:"total_pushes"`
-		SuccessPushes int64 `json:"success_pushes"`
-		FailedPushes  int64 `json:"failed_pushes"`
-		TotalDevices  int64 `json:"total_devices"`
+	// 获取完整统计数据
+	stats, err := p.pushService.GetPushStatistics(uint(appID), days)
+	if err != nil {
+		response.InternalServerError(c, "获取统计数据失败")
+		return
 	}
-
-	// 统计推送总数
-	database.DB.Model(&models.PushLog{}).Where("app_id = ?", appID).Count(&stats.TotalPushes)
-
-	// 统计成功推送
-	database.DB.Model(&models.PushLog{}).Where("app_id = ? AND status = 'sent'", appID).Count(&stats.SuccessPushes)
-
-	// 统计失败推送
-	database.DB.Model(&models.PushLog{}).Where("app_id = ? AND status = 'failed'", appID).Count(&stats.FailedPushes)
-
-	// 统计设备总数
-	database.DB.Model(&models.Device{}).Where("app_id = ? AND status = 1", appID).Count(&stats.TotalDevices)
 
 	response.Success(c, stats)
 }

@@ -33,15 +33,6 @@ func convertVariablesToInterface(variables map[string]TemplateVariable) map[stri
 	return result
 }
 
-// convertDataToInterface 将字符串数据转换为 interface{} 类型，用于渲染
-func convertDataToInterface(data map[string]string) map[string]interface{} {
-	result := make(map[string]interface{})
-	for key, value := range data {
-		result[key] = value
-	}
-	return result
-}
-
 // NewTemplateService 创建模板服务实例
 func NewTemplateService() *TemplateService {
 	return &TemplateService{}

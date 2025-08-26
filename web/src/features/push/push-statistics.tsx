@@ -49,51 +49,8 @@ import {
   Legend,
 } from 'recharts'
 
-// 模拟统计数据
-const generateMockData = () => {
-  const dailyData = []
-  const now = new Date()
-  
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(now)
-    date.setDate(date.getDate() - i)
-    
-    const total = Math.floor(Math.random() * 1000) + 200
-    const success = Math.floor(total * (0.85 + Math.random() * 0.1))
-    const failed = total - success
-    
-    dailyData.push({
-      date: date.toISOString().split('T')[0],
-      dateDisplay: date.toLocaleDateString('zh-CN', { 
-        month: 'short', 
-        day: 'numeric' 
-      }),
-      total,
-      success,
-      failed,
-      click: Math.floor(success * (0.15 + Math.random() * 0.1)),
-      open: Math.floor(success * (0.6 + Math.random() * 0.2)),
-    })
-  }
-  
-  return dailyData
-}
-
-const platformData = [
-  { name: 'iOS', value: 2400, color: '#007AFF' },
-  { name: 'Android', value: 3600, color: '#34C759' },
-]
-
-const vendorData = [
-  { name: '华为', value: 1200, color: '#FF3B30' },
-  { name: '小米', value: 800, color: '#FF9500' },
-  { name: '谷歌', value: 600, color: '#007AFF' },
-  { name: 'OPPO', value: 500, color: '#32D74B' },
-  { name: 'VIVO', value: 400, color: '#5856D6' },
-  { name: '其他', value: 100, color: '#8E8E93' },
-]
-
-interface DailyStat {
+// 图表数据类型定义
+interface ChartData {
   date: string
   dateDisplay: string
   total: number
@@ -103,16 +60,55 @@ interface DailyStat {
   open: number
 }
 
+interface PlatformData {
+  name: string
+  value: number
+  color: string
+}
+
+// 将API数据转换为图表数据
+const convertApiDataToChartData = (dailyStats: any[]): ChartData[] => {
+  return dailyStats.map(stat => ({
+    date: stat.date,
+    dateDisplay: new Date(stat.date).toLocaleDateString('zh-CN', { 
+      month: 'short', 
+      day: 'numeric' 
+    }),
+    total: stat.total_pushes,
+    success: stat.success_pushes,
+    failed: stat.failed_pushes,
+    click: stat.click_count,
+    open: stat.open_count,
+  }))
+}
+
+// 将平台统计转换为图表数据
+const convertPlatformStats = (platformStats: any[]): PlatformData[] => {
+  const colors = {
+    ios: '#007AFF',
+    android: '#34C759',
+  }
+  
+  return platformStats.map(stat => ({
+    name: stat.platform === 'ios' ? 'iOS' : 'Android',
+    value: stat.total_pushes,
+    color: colors[stat.platform as keyof typeof colors] || '#8E8E93',
+  }))
+}
+
 export default function PushStatistics() {
   const { currentApp } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('30d')
-  const [dailyData, setDailyData] = useState<DailyStat[]>([])
+  const [dailyData, setDailyData] = useState<ChartData[]>([])
+  const [platformData, setPlatformData] = useState<PlatformData[]>([])
   const [totalStats, setTotalStats] = useState({
     total_pushes: 0,
     success_pushes: 0,
     failed_pushes: 0,
     total_devices: 0,
+    total_clicks: 0,
+    total_opens: 0,
   })
 
   // 加载统计数据
@@ -127,15 +123,43 @@ export default function PushStatistics() {
     try {
       setLoading(true)
       
-      // 加载基础统计
-      const stats = await PushService.getPushStatistics(currentApp!.id)
-      setTotalStats(stats)
+      // 根据时间范围确定查询天数
+      const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90
       
-      // 生成模拟的时间序列数据
-      const mockDaily = generateMockData()
-      setDailyData(mockDaily)
+      // 加载完整统计数据
+      const stats = await PushService.getPushStatistics(currentApp!.id, { days })
+      
+      // 设置总体统计
+      setTotalStats({
+        total_pushes: stats.total_pushes,
+        success_pushes: stats.success_pushes,
+        failed_pushes: stats.failed_pushes,
+        total_devices: stats.total_devices,
+        total_clicks: stats.total_clicks,
+        total_opens: stats.total_opens,
+      })
+      
+      // 转换时间序列数据
+      const chartData = convertApiDataToChartData(stats.daily_stats)
+      setDailyData(chartData)
+      
+      // 转换平台数据
+      const platformChartData = convertPlatformStats(stats.platform_stats)
+      setPlatformData(platformChartData)
+      
     } catch (error) {
       console.error('加载统计数据失败:', error)
+      // 设置默认值避免页面崩溃
+      setTotalStats({
+        total_pushes: 0,
+        success_pushes: 0,
+        failed_pushes: 0,
+        total_devices: 0,
+        total_clicks: 0,
+        total_opens: 0,
+      })
+      setDailyData([])
+      setPlatformData([])
     } finally {
       setLoading(false)
     }
@@ -145,12 +169,12 @@ export default function PushStatistics() {
     ? ((totalStats.success_pushes / totalStats.total_pushes) * 100).toFixed(1)
     : '0'
 
-  const clickRate = dailyData.length > 0 
-    ? ((dailyData.reduce((sum, item) => sum + item.click, 0) / dailyData.reduce((sum, item) => sum + item.success, 0)) * 100).toFixed(1)
+  const clickRate = totalStats.success_pushes > 0 
+    ? ((totalStats.total_clicks / totalStats.success_pushes) * 100).toFixed(1)
     : '0'
 
-  const openRate = dailyData.length > 0 
-    ? ((dailyData.reduce((sum, item) => sum + item.open, 0) / dailyData.reduce((sum, item) => sum + item.success, 0)) * 100).toFixed(1)
+  const openRate = totalStats.success_pushes > 0 
+    ? ((totalStats.total_opens / totalStats.success_pushes) * 100).toFixed(1)
     : '0'
 
   return (
@@ -367,19 +391,37 @@ export default function PushStatistics() {
               <TabsContent value="vendor" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Android厂商分布</CardTitle>
-                    <CardDescription>不同Android厂商的推送分布情况</CardDescription>
+                    <CardTitle>平台分布详情</CardTitle>
+                    <CardDescription>各平台推送数量分布情况</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <BarChart data={vendorData} layout="horizontal">
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={60} />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#34C759" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <div className="space-y-4">
+                      {platformData.map((platform) => {
+                        const successRate = platform.value > 0 
+                          ? ((platform.value / totalStats.total_pushes) * 100).toFixed(1)
+                          : '0'
+                        
+                        return (
+                          <div key={platform.name} className="p-4 border rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-medium">{platform.name}</h4>
+                              <span className="text-2xl font-bold" style={{ color: platform.color }}>
+                                {platform.value}
+                              </span>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              占总推送数的 {successRate}%
+                            </div>
+                          </div>
+                        )
+                      })}
+                      
+                      {platformData.length === 0 && (
+                        <div className="text-center text-muted-foreground py-8">
+                          暂无平台统计数据
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>

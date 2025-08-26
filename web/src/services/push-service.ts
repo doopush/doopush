@@ -84,13 +84,31 @@ export class PushService {
   /**
    * 获取推送统计
    */
-  static async getPushStatistics(appId: number): Promise<{
+  static async getPushStatistics(appId: number, params?: {
+    days?: number
+  }): Promise<{
     total_pushes: number
     success_pushes: number
     failed_pushes: number
     total_devices: number
+    total_clicks: number
+    total_opens: number
+    daily_stats: Array<{
+      date: string
+      total_pushes: number
+      success_pushes: number
+      failed_pushes: number
+      click_count: number
+      open_count: number
+    }>
+    platform_stats: Array<{
+      platform: string
+      total_pushes: number
+      success_pushes: number
+      failed_pushes: number
+    }>
   }> {
-    return apiClient.get(`/apps/${appId}/push/statistics`)
+    return apiClient.get(`/apps/${appId}/push/statistics`, { params })
   }
 
   /**
