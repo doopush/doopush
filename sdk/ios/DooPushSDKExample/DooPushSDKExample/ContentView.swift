@@ -36,7 +36,7 @@ struct ContentView: View {
                     // Recent Notifications
                     notificationsSection
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, horizontalPadding)
             }
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -64,6 +64,7 @@ struct ContentView: View {
                 alignment: .bottom
             )
         }
+        .navigationViewStyle(StackNavigationViewStyle()) // 确保iPad上也使用单栏布局，不显示侧边栏
         .onChange(of: pushManager.isUpdatingDevice) { _, isUpdating in
             if isUpdating {
                 // 开始旋转动画
@@ -77,6 +78,12 @@ struct ContentView: View {
                 }
             }
         }
+    }
+    
+    // 计算横向内边距，iPad上增加一些边距让内容不会太宽
+    private var horizontalPadding: CGFloat {
+        let isIPad = UIDevice.current.userInterfaceIdiom == .pad
+        return isIPad ? 40 : 16
     }
     
     // MARK: - Header Section
