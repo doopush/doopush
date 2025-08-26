@@ -45,11 +45,6 @@ type FCMNotification struct {
 
 // SendPush 发送Android推送
 func (a *AndroidProvider) SendPush(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	result := &models.PushResult{
-		AppID:     pushLog.AppID,
-		PushLogID: pushLog.ID,
-	}
-
 	switch a.channel {
 	case "fcm":
 		return a.sendFCM(device, pushLog)
@@ -62,9 +57,14 @@ func (a *AndroidProvider) SendPush(device *models.Device, pushLog *models.PushLo
 	case "vivo":
 		return a.sendVIVO(device, pushLog)
 	default:
-		result.Success = false
-		result.ErrorCode = "UNSUPPORTED_CHANNEL"
-		result.ErrorMessage = fmt.Sprintf("不支持的推送通道: %s", a.channel)
+		result := &models.PushResult{
+			AppID:        pushLog.AppID,
+			PushLogID:    pushLog.ID,
+			Success:      false,
+			ErrorCode:    "UNSUPPORTED_CHANNEL",
+			ErrorMessage: fmt.Sprintf("不支持的推送通道: %s", a.channel),
+			ResponseData: "{}", // 初始化为空 JSON 对象
+		}
 		return result
 	}
 }
@@ -92,8 +92,9 @@ func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog
 
 	// 模拟FCM推送
 	result := &models.PushResult{
-		AppID:     pushLog.AppID,
-		PushLogID: pushLog.ID,
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		ResponseData: "{}", // 初始化为空 JSON 对象
 	}
 
 	// 模拟成功率85%
@@ -113,9 +114,10 @@ func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog
 // sendHuawei 发送华为推送
 func (a *AndroidProvider) sendHuawei(device *models.Device, pushLog *models.PushLog) *models.PushResult {
 	result := &models.PushResult{
-		AppID:     pushLog.AppID,
-		PushLogID: pushLog.ID,
-		Success:   time.Now().UnixNano()%100 < 80, // 80%成功率
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      time.Now().UnixNano()%100 < 80, // 80%成功率
+		ResponseData: "{}",                           // 初始化为空 JSON 对象
 	}
 
 	if result.Success {
@@ -131,9 +133,10 @@ func (a *AndroidProvider) sendHuawei(device *models.Device, pushLog *models.Push
 // sendXiaomi 发送小米推送
 func (a *AndroidProvider) sendXiaomi(device *models.Device, pushLog *models.PushLog) *models.PushResult {
 	result := &models.PushResult{
-		AppID:     pushLog.AppID,
-		PushLogID: pushLog.ID,
-		Success:   time.Now().UnixNano()%100 < 85, // 85%成功率
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      time.Now().UnixNano()%100 < 85, // 85%成功率
+		ResponseData: "{}",                           // 初始化为空 JSON 对象
 	}
 
 	if result.Success {
@@ -149,9 +152,10 @@ func (a *AndroidProvider) sendXiaomi(device *models.Device, pushLog *models.Push
 // sendOPPO 发送OPPO推送
 func (a *AndroidProvider) sendOPPO(device *models.Device, pushLog *models.PushLog) *models.PushResult {
 	result := &models.PushResult{
-		AppID:     pushLog.AppID,
-		PushLogID: pushLog.ID,
-		Success:   time.Now().UnixNano()%100 < 75, // 75%成功率
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      time.Now().UnixNano()%100 < 75, // 75%成功率
+		ResponseData: "{}",                           // 初始化为空 JSON 对象
 	}
 
 	if result.Success {
@@ -167,9 +171,10 @@ func (a *AndroidProvider) sendOPPO(device *models.Device, pushLog *models.PushLo
 // sendVIVO 发送VIVO推送
 func (a *AndroidProvider) sendVIVO(device *models.Device, pushLog *models.PushLog) *models.PushResult {
 	result := &models.PushResult{
-		AppID:     pushLog.AppID,
-		PushLogID: pushLog.ID,
-		Success:   time.Now().UnixNano()%100 < 70, // 70%成功率
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      time.Now().UnixNano()%100 < 70, // 70%成功率
+		ResponseData: "{}",                           // 初始化为空 JSON 对象
 	}
 
 	if result.Success {

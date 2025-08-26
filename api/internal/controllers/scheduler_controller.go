@@ -183,10 +183,12 @@ func (ctrl *SchedulerController) CreateScheduledPush(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param appId path int true "应用ID"
-// @Param status query string false "状态筛选" Enums(pending, active, paused, completed)
+// @Param search query string false "搜索关键词（标题或内容）"
+// @Param status query string false "状态筛选" Enums(pending, active, paused, completed, failed)
+// @Param repeat_type query string false "重复类型筛选" Enums(once, daily, weekly, monthly)
 // @Param page query int false "页码" example(1)
 // @Param page_size query int false "每页数量" example(20)
-// @Success 200 {object} response.APIResponse{data=[]models.ScheduledPush} "定时推送列表"
+// @Success 200 {object} response.APIResponse{data=[]models.ScheduledPush, pagination=object} "定时推送列表"
 // @Failure 400 {object} response.APIResponse "请求参数错误"
 // @Failure 401 {object} response.APIResponse "未认证"
 // @Failure 403 {object} response.APIResponse "无权限"
@@ -198,7 +200,10 @@ func (ctrl *SchedulerController) GetScheduledPushes(ctx *gin.Context) {
 		return
 	}
 
+	// 获取查询参数
+	search := ctx.Query("search")
 	status := ctx.Query("status")
+	repeatType := ctx.Query("repeat_type")
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("page_size", "20"))
 
@@ -209,18 +214,48 @@ func (ctrl *SchedulerController) GetScheduledPushes(ctx *gin.Context) {
 		pageSize = 20
 	}
 
-	pushes, total, err := ctrl.schedulerService.GetScheduledPushes(uint(appID), status, page, pageSize)
+	pushes, total, err := ctrl.schedulerService.GetScheduledPushesWithFilters(uint(appID), search, status, repeatType, page, pageSize)
 	if err != nil {
 		response.InternalServerError(ctx, "获取定时推送列表失败")
 		return
 	}
 
 	response.Success(ctx, gin.H{
-		"data":      pushes,
-		"total":     total,
-		"page":      page,
-		"page_size": pageSize,
+		"data": pushes,
+		"pagination": gin.H{
+			"total":     total,
+			"page":      page,
+			"page_size": pageSize,
+		},
 	})
+}
+
+// GetScheduledPushStats 获取定时推送统计数据
+// @Summary 获取定时推送统计数据
+// @Description 获取指定应用的定时推送任务统计数据
+// @Tags 定时推送
+// @Accept json
+// @Produce json
+// @Param appId path int true "应用ID"
+// @Success 200 {object} response.APIResponse{data=map[string]int64} "统计数据"
+// @Failure 400 {object} response.APIResponse "请求参数错误"
+// @Failure 401 {object} response.APIResponse "未认证"
+// @Failure 403 {object} response.APIResponse "无权限"
+// @Router /apps/{appId}/scheduled-pushes/stats [get]
+func (ctrl *SchedulerController) GetScheduledPushStats(ctx *gin.Context) {
+	appID, err := strconv.ParseUint(ctx.Param("appId"), 10, 64)
+	if err != nil {
+		response.BadRequest(ctx, "无效的应用ID")
+		return
+	}
+
+	stats, err := ctrl.schedulerService.GetScheduledPushStats(uint(appID))
+	if err != nil {
+		response.InternalServerError(ctx, "获取统计数据失败")
+		return
+	}
+
+	response.Success(ctx, stats)
 }
 
 // GetScheduledPush 获取定时推送详情

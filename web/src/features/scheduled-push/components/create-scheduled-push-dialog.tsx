@@ -85,7 +85,79 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
 
     try {
       setLoading(true)
-      await ScheduledPushService.createScheduledPush(currentApp.id, data)
+      
+      // 格式化 target_config 字段根据推送类型
+      let formattedTargetConfig = data.target_config.trim()
+      
+      if (data.push_type === 'single') {
+        // 单设备推送：确保是 [deviceId] 格式
+        try {
+          // 如果用户输入的是数字，转换为数组格式
+          if (/^\d+$/.test(formattedTargetConfig)) {
+            formattedTargetConfig = `[${formattedTargetConfig}]`
+          } else if (!formattedTargetConfig.startsWith('[')) {
+            // 如果不是数组格式，尝试转换
+            formattedTargetConfig = `[${formattedTargetConfig}]`
+          }
+          // 验证JSON格式
+          JSON.parse(formattedTargetConfig)
+        } catch {
+          toast.error('单设备推送目标配置格式错误，请输入设备ID')
+          return
+        }
+      } else if (data.push_type === 'batch') {
+        // 批量推送：确保是 [id1,id2,id3] 格式
+        try {
+          if (formattedTargetConfig.includes(',') && !formattedTargetConfig.startsWith('[')) {
+            // 逗号分隔的ID列表，转换为数组
+            const ids = formattedTargetConfig.split(',').map(id => id.trim()).filter(id => id)
+            formattedTargetConfig = JSON.stringify(ids.map(id => /^\d+$/.test(id) ? parseInt(id, 10) : id))
+          } else if (!formattedTargetConfig.startsWith('[')) {
+            // 单个ID，转换为数组
+            if (/^\d+$/.test(formattedTargetConfig)) {
+              formattedTargetConfig = `[${parseInt(formattedTargetConfig, 10)}]`
+            } else {
+              formattedTargetConfig = `[${formattedTargetConfig}]`
+            }
+          }
+          // 验证JSON格式
+          JSON.parse(formattedTargetConfig)
+        } catch {
+          toast.error('批量推送目标配置格式错误，请输入有效的设备ID列表')
+          return
+        }
+      } else if (data.push_type === 'broadcast') {
+        // 广播推送：确保是 {} 或有效的JSON对象格式
+        try {
+          if (formattedTargetConfig === '' || formattedTargetConfig === 'all') {
+            formattedTargetConfig = '{}'
+          } else if (!formattedTargetConfig.startsWith('{')) {
+            // 简单的键值对转换
+            if (formattedTargetConfig.includes(':')) {
+              const pairs = formattedTargetConfig.split(',').map(pair => {
+                const [key, value] = pair.split(':').map(s => s.trim())
+                return `"${key}":"${value}"`
+              })
+              formattedTargetConfig = `{${pairs.join(',')}}`
+            } else {
+              formattedTargetConfig = '{}'
+            }
+          }
+          // 验证JSON格式
+          JSON.parse(formattedTargetConfig)
+        } catch {
+          toast.error('广播推送目标配置格式错误，请输入有效的JSON配置')
+          return
+        }
+      }
+
+      // 创建请求数据
+      const requestData = {
+        ...data,
+        target_config: formattedTargetConfig
+      }
+
+      await ScheduledPushService.createScheduledPush(currentApp.id, requestData)
       toast.success('定时推送创建成功')
       form.reset()
       onSuccess()
@@ -332,9 +404,9 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
                         <FormControl>
                           <Textarea 
                             placeholder={
-                              pushType === 'single' ? '输入设备ID' :
-                              pushType === 'batch' ? 'JSON格式的设备ID列表，例如: ["device1", "device2"]' :
-                              'JSON格式的筛选条件，例如: {"platform": "ios", "tags": {"user_level": "premium"}}'
+                              pushType === 'single' ? '输入设备ID，例如: 1' :
+                              pushType === 'batch' ? '输入多个设备ID，例如: 1,2,3 或 [1,2,3]' :
+                              '输入筛选条件，例如: platform:ios 或 {} (所有设备)'
                             }
                             className="resize-none font-mono text-sm"
                             rows={4}
@@ -342,9 +414,9 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
                           />
                         </FormControl>
                         <FormDescription>
-                          {pushType === 'single' && '输入单个设备ID'}
-                          {pushType === 'batch' && '输入设备ID数组，JSON格式'}
-                          {pushType === 'broadcast' && '输入筛选条件，JSON格式，支持平台、标签等条件'}
+                          {pushType === 'single' && '输入单个设备ID，自动转换为 [deviceId] 格式'}
+                          {pushType === 'batch' && '输入多个设备ID，支持逗号分隔或JSON数组格式'}
+                          {pushType === 'broadcast' && '输入筛选条件，支持键值对或JSON格式，空白表示所有设备'}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

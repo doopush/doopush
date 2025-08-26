@@ -131,6 +131,7 @@ func (m *PushManager) SendPush(device *models.Device, pushLog *models.PushLog) *
 			Success:      false,
 			ErrorCode:    "PROVIDER_ERROR",
 			ErrorMessage: err.Error(),
+			ResponseData: "{}", // 初始化为空 JSON 对象
 		}
 	}
 
@@ -142,9 +143,10 @@ type MockAPNsProvider struct{}
 
 func (m *MockAPNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) *models.PushResult {
 	result := &models.PushResult{
-		AppID:     pushLog.AppID,
-		PushLogID: pushLog.ID,
-		Success:   time.Now().UnixNano()%10 < 9, // 90%成功率
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      time.Now().UnixNano()%10 < 9, // 90%成功率
+		ResponseData: "{}",                         // 初始化为空 JSON 对象
 	}
 
 	if result.Success {
@@ -165,9 +167,10 @@ type MockAndroidProvider struct {
 
 func (m *MockAndroidProvider) SendPush(device *models.Device, pushLog *models.PushLog) *models.PushResult {
 	result := &models.PushResult{
-		AppID:     pushLog.AppID,
-		PushLogID: pushLog.ID,
-		Success:   time.Now().UnixNano()%10 < 8, // 80%成功率
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      time.Now().UnixNano()%10 < 8, // 80%成功率
+		ResponseData: "{}",                         // 初始化为空 JSON 对象
 	}
 
 	if result.Success {
@@ -318,6 +321,7 @@ func (m *PushManager) TestConfigWithDevice(title, content, platform, channel, de
 				Success:      false,
 				ErrorCode:    "CONFIG_ERROR",
 				ErrorMessage: "配置解析失败: " + err.Error(),
+				ResponseData: "{}", // 初始化为空 JSON 对象
 			}
 		}
 		// 规范化配置字段（处理前端字段名兼容）
@@ -331,6 +335,7 @@ func (m *PushManager) TestConfigWithDevice(title, content, platform, channel, de
 			Success:      false,
 			ErrorCode:    "UNSUPPORTED_PLATFORM",
 			ErrorMessage: "不支持的平台: " + platform,
+			ResponseData: "{}", // 初始化为空 JSON 对象
 		}
 	}
 
@@ -339,6 +344,7 @@ func (m *PushManager) TestConfigWithDevice(title, content, platform, channel, de
 			Success:      false,
 			ErrorCode:    "PROVIDER_ERROR",
 			ErrorMessage: "创建推送提供者失败: " + err.Error(),
+			ResponseData: "{}", // 初始化为空 JSON 对象
 		}
 	}
 

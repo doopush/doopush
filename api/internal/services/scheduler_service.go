@@ -11,11 +11,20 @@ import (
 )
 
 // SchedulerService 定时推送服务
-type SchedulerService struct{}
+type SchedulerService struct {
+	stopChan chan bool
+}
 
 // NewSchedulerService 创建定时推送服务实例
 func NewSchedulerService() *SchedulerService {
-	return &SchedulerService{}
+	service := &SchedulerService{
+		stopChan: make(chan bool),
+	}
+
+	// 启动定时任务调度器
+	go service.startScheduler()
+
+	return service
 }
 
 // CreateScheduledPush 创建定时推送
@@ -69,7 +78,7 @@ func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uin
 		RepeatConfig: repeatConfig,
 		CronExpr:     cronExpr,
 		NextRunAt:    &nextRunAt,
-		Status:       "pending",
+		Status:       "active",
 		CreatedBy:    userID,
 	}
 
@@ -80,22 +89,87 @@ func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uin
 	return scheduledPush, nil
 }
 
-// GetScheduledPushes 获取定时推送列表
+// GetScheduledPushes 获取定时推送列表（向后兼容）
 func (s *SchedulerService) GetScheduledPushes(appID uint, status string, page, pageSize int) ([]models.ScheduledPush, int64, error) {
+	return s.GetScheduledPushesWithFilters(appID, "", status, "", page, pageSize)
+}
+
+// GetScheduledPushesWithFilters 获取定时推送列表（支持搜索和筛选）
+func (s *SchedulerService) GetScheduledPushesWithFilters(appID uint, search, status, repeatType string, page, pageSize int) ([]models.ScheduledPush, int64, error) {
 	query := database.DB.Where("app_id = ?", appID)
 
-	if status != "" {
+	// 搜索条件：标题或内容包含搜索关键词
+	if search != "" {
+		query = query.Where("(title LIKE ? OR content LIKE ? OR name LIKE ?)",
+			"%"+search+"%", "%"+search+"%", "%"+search+"%")
+	}
+
+	// 状态筛选
+	if status != "" && status != "all" {
 		query = query.Where("status = ?", status)
 	}
 
+	// 重复类型筛选
+	if repeatType != "" && repeatType != "all" {
+		// 前端传递的是 "none", "daily", "weekly", "monthly"
+		// 后端存储的是 "once", "daily", "weekly", "monthly"
+		if repeatType == "none" {
+			repeatType = "once"
+		}
+		query = query.Where("repeat_type = ?", repeatType)
+	}
+
+	// 先计算总数
 	var total int64
 	query.Model(&models.ScheduledPush{}).Count(&total)
 
+	// 分页查询
 	var pushes []models.ScheduledPush
 	err := query.Offset((page - 1) * pageSize).Limit(pageSize).
 		Order("created_at DESC").Find(&pushes).Error
 
 	return pushes, total, err
+}
+
+// GetScheduledPushStats 获取定时推送统计数据
+func (s *SchedulerService) GetScheduledPushStats(appID uint) (map[string]int64, error) {
+	stats := make(map[string]int64)
+
+	var count int64
+
+	// 统计总任务数
+	if err := database.DB.Model(&models.ScheduledPush{}).Where("app_id = ?", appID).Count(&count).Error; err != nil {
+		return nil, err
+	}
+	stats["total"] = count
+
+	// 统计各状态的任务数
+	if err := database.DB.Model(&models.ScheduledPush{}).Where("app_id = ? AND status = ?", appID, "pending").Count(&count).Error; err != nil {
+		return nil, err
+	}
+	stats["pending"] = count
+
+	if err := database.DB.Model(&models.ScheduledPush{}).Where("app_id = ? AND status = ?", appID, "active").Count(&count).Error; err != nil {
+		return nil, err
+	}
+	stats["running"] = count
+
+	if err := database.DB.Model(&models.ScheduledPush{}).Where("app_id = ? AND status = ?", appID, "completed").Count(&count).Error; err != nil {
+		return nil, err
+	}
+	stats["completed"] = count
+
+	if err := database.DB.Model(&models.ScheduledPush{}).Where("app_id = ? AND status = ?", appID, "failed").Count(&count).Error; err != nil {
+		return nil, err
+	}
+	stats["failed"] = count
+
+	if err := database.DB.Model(&models.ScheduledPush{}).Where("app_id = ? AND status = ?", appID, "paused").Count(&count).Error; err != nil {
+		return nil, err
+	}
+	stats["paused"] = count
+
+	return stats, nil
 }
 
 // GetScheduledPush 获取单个定时推送
@@ -270,7 +344,18 @@ func (s *SchedulerService) ExecuteScheduledPush(appID uint, pushID uint) error {
 		return fmt.Errorf("定时推送不存在或状态不允许执行")
 	}
 
-	// 更新执行时间
+	// 先执行实际推送
+	err = s.executeActualPush(push)
+	if err != nil {
+		// 推送失败时更新状态
+		push.Status = "failed"
+		now := utils.TimeNow()
+		push.LastRunAt = &now
+		database.DB.Save(&push)
+		return fmt.Errorf("推送执行失败: %v", err)
+	}
+
+	// 推送成功后，更新执行时间和状态
 	now := utils.TimeNow()
 	push.LastRunAt = &now
 
@@ -278,7 +363,9 @@ func (s *SchedulerService) ExecuteScheduledPush(appID uint, pushID uint) error {
 	if push.RepeatType != "once" {
 		nextRunAt := s.calculateNextRunTime(push.ScheduleTime, push.RepeatType, push.CronExpr)
 		push.NextRunAt = &nextRunAt
+		// 保持状态为 active，等待下次执行
 	} else {
+		// 单次执行的任务，标记为已完成
 		push.Status = "completed"
 		push.NextRunAt = nil
 	}
@@ -286,15 +373,6 @@ func (s *SchedulerService) ExecuteScheduledPush(appID uint, pushID uint) error {
 	// 保存更新
 	if err := database.DB.Save(&push).Error; err != nil {
 		return fmt.Errorf("更新定时推送状态失败: %v", err)
-	}
-
-	// 执行实际推送
-	err = s.executeActualPush(push)
-	if err != nil {
-		// 推送失败时更新状态
-		push.Status = "failed"
-		database.DB.Save(&push)
-		return fmt.Errorf("推送执行失败: %v", err)
 	}
 
 	return nil
@@ -305,7 +383,7 @@ func (s *SchedulerService) GetPendingSchedules() ([]models.ScheduledPush, error)
 	now := utils.TimeNow()
 
 	var pushes []models.ScheduledPush
-	err := database.DB.Where("status = ? AND next_run_at <= ?", "active", now).
+	err := database.DB.Where("status IN ? AND next_run_at <= ?", []string{"pending", "active"}, now).
 		Order("next_run_at ASC").Find(&pushes).Error
 
 	return pushes, err
@@ -391,8 +469,22 @@ func (s *SchedulerService) buildPushTarget(push models.ScheduledPush) (PushTarge
 		// target_config 应该包含设备ID列表
 		var deviceIDs []uint
 		if push.TargetValue != "" {
+			// 尝试解析JSON数组格式的设备ID列表
 			if err := json.Unmarshal([]byte(push.TargetValue), &deviceIDs); err != nil {
-				return target, fmt.Errorf("devices目标配置解析失败: %v", err)
+				// 如果JSON解析失败，可能是旧的单个设备token格式，尝试按token查询
+				var devices []models.Device
+				if err := database.DB.Where("token = ? AND app_id = ? AND status = 1", push.TargetValue, push.AppID).Find(&devices).Error; err != nil {
+					return target, fmt.Errorf("根据设备token查询设备失败: %v", err)
+				}
+
+				if len(devices) == 0 {
+					return target, fmt.Errorf("devices目标配置解析失败: 无法解析 '%s' - 既不是有效的JSON数组也不是有效的设备token", push.TargetValue)
+				}
+
+				// 提取设备ID
+				for _, device := range devices {
+					deviceIDs = append(deviceIDs, device.ID)
+				}
 			}
 		}
 		target.DeviceIDs = deviceIDs
@@ -421,4 +513,61 @@ func (s *SchedulerService) buildPushTarget(push models.ScheduledPush) (PushTarge
 	}
 
 	return target, nil
+}
+
+// startScheduler 启动定时任务调度器
+func (s *SchedulerService) startScheduler() {
+	ticker := time.NewTicker(30 * time.Second) // 每30秒检查一次
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			// 检查并执行到期的定时推送任务
+			s.checkAndExecuteScheduledPushes()
+		case <-s.stopChan:
+			// 停止调度器
+			return
+		}
+	}
+}
+
+// checkAndExecuteScheduledPushes 检查并执行到期的定时推送任务
+func (s *SchedulerService) checkAndExecuteScheduledPushes() {
+	// 获取待执行的任务
+	pendingPushes, err := s.GetPendingSchedules()
+	if err != nil {
+		// 记录错误日志，但不中断调度器
+		fmt.Printf("获取待执行任务失败: %v\n", err)
+		return
+	}
+
+	// 记录检查到的任务数量
+	if len(pendingPushes) > 0 {
+		fmt.Printf("发现 %d 个待执行的定时推送任务\n", len(pendingPushes))
+	}
+
+	// 执行到期的任务
+	for _, push := range pendingPushes {
+		// 检查任务是否真的到期了
+		if push.NextRunAt != nil && push.NextRunAt.Before(utils.TimeNow()) {
+			fmt.Printf("执行定时推送任务: ID=%d, 名称=%s, 下次执行时间=%v\n",
+				push.ID, push.Name, push.NextRunAt)
+
+			// 异步执行推送任务，避免阻塞调度器
+			go func(pushID uint, appID uint, taskName string) {
+				fmt.Printf("开始执行定时推送任务: ID=%d, 名称=%s\n", pushID, taskName)
+				if err := s.ExecuteScheduledPush(appID, pushID); err != nil {
+					fmt.Printf("执行定时推送任务失败 (ID: %d, 名称: %s): %v\n", pushID, taskName, err)
+				} else {
+					fmt.Printf("定时推送任务执行成功: ID=%d, 名称=%s\n", pushID, taskName)
+				}
+			}(push.ID, push.AppID, push.Name)
+		}
+	}
+}
+
+// StopScheduler 停止定时任务调度器
+func (s *SchedulerService) StopScheduler() {
+	close(s.stopChan)
 }

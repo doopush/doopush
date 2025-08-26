@@ -256,6 +256,7 @@ func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) 
 			Success:      false,
 			ErrorCode:    "PAYLOAD_ERROR",
 			ErrorMessage: "载荷序列化失败",
+			ResponseData: "{}", // 初始化为空 JSON 对象
 		}
 	}
 
@@ -271,6 +272,7 @@ func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) 
 			Success:      false,
 			ErrorCode:    "REQUEST_ERROR",
 			ErrorMessage: "创建请求失败: " + err.Error(),
+			ResponseData: "{}", // 初始化为空 JSON 对象
 		}
 	}
 
@@ -295,6 +297,7 @@ func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) 
 				Success:      false,
 				ErrorCode:    "AUTH_ERROR",
 				ErrorMessage: "生成JWT失败: " + err.Error(),
+				ResponseData: "{}", // 初始化为空 JSON 对象
 			}
 		}
 		req.Header.Set("authorization", "bearer "+token)
@@ -310,6 +313,7 @@ func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) 
 			Success:      false,
 			ErrorCode:    "NETWORK_ERROR",
 			ErrorMessage: "网络请求失败: " + err.Error(),
+			ResponseData: "{}", // 初始化为空 JSON 对象
 		}
 	}
 	defer resp.Body.Close()
@@ -319,8 +323,14 @@ func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) 
 
 	// 处理响应
 	result := &models.PushResult{
-		AppID:     pushLog.AppID,
-		PushLogID: pushLog.ID,
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		ResponseData: "{}", // 初始化为空 JSON 对象
+	}
+
+	// 设置响应数据
+	if len(responseBody) > 0 {
+		result.ResponseData = string(responseBody)
 	}
 
 	if resp.StatusCode == 200 {

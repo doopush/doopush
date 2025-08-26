@@ -122,7 +122,79 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
 
     try {
       setLoading(true)
-      await ScheduledPushService.updateScheduledPush(currentApp.id, push.id, data)
+      
+      // 格式化 target_config 字段根据推送类型
+      let formattedTargetConfig = data.target_config.trim()
+      
+      if (data.push_type === 'single') {
+        // 单设备推送：确保是 [deviceId] 格式
+        try {
+          // 如果用户输入的是数字，转换为数组格式
+          if (/^\d+$/.test(formattedTargetConfig)) {
+            formattedTargetConfig = `[${formattedTargetConfig}]`
+          } else if (!formattedTargetConfig.startsWith('[')) {
+            // 如果不是数组格式，尝试转换
+            formattedTargetConfig = `[${formattedTargetConfig}]`
+          }
+          // 验证JSON格式
+          JSON.parse(formattedTargetConfig)
+        } catch {
+          toast.error('单设备推送目标配置格式错误，请输入设备ID')
+          return
+        }
+      } else if (data.push_type === 'batch') {
+        // 批量推送：确保是 [id1,id2,id3] 格式
+        try {
+          if (formattedTargetConfig.includes(',') && !formattedTargetConfig.startsWith('[')) {
+            // 逗号分隔的ID列表，转换为数组
+            const ids = formattedTargetConfig.split(',').map(id => id.trim()).filter(id => id)
+            formattedTargetConfig = JSON.stringify(ids.map(id => /^\d+$/.test(id) ? parseInt(id, 10) : id))
+          } else if (!formattedTargetConfig.startsWith('[')) {
+            // 单个ID，转换为数组
+            if (/^\d+$/.test(formattedTargetConfig)) {
+              formattedTargetConfig = `[${parseInt(formattedTargetConfig, 10)}]`
+            } else {
+              formattedTargetConfig = `[${formattedTargetConfig}]`
+            }
+          }
+          // 验证JSON格式
+          JSON.parse(formattedTargetConfig)
+        } catch {
+          toast.error('批量推送目标配置格式错误，请输入有效的设备ID列表')
+          return
+        }
+      } else if (data.push_type === 'broadcast') {
+        // 广播推送：确保是 {} 或有效的JSON对象格式
+        try {
+          if (formattedTargetConfig === '' || formattedTargetConfig === 'all') {
+            formattedTargetConfig = '{}'
+          } else if (!formattedTargetConfig.startsWith('{')) {
+            // 简单的键值对转换
+            if (formattedTargetConfig.includes(':')) {
+              const pairs = formattedTargetConfig.split(',').map(pair => {
+                const [key, value] = pair.split(':').map(s => s.trim())
+                return `"${key}":"${value}"`
+              })
+              formattedTargetConfig = `{${pairs.join(',')}}`
+            } else {
+              formattedTargetConfig = '{}'
+            }
+          }
+          // 验证JSON格式
+          JSON.parse(formattedTargetConfig)
+        } catch {
+          toast.error('广播推送目标配置格式错误，请输入有效的JSON配置')
+          return
+        }
+      }
+
+      // 创建请求数据
+      const requestData = {
+        ...data,
+        target_config: formattedTargetConfig
+      }
+
+      await ScheduledPushService.updateScheduledPush(currentApp.id, push.id, requestData)
       toast.success('定时推送更新成功')
       onSuccess()
       onOpenChange(false)
@@ -167,9 +239,12 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                   })}
                 </div>
               </div>
-              <Badge variant={push.status === 'pending' ? 'secondary' : 
-                              push.status === 'running' ? 'default' : 
-                              push.status === 'completed' ? 'secondary' : 'destructive'}>
+              <Badge 
+                variant={push.status === 'pending' ? 'secondary' : 
+                        push.status === 'running' ? 'default' : 
+                        push.status === 'completed' ? 'secondary' : 'outline'}
+                className={push.status === 'failed' ? 'text-red-600 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800' : ''}
+              >
                 {push.status === 'pending' ? '等待中' :
                  push.status === 'running' ? '运行中' :
                  push.status === 'paused' ? '已暂停' :

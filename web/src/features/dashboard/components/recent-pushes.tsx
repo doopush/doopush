@@ -150,7 +150,7 @@ export function RecentPushes() {
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium leading-none">
                 {push.status === 'failed' && (
-                  <Badge variant="destructive" className="mr-1 text-xs">
+                  <Badge variant="outline" className="mr-1 text-xs text-red-600 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800">
                     失败
                   </Badge>
                 )}

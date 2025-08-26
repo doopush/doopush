@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search as SearchIcon, Plus, Clock, Play, Pause, Trash2, MoreHorizontal, Pencil } from 'lucide-react'
+import { Search as SearchIcon, Plus, Clock, Play, Pause, Trash2, MoreHorizontal, Pencil, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -66,6 +66,8 @@ export function ScheduledPush() {
     pending: 0,
     running: 0,
     completed: 0,
+    failed: 0,
+    paused: 0,
   })
 
   const fetchScheduledPushes = useCallback(async () => {
@@ -95,15 +97,6 @@ export function ScheduledPush() {
         limit: paginationInfo.limit,
         total: paginationInfo.total,
       })
-
-      // 计算统计数据
-      const items = response.data || []
-      setStats({
-        total: paginationInfo.total,
-        pending: items.filter((p: ScheduledPush) => p.status === 'pending').length,
-        running: items.filter((p: ScheduledPush) => p.status === 'running').length,
-        completed: items.filter((p: ScheduledPush) => p.status === 'completed').length,
-      })
     } catch (error) {
       toast.error((error as Error).message || '获取定时推送列表失败')
     } finally {
@@ -111,11 +104,31 @@ export function ScheduledPush() {
     }
   }, [currentApp, pagination.page, pagination.limit, search, statusFilter, repeatFilter])
 
+  // 获取统计数据
+  const fetchStats = useCallback(async () => {
+    if (!currentApp) return
+
+    try {
+      const statsData = await ScheduledPushService.getScheduledPushStats(currentApp.id)
+      setStats({
+        total: statsData.total || 0,
+        pending: statsData.pending || 0,
+        running: statsData.running || 0,
+        completed: statsData.completed || 0,
+        failed: statsData.failed || 0,
+        paused: statsData.paused || 0,
+      })
+    } catch (error) {
+      console.error('获取统计数据失败:', error)
+    }
+  }, [currentApp])
+
   useEffect(() => {
     if (currentApp) {
       fetchScheduledPushes()
+      fetchStats()
     }
-  }, [currentApp, fetchScheduledPushes])
+  }, [currentApp, fetchScheduledPushes, fetchStats])
 
   const handlePause = async (push: ScheduledPush) => {
     if (!currentApp) return
@@ -162,6 +175,7 @@ export function ScheduledPush() {
       failed: { variant: 'destructive' as const, label: '失败', color: 'text-white' },
     }
     const config = variants[status as keyof typeof variants] || variants.pending
+    
     return <Badge variant={config.variant} className={config.color}>{config.label}</Badge>
   }
 
@@ -221,7 +235,7 @@ export function ScheduledPush() {
         </div>
 
       {/* 统计卡片 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">总任务数</CardTitle>
@@ -252,10 +266,28 @@ export function ScheduledPush() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">已完成</CardTitle>
-            <Clock className="h-4 w-4 text-green-500" />
+            <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">已暂停</CardTitle>
+            <Pause className="h-4 w-4 text-gray-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-600">{stats.paused}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">执行失败</CardTitle>
+            <XCircle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.failed}</div>
           </CardContent>
         </Card>
       </div>

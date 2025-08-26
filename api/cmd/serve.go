@@ -161,6 +161,7 @@ func startServer() {
 
 			// 定时推送管理
 			authenticated.GET("/apps/:appId/scheduled-pushes", schedulerCtrl.GetScheduledPushes)
+			authenticated.GET("/apps/:appId/scheduled-pushes/stats", schedulerCtrl.GetScheduledPushStats)
 			authenticated.POST("/apps/:appId/scheduled-pushes", schedulerCtrl.CreateScheduledPush)
 			authenticated.GET("/apps/:appId/scheduled-pushes/:id", schedulerCtrl.GetScheduledPush)
 			authenticated.PUT("/apps/:appId/scheduled-pushes/:id", schedulerCtrl.UpdateScheduledPush)

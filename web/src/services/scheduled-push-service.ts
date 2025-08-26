@@ -66,4 +66,15 @@ export class ScheduledPushService {
   static async executeScheduledPush(appId: number, id: number): Promise<APIResponse<null>> {
     return apiClient.post(`/apps/${appId}/scheduled-pushes/${id}/execute`)
   }
+
+  static async getScheduledPushStats(appId: number): Promise<{
+    total: number
+    pending: number
+    running: number
+    completed: number
+    failed: number
+    paused: number
+  }> {
+    return apiClient.get(`/apps/${appId}/scheduled-pushes/stats`)
+  }
 }

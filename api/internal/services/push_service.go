@@ -61,7 +61,7 @@ func (s *PushService) SendPush(appID uint, userID uint, req PushRequest) ([]mode
 	}
 
 	// 准备推送载荷
-	payloadJSON := ""
+	payloadJSON := "{}"
 	if req.Payload != nil {
 		if payload, err := json.Marshal(req.Payload); err == nil {
 			payloadJSON = string(payload)
@@ -187,6 +187,7 @@ func (s *PushService) processPushLogs(pushLogs []models.PushLog) {
 				Success:      false,
 				ErrorCode:    "DEVICE_NOT_FOUND",
 				ErrorMessage: "设备不存在",
+				ResponseData: "{}", // 初始化为空 JSON 对象
 			}
 
 			database.DB.Create(&result)
@@ -221,7 +222,12 @@ func (s *PushService) processPushLogs(pushLogs []models.PushLog) {
 // scheduleQueuePush 加入定时推送队列
 func (s *PushService) scheduleQueuePush(appID uint, req PushRequest, scheduleTime time.Time) {
 	targetJSON, _ := json.Marshal(req.Target)
-	payloadJSON, _ := json.Marshal(req.Payload)
+	payloadJSON := "{}"
+	if req.Payload != nil {
+		if payload, err := json.Marshal(req.Payload); err == nil {
+			payloadJSON = string(payload)
+		}
+	}
 
 	queueItem := models.PushQueue{
 		AppID:        appID,
