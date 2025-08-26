@@ -57,6 +57,13 @@ const generateMockResults = (logId: number): PushResult[] => {
       id: i + 1,
       app_id: 1,
       push_log_id: logId,
+      success: status === 'sent',
+      error_code: status === 'failed' ? 'INVALID_TOKEN' : '',
+      error_message: status === 'failed' ? 'Invalid token' : '',
+      response_data: '{}',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      // 可选字段
       device_id: i + 1,
       platform,
       vendor,
@@ -64,7 +71,6 @@ const generateMockResults = (logId: number): PushResult[] => {
       response_code: status === 'sent' ? '200' : status === 'failed' ? '400' : '',
       response_msg: status === 'sent' ? 'Success' : status === 'failed' ? 'Invalid token' : 'Pending',
       sent_at: status !== 'pending' ? new Date().toISOString() : null,
-      created_at: new Date().toISOString(),
     })
   }
   
@@ -88,13 +94,33 @@ export function PushLogDetailsDialog({ log, open, onOpenChange }: PushLogDetails
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, log.id, currentApp])
 
+  // 适配后端数据格式
+  const adaptPushResults = (results: PushResult[], logData: any): PushResult[] => {
+    return results.map(result => ({
+      ...result,
+      // 从success字段推导status
+      status: result.success ? 'sent' as const : 'failed' as const,
+      // 适配响应字段
+      response_code: result.success ? '200' : '400',
+      response_msg: result.success ? 'Success' : (result.error_message || 'Failed'),
+      // 时间字段适配
+      sent_at: result.updated_at,
+      // 从日志数据中获取设备信息
+      device_id: logData.log?.device?.id || result.push_log_id,
+      platform: logData.log?.device?.platform || 'unknown',
+      vendor: logData.log?.device?.platform === 'ios' ? 'apple' : (logData.log?.device?.brand || 'unknown'),
+    }))
+  }
+
   const loadPushResults = async () => {
     if (!currentApp) return
     
     try {
       setLoading(true)
       const data = await PushService.getPushLogDetails(currentApp.id, log.id)
-      setResults(data.results)
+      // 适配数据格式
+      const adaptedResults = adaptPushResults(data.results, data)
+      setResults(adaptedResults)
       setLogStats(data.stats)
     } catch (error) {
       console.error('加载推送结果失败:', error)
@@ -119,10 +145,10 @@ export function PushLogDetailsDialog({ log, open, onOpenChange }: PushLogDetails
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      completed: { label: '已完成', className: 'bg-green-100 text-green-800', icon: CheckCircle },
+      sent: { label: '已发送', className: 'bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-200', icon: CheckCircle },
       failed: { label: '失败', className: 'bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-200', icon: XCircle },
-      processing: { label: '发送中', className: 'bg-blue-100 text-blue-800', icon: Send },
-      pending: { label: '待发送', className: 'bg-yellow-100 text-yellow-800', icon: Clock },
+      processing: { label: '发送中', className: 'bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-200', icon: Send },
+      pending: { label: '待发送', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-200', icon: Clock },
     }
     return variants[status as keyof typeof variants] || variants.pending
   }
@@ -244,8 +270,8 @@ export function PushLogDetailsDialog({ log, open, onOpenChange }: PushLogDetails
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">发送时间</label>
                       <p className="text-sm mt-1">
-                        {log.sent_at 
-                          ? new Date(log.sent_at).toLocaleString('zh-CN')
+                        {log.send_at 
+                          ? new Date(log.send_at).toLocaleString('zh-CN')
                           : '未发送'
                         }
                       </p>
@@ -290,31 +316,31 @@ export function PushLogDetailsDialog({ log, open, onOpenChange }: PushLogDetails
                           <TableRow key={result.id}>
                             <TableCell>
                               <div className="font-mono text-sm">
-                                设备 #{result.device_id}
+                                设备 #{result.device_id || 'N/A'}
                               </div>
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline">
-                                {result.platform.toUpperCase()}
+                                {(result.platform || 'unknown').toUpperCase()}
                               </Badge>
                             </TableCell>
                             <TableCell className="capitalize">
-                              {result.vendor}
+                              {result.vendor || 'unknown'}
                             </TableCell>
                             <TableCell>
-                              <Badge className={getResultStatusBadge(result.status).className}>
-                                {getResultStatusBadge(result.status).label}
+                              <Badge className={getResultStatusBadge(result.status || (result.success ? 'sent' : 'failed')).className}>
+                                {getResultStatusBadge(result.status || (result.success ? 'sent' : 'failed')).label}
                               </Badge>
                             </TableCell>
                             <TableCell>
                               <div className="text-sm">
-                                <div className="font-mono">{result.response_code}</div>
-                                <div className="text-muted-foreground">{result.response_msg}</div>
+                                <div className="font-mono">{result.response_code || (result.success ? '200' : '400')}</div>
+                                <div className="text-muted-foreground">{result.response_msg || (result.success ? 'Success' : result.error_message || 'Failed')}</div>
                               </div>
                             </TableCell>
                             <TableCell className="text-muted-foreground text-sm">
-                              {result.sent_at 
-                                ? formatDistanceToNow(new Date(result.sent_at), { 
+                              {(result.sent_at || result.updated_at)
+                                ? formatDistanceToNow(new Date(result.sent_at || result.updated_at), { 
                                     addSuffix: true, 
                                     locale: zhCN 
                                   })
@@ -340,7 +366,7 @@ export function PushLogDetailsDialog({ log, open, onOpenChange }: PushLogDetails
                     <div className="space-y-3">
                       {['iOS', 'Android'].map((platform) => {
                         const count = results.filter(r => 
-                          r.platform.toLowerCase() === platform.toLowerCase()
+                          (r.platform || 'unknown').toLowerCase() === platform.toLowerCase()
                         ).length
                         const percentage = results.length > 0 
                           ? ((count / results.length) * 100).toFixed(1)

@@ -93,9 +93,11 @@ export interface DeviceGroup {
 export interface PushLog {
   id: number
   app_id: number
+  device_id?: number
   title: string
   content: string
   payload: string
+  channel?: string
   target_type: string
   target_value: string
   platform_stats: string
@@ -103,23 +105,31 @@ export interface PushLog {
   success_count: number
   failed_count: number
   pending_count: number
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-  sent_at: string | null
+  status: 'pending' | 'processing' | 'sent' | 'failed'
+  dedup_key?: string
+  send_at: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface PushResult {
   id: number
   app_id: number
   push_log_id: number
-  device_id: number
-  platform: string
-  vendor: string
-  status: 'sent' | 'failed' | 'pending'
-  response_code: string
-  response_msg: string
-  sent_at: string | null
+  success: boolean
+  error_code: string
+  error_message: string
+  response_data: string
   created_at: string
+  updated_at: string
+  // 可选字段 - 从关联数据中获取
+  device_id?: number
+  platform?: string
+  vendor?: string
+  status?: 'sent' | 'failed' | 'pending'
+  response_code?: string
+  response_msg?: string
+  sent_at?: string | null
 }
 
 // ===== 模板相关 =====
