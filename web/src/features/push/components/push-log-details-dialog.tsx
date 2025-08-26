@@ -94,8 +94,25 @@ export function PushLogDetailsDialog({ log, open, onOpenChange }: PushLogDetails
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, log.id, currentApp])
 
+  // 后端日志数据类型
+  interface LogDataResponse {
+    log?: PushLog & {
+      device?: {
+        id: number
+        platform: string
+        brand?: string
+      }
+    }
+    results: PushResult[]
+    stats: {
+      total_devices: number
+      success_count: number
+      failed_count: number
+    }
+  }
+
   // 适配后端数据格式
-  const adaptPushResults = (results: PushResult[], logData: any): PushResult[] => {
+  const adaptPushResults = (results: PushResult[], logData: LogDataResponse): PushResult[] => {
     return results.map(result => ({
       ...result,
       // 从success字段推导status

@@ -40,9 +40,16 @@ const generateMockData = () => {
   return data
 }
 
+interface ChartDataPoint {
+  date: string
+  total: number
+  success: number
+  failed: number
+}
+
 export function PushOverview() {
   const { currentApp } = useAuthStore()
-  const [data, setData] = useState<any[]>([])
+  const [data, setData] = useState<ChartDataPoint[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

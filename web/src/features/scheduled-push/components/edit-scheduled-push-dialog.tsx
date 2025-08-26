@@ -90,7 +90,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
         try {
           const date = new Date(push.scheduled_at)
           return isNaN(date.getTime()) ? '' : date.toISOString()
-        } catch (error) {
+        } catch (_error) {
           console.warn('Invalid scheduled_at value:', push.scheduled_at)
           return ''
         }

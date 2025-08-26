@@ -92,7 +92,7 @@ export function APIKeysDialog({ app, open, onOpenChange }: APIKeysDialogProps) {
     try {
       setCreating(true)
       const result = await AppService.createAPIKey(app.id, data)
-      setNewAPIKey(result.raw_key)
+      setNewAPIKey(result.api_key)
       setShowCreateForm(false)
       form.reset()
       loadAPIKeys()
@@ -302,7 +302,7 @@ export function APIKeysDialog({ app, open, onOpenChange }: APIKeysDialogProps) {
                         <div>
                           <div className="font-medium">{apiKey.name}</div>
                           <div className="text-xs text-muted-foreground font-mono">
-                            ****{apiKey.last_4}
+                            ****{apiKey.last_4 || apiKey.key_suffix}
                           </div>
                         </div>
                       </TableCell>

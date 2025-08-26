@@ -66,8 +66,25 @@ interface PlatformData {
   color: string
 }
 
+// API数据类型定义
+interface ApiDailyStat {
+  date: string
+  total_pushes: number
+  success_pushes: number
+  failed_pushes: number
+  click_count: number
+  open_count: number
+}
+
+interface ApiPlatformStat {
+  platform: string
+  total_pushes: number
+  success_pushes: number
+  failed_pushes: number
+}
+
 // 将API数据转换为图表数据
-const convertApiDataToChartData = (dailyStats: any[]): ChartData[] => {
+const convertApiDataToChartData = (dailyStats: ApiDailyStat[]): ChartData[] => {
   return dailyStats.map(stat => ({
     date: stat.date,
     dateDisplay: new Date(stat.date).toLocaleDateString('zh-CN', { 
@@ -83,7 +100,7 @@ const convertApiDataToChartData = (dailyStats: any[]): ChartData[] => {
 }
 
 // 将平台统计转换为图表数据
-const convertPlatformStats = (platformStats: any[]): PlatformData[] => {
+const convertPlatformStats = (platformStats: ApiPlatformStat[]): PlatformData[] => {
   const colors = {
     ios: '#007AFF',
     android: '#34C759',
