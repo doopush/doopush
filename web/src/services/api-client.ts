@@ -50,7 +50,9 @@ apiClient.interceptors.response.use(
       switch (status) {
         case 401:
           // 未认证 - 跳转到登录页
-          window.location.href = '/sign-in?handle=logout'
+          if (window.location.pathname !== '/sign-in' && window.location.pathname !== '/sign-up') {
+            window.location.href = '/sign-in?handle=logout'
+          }
           break
           
         case 403:
