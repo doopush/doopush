@@ -20,6 +20,9 @@ doopush/
 │   │   └── utils/         # 工具函数
 │   ├── public/            # 静态资源
 │   └── ...                # Vite + React配置文件
+├── sdk/                   # 移动端SDK服务
+│   ├── ios/
+│   └── android/
 ├── api/                   # 后端API服务
 │   ├── cmd/               # 命令行入口 (Cobra)
 │   │   ├── root.go        # 根命令配置
