@@ -12,13 +12,13 @@ struct AppConfig {
     // MARK: - DooPush SDK 配置
     
     /// 应用ID
-    static let appId = "2"
+    static let appId = "1"
     
     /// API密钥
-    static let apiKey = "dp_live_IA12s6WpOw7qhwkQ4UHTLiV4vkW85XBN"
+    static let apiKey = "dp_live_XXpwyhNOxpsXWh3sRxxhZ0KK9Wo8ArwB"
     
     /// 服务器基础URL
-    static let baseURL = "https://push.frp.coss.im/api/v1"
+    static let baseURL = "https://doopush.com/api/v1"
     
     /// 获取不带API版本的服务器地址（用于UI显示）
     static var displayBaseURL: String {

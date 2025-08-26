@@ -159,7 +159,7 @@ export function ScheduledPush() {
       running: { variant: 'default' as const, label: '运行中', color: 'text-blue-600' },
       paused: { variant: 'outline' as const, label: '已暂停', color: 'text-gray-600' },
       completed: { variant: 'secondary' as const, label: '已完成', color: 'text-green-600' },
-      failed: { variant: 'destructive' as const, label: '失败', color: 'text-red-600' },
+      failed: { variant: 'destructive' as const, label: '失败', color: 'text-white' },
     }
     const config = variants[status as keyof typeof variants] || variants.pending
     return <Badge variant={config.variant} className={config.color}>{config.label}</Badge>
