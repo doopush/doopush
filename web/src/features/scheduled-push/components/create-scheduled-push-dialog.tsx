@@ -423,7 +423,7 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
                           />
                         </FormControl>
                         <FormDescription>
-                          {pushType === 'single' && '输入单个设备Token，自动转换为 [deviceId] 格式'}
+                          {pushType === 'single' && '输入单个设备Token，自动转换为 [Token] 格式'}
                           {pushType === 'batch' && '输入多个设备Token，支持逗号分隔或JSON数组格式'}
                           {pushType === 'broadcast' && '输入筛选条件，支持键值对或JSON格式，空白表示所有设备'}
                         </FormDescription>
