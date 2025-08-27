@@ -84,7 +84,6 @@ export function DeleteScheduledPushDialog({ push, open, onOpenChange, onSuccess 
         </DialogHeader>
 
         <Alert variant="destructive" className="border-destructive/20 bg-destructive/5 dark:border-destructive/20 dark:bg-destructive/5">
-          <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-destructive dark:text-destructive">
             <strong>警告：</strong>删除定时推送任务将会：
             <ul className="mt-2 ml-4 list-disc space-y-1">

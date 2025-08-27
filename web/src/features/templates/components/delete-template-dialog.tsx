@@ -60,9 +60,8 @@ export function DeleteTemplateDialog({ template, open, onOpenChange, onSuccess }
           </DialogDescription>
         </DialogHeader>
 
-        <Alert className="border-red-200 bg-red-50">
-          <AlertTriangle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-800">
+        <Alert variant="destructive" className="border-destructive/20 bg-destructive/5 dark:border-destructive/20 dark:bg-destructive/5">
+          <AlertDescription className="text-destructive dark:text-destructive">
             <strong>警告：</strong>删除模板将会：
             <ul className="mt-2 ml-4 list-disc space-y-1">
               <li>永久删除模板内容和配置</li>
