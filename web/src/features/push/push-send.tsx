@@ -436,8 +436,8 @@ export default function PushSend() {
                                         <SelectItem value="xiaomi">小米</SelectItem>
                                         <SelectItem value="oppo">OPPO</SelectItem>
                                         <SelectItem value="vivo">VIVO</SelectItem>
+                                        <SelectItem value="honor">荣耀</SelectItem>
                                         <SelectItem value="samsung">三星</SelectItem>
-                                        <SelectItem value="google">谷歌</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </FormItem>

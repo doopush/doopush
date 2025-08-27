@@ -56,6 +56,8 @@ export function DeleteConfigDialog({ config, open, onOpenChange, onSuccess }: De
       xiaomi: { name: '小米推送', icon: '📱' },
       oppo: { name: 'OPPO推送', icon: '📱' },
       vivo: { name: 'VIVO推送', icon: '📱' },
+      honor: { name: '荣耀推送', icon: '📱' },
+      samsung: { name: '三星推送', icon: '📱' },
     }
     return channelMap[channel] || { name: channel, icon: '📱' }
   }
