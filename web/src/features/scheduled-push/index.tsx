@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search as SearchIcon, Plus, Clock, Play, Pause, Trash2, MoreHorizontal, Pencil, CheckCircle, XCircle } from 'lucide-react'
+import { Search as SearchIcon, Plus, Clock, Play, Pause, Trash2, MoreHorizontal, Pencil, CheckCircle, XCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -228,10 +228,16 @@ export function ScheduledPush() {
               管理应用 "{currentApp.name}" 的定时推送任务
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            创建任务
-          </Button>
+          <div className='flex items-center gap-2'>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              创建任务
+            </Button>
+            <Button variant="outline" onClick={fetchScheduledPushes}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              刷新
+            </Button>
+          </div>
         </div>
 
       {/* 统计卡片 */}

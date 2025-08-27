@@ -193,13 +193,13 @@ export function Templates() {
                 </p>
               </div>
               <div className='flex items-center gap-2'>
-                <Button variant="outline" onClick={loadTemplates}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  刷新
-                </Button>
                 <Button onClick={() => setCreateDialogOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   创建模板
+                </Button>
+                <Button variant="outline" onClick={loadTemplates}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  刷新
                 </Button>
               </div>
             </div>
