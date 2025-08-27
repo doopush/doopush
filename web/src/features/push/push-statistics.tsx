@@ -327,8 +327,39 @@ export default function PushStatistics() {
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="dateDisplay" />
                         <YAxis />
-                        <Tooltip />
-                        <Legend />
+                        <Tooltip 
+                          itemSorter={(item) => {
+                            const order = { 'total': 0, 'success': 1, 'failed': 2 };
+                            return order[item.dataKey as keyof typeof order] ?? 999;
+                          }}
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3">
+                                  <p className="text-foreground font-medium mb-2">{`日期: ${label}`}</p>
+                                  {payload.map((entry, index) => (
+                                    <div key={index} className="flex items-center gap-2 mb-1">
+                                      <div 
+                                        className="w-3 h-3 rounded-full" 
+                                        style={{ backgroundColor: entry.color }}
+                                      />
+                                      <span className="text-foreground text-sm">
+                                        {entry.name}: <span className="font-medium">{entry.value}</span>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )
+                            }
+                            return null
+                          }}
+                        />
+                        <Legend 
+                          itemSorter={(item) => {
+                            const order = { 'total': 0, 'success': 1, 'failed': 2 };
+                            return order[item.dataKey as keyof typeof order] ?? 999;
+                          }}
+                        />
                         <Line 
                           type="monotone" 
                           dataKey="total" 
@@ -379,7 +410,27 @@ export default function PushStatistics() {
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <Tooltip />
+                          <Tooltip 
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3">
+                                    <div className="flex items-center gap-2">
+                                      <div 
+                                        className="w-3 h-3 rounded-full" 
+                                        style={{ backgroundColor: data.color }}
+                                      />
+                                      <span className="text-foreground text-sm">
+                                        {data.name}: <span className="font-medium">{data.value}</span>
+                                      </span>
+                                    </div>
+                                  </div>
+                                )
+                              }
+                              return null
+                            }}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     </CardContent>
@@ -396,7 +447,27 @@ export default function PushStatistics() {
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="name" />
                           <YAxis />
-                          <Tooltip />
+                          <Tooltip 
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3">
+                                    <div className="flex items-center gap-2">
+                                      <div 
+                                        className="w-3 h-3 rounded-full" 
+                                        style={{ backgroundColor: data.color }}
+                                      />
+                                      <span className="text-foreground text-sm">
+                                        {data.name}: <span className="font-medium">{data.value}</span>
+                                      </span>
+                                    </div>
+                                  </div>
+                                )
+                              }
+                              return null
+                            }}
+                          />
                           <Bar dataKey="value" fill="#8884d8" />
                         </BarChart>
                       </ResponsiveContainer>
@@ -455,8 +526,39 @@ export default function PushStatistics() {
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="dateDisplay" />
                         <YAxis />
-                        <Tooltip />
-                        <Legend />
+                        <Tooltip 
+                          itemSorter={(item) => {
+                            const order = { 'click': 0, 'open': 1 };
+                            return order[item.dataKey as keyof typeof order] ?? 999;
+                          }}
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3">
+                                  <p className="text-foreground font-medium mb-2">{`日期: ${label}`}</p>
+                                  {payload.map((entry, index) => (
+                                    <div key={index} className="flex items-center gap-2 mb-1">
+                                      <div 
+                                        className="w-3 h-3 rounded-full" 
+                                        style={{ backgroundColor: entry.color }}
+                                      />
+                                      <span className="text-foreground text-sm">
+                                        {entry.name}: <span className="font-medium">{entry.value}</span>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )
+                            }
+                            return null
+                          }}
+                        />
+                        <Legend 
+                          itemSorter={(item) => {
+                            const order = { 'click': 0, 'open': 1 };
+                            return order[item.dataKey as keyof typeof order] ?? 999;
+                          }}
+                        />
                         <Line 
                           type="monotone" 
                           dataKey="click" 
