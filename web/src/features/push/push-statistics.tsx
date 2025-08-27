@@ -101,6 +101,8 @@ const convertApiDataToChartData = (dailyStats: ApiDailyStat[]): ChartData[] => {
 
 // 将平台统计转换为图表数据
 const convertPlatformStats = (platformStats: ApiPlatformStat[]): PlatformData[] => {
+  if (!platformStats) return []
+
   const colors = {
     ios: '#007AFF',
     android: '#34C759',
