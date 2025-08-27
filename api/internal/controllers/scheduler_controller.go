@@ -120,6 +120,9 @@ func (ctrl *SchedulerController) CreateScheduledPush(ctx *gin.Context) {
 		case "single":
 			targetType = "devices"
 			targetValue = req.TargetConfig
+		case "batch":
+			targetType = "devices"
+			targetValue = req.TargetConfig
 		case "all":
 			targetType = "all"
 			targetValue = ""
@@ -165,7 +168,7 @@ func (ctrl *SchedulerController) CreateScheduledPush(ctx *gin.Context) {
 
 	// 创建定时推送任务，包含推送内容
 	push, err := ctrl.schedulerService.CreateScheduledPushWithContent(
-		uint(appID), userID, name, req.Title, req.Content, payload,
+		uint(appID), userID, name, req.Title, req.Content, payload, req.PushType,
 		targetType, targetValue, scheduleTime, timezone, repeatType, req.RepeatConfig, req.CronExpr,
 	)
 	if err != nil {
@@ -184,7 +187,7 @@ func (ctrl *SchedulerController) CreateScheduledPush(ctx *gin.Context) {
 // @Produce json
 // @Param appId path int true "应用ID"
 // @Param search query string false "搜索关键词（标题或内容）"
-// @Param status query string false "状态筛选" Enums(pending, active, paused, completed, failed)
+// @Param status query string false "状态筛选" Enums(pending, running, paused, completed, failed)
 // @Param repeat_type query string false "重复类型筛选" Enums(once, daily, weekly, monthly)
 // @Param page query int false "页码" example(1)
 // @Param page_size query int false "每页数量" example(20)
@@ -349,6 +352,9 @@ func (ctrl *SchedulerController) UpdateScheduledPush(ctx *gin.Context) {
 		case "single":
 			targetType = "devices"
 			targetValue = req.TargetConfig
+		case "batch":
+			targetType = "devices"
+			targetValue = req.TargetConfig
 		case "all":
 			targetType = "all"
 			targetValue = ""
@@ -393,7 +399,7 @@ func (ctrl *SchedulerController) UpdateScheduledPush(ctx *gin.Context) {
 	}
 
 	push, err := ctrl.schedulerService.UpdateScheduledPushWithContent(
-		uint(appID), uint(pushID), name, req.Title, req.Content, payload,
+		uint(appID), uint(pushID), name, req.Title, req.Content, payload, req.PushType,
 		targetType, targetValue, scheduleTime, timezone, repeatType, req.RepeatConfig, req.CronExpr, req.Status,
 	)
 	if err != nil {

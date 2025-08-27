@@ -127,14 +127,18 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
       let formattedTargetConfig = data.target_config.trim()
       
       if (data.push_type === 'single') {
-        // 单设备推送：确保是 [deviceId] 格式
+        // 单设备推送：支持设备token格式
         try {
-          // 如果用户输入的是数字，转换为数组格式
-          if (/^\d+$/.test(formattedTargetConfig)) {
-            formattedTargetConfig = `[${formattedTargetConfig}]`
-          } else if (!formattedTargetConfig.startsWith('[')) {
-            // 如果不是数组格式，尝试转换
-            formattedTargetConfig = `[${formattedTargetConfig}]`
+          // 如果用户输入的是JSON数组格式，验证格式
+          if (formattedTargetConfig.startsWith('[') && formattedTargetConfig.endsWith(']')) {
+            JSON.parse(formattedTargetConfig)
+          } else if (formattedTargetConfig.includes(',')) {
+            // 逗号分隔的多个token，转换为JSON数组格式
+            const tokens = formattedTargetConfig.split(',').map(token => token.trim()).filter(token => token)
+            formattedTargetConfig = JSON.stringify(tokens)
+          } else {
+            // 单个token，转换为JSON数组格式
+            formattedTargetConfig = JSON.stringify([formattedTargetConfig])
           }
           // 验证JSON格式
           JSON.parse(formattedTargetConfig)
@@ -143,19 +147,18 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
           return
         }
       } else if (data.push_type === 'batch') {
-        // 批量推送：确保是 [id1,id2,id3] 格式
+        // 批量推送：支持设备token格式
         try {
-          if (formattedTargetConfig.includes(',') && !formattedTargetConfig.startsWith('[')) {
-            // 逗号分隔的ID列表，转换为数组
-            const ids = formattedTargetConfig.split(',').map(id => id.trim()).filter(id => id)
-            formattedTargetConfig = JSON.stringify(ids.map(id => /^\d+$/.test(id) ? parseInt(id, 10) : id))
-          } else if (!formattedTargetConfig.startsWith('[')) {
-            // 单个ID，转换为数组
-            if (/^\d+$/.test(formattedTargetConfig)) {
-              formattedTargetConfig = `[${parseInt(formattedTargetConfig, 10)}]`
-            } else {
-              formattedTargetConfig = `[${formattedTargetConfig}]`
-            }
+          if (formattedTargetConfig.startsWith('[') && formattedTargetConfig.endsWith(']')) {
+            // 已经是JSON数组格式，验证格式
+            JSON.parse(formattedTargetConfig)
+          } else if (formattedTargetConfig.includes(',')) {
+            // 逗号分隔的多个token，转换为JSON数组格式
+            const tokens = formattedTargetConfig.split(',').map(token => token.trim()).filter(token => token)
+            formattedTargetConfig = JSON.stringify(tokens)
+          } else {
+            // 单个token，转换为JSON数组格式
+            formattedTargetConfig = JSON.stringify([formattedTargetConfig])
           }
           // 验证JSON格式
           JSON.parse(formattedTargetConfig)

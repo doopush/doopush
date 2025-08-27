@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/doopush/doopush/api/internal/database"
@@ -29,11 +30,11 @@ func NewSchedulerService() *SchedulerService {
 
 // CreateScheduledPush 创建定时推送
 func (s *SchedulerService) CreateScheduledPush(appID uint, userID uint, name string, templateID *uint, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, cronExpr string) (*models.ScheduledPush, error) {
-	return s.CreateScheduledPushWithContent(appID, userID, name, "", "", "", targetType, targetValue, scheduleTime, timezone, repeatType, "", cronExpr)
+	return s.CreateScheduledPushWithContent(appID, userID, name, "", "", "", "", targetType, targetValue, scheduleTime, timezone, repeatType, "", cronExpr)
 }
 
 // CreateScheduledPushWithContent 创建包含推送内容的定时推送
-func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uint, name, title, content, payload, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, repeatConfig, cronExpr string) (*models.ScheduledPush, error) {
+func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uint, name, title, content, payload, pushType, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, repeatConfig, cronExpr string) (*models.ScheduledPush, error) {
 	// 检查任务名是否重复
 	var existingPush models.ScheduledPush
 	err := database.DB.Where("app_id = ? AND name = ?", appID, name).First(&existingPush).Error
@@ -52,15 +53,18 @@ func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uin
 	// 计算下次执行时间
 	nextRunAt := s.calculateNextRunTime(scheduleTime, repeatType, cronExpr)
 
-	// 推断 push_type
-	pushType := "broadcast" // 默认值
-	switch targetType {
-	case "devices":
-		pushType = "single"
-	case "groups", "tags":
-		pushType = "batch"
-	case "all":
-		pushType = "broadcast"
+	// 如果没有明确指定 push_type，则根据 targetType 推断
+	if pushType == "" {
+		switch targetType {
+		case "devices":
+			pushType = "single"
+		case "groups", "tags":
+			pushType = "batch"
+		case "all":
+			pushType = "broadcast"
+		default:
+			pushType = "broadcast"
+		}
 	}
 
 	scheduledPush := &models.ScheduledPush{
@@ -78,7 +82,7 @@ func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uin
 		RepeatConfig: repeatConfig,
 		CronExpr:     cronExpr,
 		NextRunAt:    &nextRunAt,
-		Status:       "active",
+		Status:       "pending", // 新创建的任务默认为pending状态，等待调度器执行
 		CreatedBy:    userID,
 	}
 
@@ -149,7 +153,7 @@ func (s *SchedulerService) GetScheduledPushStats(appID uint) (map[string]int64, 
 	}
 	stats["pending"] = count
 
-	if err := database.DB.Model(&models.ScheduledPush{}).Where("app_id = ? AND status = ?", appID, "active").Count(&count).Error; err != nil {
+	if err := database.DB.Model(&models.ScheduledPush{}).Where("app_id = ? AND status = ?", appID, "running").Count(&count).Error; err != nil {
 		return nil, err
 	}
 	stats["running"] = count
@@ -221,7 +225,7 @@ func (s *SchedulerService) UpdateScheduledPush(appID uint, pushID uint, name str
 }
 
 // UpdateScheduledPushWithContent 更新包含推送内容的定时推送
-func (s *SchedulerService) UpdateScheduledPushWithContent(appID uint, pushID uint, name, title, content, payload, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, repeatConfig, cronExpr, status string) (*models.ScheduledPush, error) {
+func (s *SchedulerService) UpdateScheduledPushWithContent(appID uint, pushID uint, name, title, content, payload, pushType, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, repeatConfig, cronExpr, status string) (*models.ScheduledPush, error) {
 	var push models.ScheduledPush
 	err := database.DB.Where("app_id = ? AND id = ?", appID, pushID).First(&push).Error
 	if err != nil {
@@ -245,17 +249,21 @@ func (s *SchedulerService) UpdateScheduledPushWithContent(appID uint, pushID uin
 		return nil, fmt.Errorf("payload必须是有效的JSON格式")
 	}
 
-	// 推断 push_type
-	pushType := push.PushType // 保持现有值
+	// 如果没有明确指定 push_type，则保持现有值或根据 targetType 推断
 	if pushType == "" {
-		pushType = "broadcast" // 默认值
-		switch targetType {
-		case "devices":
-			pushType = "single"
-		case "groups", "tags":
-			pushType = "batch"
-		case "all":
-			pushType = "broadcast"
+		pushType = push.PushType // 保持现有值
+		if pushType == "" {
+			pushType = "broadcast" // 默认值
+			switch targetType {
+			case "devices":
+				pushType = "single"
+			case "groups", "tags":
+				pushType = "batch"
+			case "all":
+				pushType = "broadcast"
+			default:
+				pushType = "broadcast"
+			}
 		}
 	}
 
@@ -304,7 +312,7 @@ func (s *SchedulerService) DeleteScheduledPush(appID uint, pushID uint) error {
 // PauseScheduledPush 暂停定时推送
 func (s *SchedulerService) PauseScheduledPush(appID uint, pushID uint) error {
 	result := database.DB.Model(&models.ScheduledPush{}).
-		Where("app_id = ? AND id = ? AND status IN ?", appID, pushID, []string{"pending", "active"}).
+		Where("app_id = ? AND id = ? AND status IN ?", appID, pushID, []string{"pending", "running"}).
 		Update("status", "paused")
 
 	if result.Error != nil {
@@ -327,7 +335,7 @@ func (s *SchedulerService) ResumeScheduledPush(appID uint, pushID uint) error {
 	// 重新计算下次执行时间
 	nextRunAt := s.calculateNextRunTime(push.ScheduleTime, push.RepeatType, push.CronExpr)
 	push.NextRunAt = &nextRunAt
-	push.Status = "active"
+	push.Status = "pending" // 恢复后设置为等待中，让调度器重新检查并执行
 
 	if err := database.DB.Save(&push).Error; err != nil {
 		return fmt.Errorf("恢复定时推送失败: %v", err)
@@ -339,7 +347,7 @@ func (s *SchedulerService) ResumeScheduledPush(appID uint, pushID uint) error {
 // ExecuteScheduledPush 执行定时推送
 func (s *SchedulerService) ExecuteScheduledPush(appID uint, pushID uint) error {
 	var push models.ScheduledPush
-	err := database.DB.Where("app_id = ? AND id = ? AND status IN ?", appID, pushID, []string{"pending", "active"}).First(&push).Error
+	err := database.DB.Where("app_id = ? AND id = ? AND status IN ?", appID, pushID, []string{"pending", "running"}).First(&push).Error
 	if err != nil {
 		return fmt.Errorf("定时推送不存在或状态不允许执行")
 	}
@@ -363,7 +371,7 @@ func (s *SchedulerService) ExecuteScheduledPush(appID uint, pushID uint) error {
 	if push.RepeatType != "once" {
 		nextRunAt := s.calculateNextRunTime(push.ScheduleTime, push.RepeatType, push.CronExpr)
 		push.NextRunAt = &nextRunAt
-		// 保持状态为 active，等待下次执行
+		// 保持状态为 pending，等待下次执行
 	} else {
 		// 单次执行的任务，标记为已完成
 		push.Status = "completed"
@@ -383,7 +391,7 @@ func (s *SchedulerService) GetPendingSchedules() ([]models.ScheduledPush, error)
 	now := utils.TimeNow()
 
 	var pushes []models.ScheduledPush
-	err := database.DB.Where("status IN ? AND next_run_at <= ?", []string{"pending", "active"}, now).
+	err := database.DB.Where("status IN ? AND next_run_at <= ?", []string{"pending", "running"}, now).
 		Order("next_run_at ASC").Find(&pushes).Error
 
 	return pushes, err
@@ -466,19 +474,44 @@ func (s *SchedulerService) buildPushTarget(push models.ScheduledPush) (PushTarge
 		target.Type = "all"
 	case "devices":
 		target.Type = "devices"
-		// target_config 应该包含设备ID列表
+		// target_value 可能存储的是JSON数组格式或逗号分隔的token列表
 		var deviceIDs []uint
 		if push.TargetValue != "" {
-			// 尝试解析JSON数组格式的设备ID列表
-			if err := json.Unmarshal([]byte(push.TargetValue), &deviceIDs); err != nil {
-				// 如果JSON解析失败，可能是旧的单个设备token格式，尝试按token查询
+			var tokens []string
+
+			// 首先尝试解析JSON数组格式
+			if err := json.Unmarshal([]byte(push.TargetValue), &tokens); err != nil {
+				// 如果JSON解析失败，尝试按逗号分隔解析
+				if strings.Contains(push.TargetValue, ",") {
+					// 逗号分隔格式：token1,token2,token3
+					tokens = strings.Split(push.TargetValue, ",")
+					// 清理每个token的空白字符
+					for i, token := range tokens {
+						tokens[i] = strings.TrimSpace(token)
+					}
+				} else {
+					// 单个token格式
+					tokens = []string{strings.TrimSpace(push.TargetValue)}
+				}
+			}
+
+			// 过滤掉空的token
+			var validTokens []string
+			for _, token := range tokens {
+				if token != "" {
+					validTokens = append(validTokens, token)
+				}
+			}
+
+			// 根据token列表查询设备ID
+			if len(validTokens) > 0 {
 				var devices []models.Device
-				if err := database.DB.Where("token = ? AND app_id = ? AND status = 1", push.TargetValue, push.AppID).Find(&devices).Error; err != nil {
+				if err := database.DB.Where("token IN ? AND app_id = ? AND status = 1", validTokens, push.AppID).Find(&devices).Error; err != nil {
 					return target, fmt.Errorf("根据设备token查询设备失败: %v", err)
 				}
 
 				if len(devices) == 0 {
-					return target, fmt.Errorf("devices目标配置解析失败: 无法解析 '%s' - 既不是有效的JSON数组也不是有效的设备token", push.TargetValue)
+					return target, fmt.Errorf("未找到有效的设备: token列表 %v 在应用 %d 中不存在或已禁用", validTokens, push.AppID)
 				}
 
 				// 提取设备ID
