@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2, Calendar, Clock } from 'lucide-react'
+import { Loader2, Calendar, Clock, Target, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -102,7 +102,7 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
           // 验证JSON格式
           JSON.parse(formattedTargetConfig)
         } catch {
-          toast.error('单设备推送目标配置格式错误，请输入设备ID')
+          toast.error('单设备推送目标配置格式错误，请输入设备Token')
           return
         }
       } else if (data.push_type === 'batch') {
@@ -123,7 +123,7 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
           // 验证JSON格式
           JSON.parse(formattedTargetConfig)
         } catch {
-          toast.error('批量推送目标配置格式错误，请输入有效的设备ID列表')
+          toast.error('批量推送目标配置格式错误，请输入有效的设备Token列表')
           return
         }
       } else if (data.push_type === 'broadcast') {
@@ -198,7 +198,10 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
               {/* 推送内容 */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">推送内容</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    推送内容
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <FormField
@@ -369,7 +372,10 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
               {/* 推送目标 */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">推送目标</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    推送目标
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <FormField
@@ -404,8 +410,8 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
                         <FormControl>
                           <Textarea 
                             placeholder={
-                              pushType === 'single' ? '输入设备ID，例如: 1' :
-                              pushType === 'batch' ? '输入多个设备ID，例如: 1,2,3 或 [1,2,3]' :
+                              pushType === 'single' ? '输入设备Token' :
+                              pushType === 'batch' ? '输入多个设备Token，用逗号分隔' :
                               '输入筛选条件，例如: platform:ios 或 {} (所有设备)'
                             }
                             className="resize-none font-mono text-sm"
@@ -414,8 +420,8 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
                           />
                         </FormControl>
                         <FormDescription>
-                          {pushType === 'single' && '输入单个设备ID，自动转换为 [deviceId] 格式'}
-                          {pushType === 'batch' && '输入多个设备ID，支持逗号分隔或JSON数组格式'}
+                          {pushType === 'single' && '输入单个设备Token，自动转换为 [deviceId] 格式'}
+                          {pushType === 'batch' && '输入多个设备Token，支持逗号分隔或JSON数组格式'}
                           {pushType === 'broadcast' && '输入筛选条件，支持键值对或JSON格式，空白表示所有设备'}
                         </FormDescription>
                         <FormMessage />

@@ -139,7 +139,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
           // 验证JSON格式
           JSON.parse(formattedTargetConfig)
         } catch {
-          toast.error('单设备推送目标配置格式错误，请输入设备ID')
+          toast.error('单设备推送目标配置格式错误，请输入设备Token')
           return
         }
       } else if (data.push_type === 'batch') {
@@ -160,7 +160,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
           // 验证JSON格式
           JSON.parse(formattedTargetConfig)
         } catch {
-          toast.error('批量推送目标配置格式错误，请输入有效的设备ID列表')
+          toast.error('批量推送目标配置格式错误，请输入有效的设备Token列表')
           return
         }
       } else if (data.push_type === 'broadcast') {

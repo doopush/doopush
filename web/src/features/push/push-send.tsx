@@ -108,7 +108,7 @@ export default function PushSend() {
       switch (data.target_type) {
         case 'single':
           if (!data.device_ids) {
-            toast.error('请输入设备ID')
+            toast.error('请输入设备Token')
             return
           }
           await PushService.sendSingle(currentApp.id, {
@@ -121,12 +121,12 @@ export default function PushSend() {
           
         case 'batch':
           { if (!data.device_ids) {
-            toast.error('请输入设备ID列表')
+            toast.error('请输入设备Token列表')
             return
           }
           const deviceIds = data.device_ids.split(',').map(id => id.trim()).filter(Boolean)
           if (deviceIds.length === 0) {
-            toast.error('请输入有效的设备ID列表')
+            toast.error('请输入有效的设备Token列表')
             return
           }
           await PushService.sendBatch(currentApp.id, {
@@ -354,15 +354,15 @@ export default function PushSend() {
                               name="device_ids"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>设备ID *</FormLabel>
+                                  <FormLabel>设备Token *</FormLabel>
                                   <FormControl>
                                     <Input 
-                                      placeholder="输入单个设备ID"
+                                      placeholder="输入单个设备Token"
                                       {...field} 
                                     />
                                   </FormControl>
                                   <FormDescription>
-                                    输入要推送的设备ID
+                                    输入要推送的设备Token
                                   </FormDescription>
                                   <FormMessage />
                                 </FormItem>
@@ -376,17 +376,17 @@ export default function PushSend() {
                               name="device_ids"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>设备ID列表 *</FormLabel>
+                                  <FormLabel>设备Token列表 *</FormLabel>
                                   <FormControl>
                                     <Textarea
-                                      placeholder="device1, device2, device3"
+                                      placeholder="token1, token2, token3"
                                       className="resize-none"
                                       rows={3}
                                       {...field}
                                     />
                                   </FormControl>
                                   <FormDescription>
-                                    输入多个设备ID，用逗号分隔，最多1000个
+                                    输入多个设备Token，用逗号分隔，最多1000个
                                   </FormDescription>
                                   <FormMessage />
                                 </FormItem>
