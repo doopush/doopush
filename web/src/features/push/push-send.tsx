@@ -50,6 +50,7 @@ import { ThemeSwitch } from '@/components/theme-switch'
 
 import { useAuthStore } from '@/stores/auth-store'
 import { PushService } from '@/services/push-service'
+import { ScheduledPushService } from '@/services/scheduled-push-service'
 import { NoAppSelected } from '@/components/no-app-selected'
 import { requireApp, APP_SELECTION_DESCRIPTIONS } from '@/utils/app-utils'
 import { toast } from 'sonner'
@@ -105,50 +106,114 @@ export default function PushSend() {
     try {
       setSending(true)
       
-      switch (data.target_type) {
-        case 'single':
-          if (!data.device_ids) {
-            toast.error('请输入设备Token')
-            return
+      // 如果设置了定时发送时间，创建定时推送任务
+      if (data.schedule_time) {
+        // 转换payload格式
+        let payloadString = ''
+        if (data.payload && (data.payload.action || data.payload.url || data.payload.data)) {
+          payloadString = JSON.stringify(data.payload)
+        }
+        
+        // 根据推送类型生成target_config
+        let targetConfig = ''
+        switch (data.target_type) {
+          case 'single':
+            if (!data.device_ids) {
+              toast.error('请输入设备Token')
+              return
+            }
+            targetConfig = JSON.stringify([data.device_ids])
+            break
+            
+          case 'batch': {
+            if (!data.device_ids) {
+              toast.error('请输入设备Token列表')
+              return
+            }
+            const deviceIds = data.device_ids.split(',').map(id => id.trim()).filter(Boolean)
+            if (deviceIds.length === 0) {
+              toast.error('请输入有效的设备Token列表')
+              return
+            }
+            targetConfig = JSON.stringify(deviceIds)
+            break
           }
-          await PushService.sendSingle(currentApp.id, {
-            device_id: data.device_ids,
-            title: data.title,
-            content: data.content,
-            payload: data.payload,
-          })
-          break
-          
-        case 'batch':
-          { if (!data.device_ids) {
-            toast.error('请输入设备Token列表')
-            return
+            
+          case 'broadcast': {
+            const broadcastConfig: Record<string, string> = {}
+            if (data.platform) {
+              broadcastConfig.platform = data.platform
+            }
+            if (data.vendor) {
+              broadcastConfig.vendor = data.vendor
+            }
+            targetConfig = JSON.stringify(broadcastConfig)
+            break
           }
-          const deviceIds = data.device_ids.split(',').map(id => id.trim()).filter(Boolean)
-          if (deviceIds.length === 0) {
-            toast.error('请输入有效的设备Token列表')
-            return
+        }
+        
+        // 创建定时推送
+        await ScheduledPushService.createScheduledPush(currentApp.id, {
+          title: data.title,
+          content: data.content,
+          payload: payloadString,
+          scheduled_at: data.schedule_time,
+          repeat_type: 'none',
+          timezone: 'Asia/Shanghai',
+          push_type: data.target_type,
+          target_config: targetConfig,
+        })
+        
+        toast.success('定时推送创建成功')
+      } else {
+        // 立即发送推送
+        switch (data.target_type) {
+          case 'single':
+            if (!data.device_ids) {
+              toast.error('请输入设备Token')
+              return
+            }
+            await PushService.sendSingle(currentApp.id, {
+              device_id: data.device_ids,
+              title: data.title,
+              content: data.content,
+              payload: data.payload,
+            })
+            break
+            
+          case 'batch': {
+            if (!data.device_ids) {
+              toast.error('请输入设备Token列表')
+              return
+            }
+            const deviceIds = data.device_ids.split(',').map(id => id.trim()).filter(Boolean)
+            if (deviceIds.length === 0) {
+              toast.error('请输入有效的设备Token列表')
+              return
+            }
+            await PushService.sendBatch(currentApp.id, {
+              device_ids: deviceIds,
+              title: data.title,
+              content: data.content,
+              payload: data.payload,
+            })
+            break
           }
-          await PushService.sendBatch(currentApp.id, {
-            device_ids: deviceIds,
-            title: data.title,
-            content: data.content,
-            payload: data.payload,
-          })
-          break }
-          
-        case 'broadcast':
-          await PushService.sendBroadcast(currentApp.id, {
-            title: data.title,
-            content: data.content,
-            payload: data.payload,
-            platform: data.platform || undefined,
-            vendor: data.vendor || undefined,
-          })
-          break
+            
+          case 'broadcast':
+            await PushService.sendBroadcast(currentApp.id, {
+              title: data.title,
+              content: data.content,
+              payload: data.payload,
+              platform: data.platform || undefined,
+              vendor: data.vendor || undefined,
+            })
+            break
+        }
+        
+        toast.success('推送发送成功')
       }
       
-      toast.success('推送发送成功')
       form.reset()
     } catch (error: unknown) {
       toast.error((error as Error).message || '推送发送失败')
