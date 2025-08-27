@@ -125,6 +125,9 @@ DooPushManager.shared.updateDeviceInfo()
 // 获取设备 token
 let token = DooPushManager.shared.getDeviceToken()
 
+// 获取设备ID
+let deviceId = DooPushManager.shared.getDeviceId()
+
 // 检查推送权限
 DooPushManager.shared.checkPushPermissionStatus { status in
     // 处理权限状态
@@ -135,17 +138,31 @@ DooPushManager.shared.checkPushPermissionStatus { status in
 
 ### DooPushManager
 
+#### 核心方法
 - `configure(appId:apiKey:baseURL:)` - 配置 SDK
 - `registerForPushNotifications(completion:)` - 注册推送通知
-- `handleNotification(_:)` - 处理推送通知
+- `handleNotification(_:) -> Bool` - 处理推送通知，返回是否处理成功
 - `updateDeviceInfo()` - 更新设备信息
-- `getDeviceToken()` - 获取设备 token
+
+#### 设备信息
+- `getDeviceToken() -> String?` - 获取设备 token
+- `getDeviceId() -> String?` - 获取设备唯一标识
+- `checkPushPermissionStatus(completion:)` - 检查推送权限状态
+
+#### 系统回调处理
+- `didRegisterForRemoteNotifications(with:)` - 处理系统推送注册成功回调
+- `didFailToRegisterForRemoteNotifications(with:)` - 处理系统推送注册失败回调
 
 ### DooPushDelegate
 
+#### 必需方法
 - `dooPush(_:didRegisterWithToken:)` - 设备注册成功
 - `dooPush(_:didReceiveNotification:)` - 收到推送通知
 - `dooPush(_:didFailWithError:)` - 发生错误
+
+#### 可选方法
+- `dooPushDidUpdateDeviceInfo(_:)` - 设备信息更新成功
+- `dooPush(_:didChangePermissionStatus:)` - 推送权限状态变更
 
 ## 开发工具
 
