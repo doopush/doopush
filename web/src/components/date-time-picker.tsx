@@ -957,7 +957,7 @@ const DateTimePicker = React.forwardRef<Partial<DateTimePickerRef>, DateTimePick
           <Button
             variant="outline"
             className={cn(
-              'w-full justify-start text-left font-normal min-w-0 overflow-hidden',
+              'w-full justify-start text-left font-normal min-w-0 overflow-hidden group',
               !displayDate && 'text-muted-foreground',
               className,
             )}
@@ -977,10 +977,10 @@ const DateTimePicker = React.forwardRef<Partial<DateTimePickerRef>, DateTimePick
               placeholder
             )}
             </span>
-            {/* 点击中断 */}
+            {/* 清除按钮 - 仅在悬停时显示 */}
             {displayDate && showClearButton && (
               <div
-                className="ml-auto cursor-pointer transition-opacity opacity-60 hover:opacity-100"
+                className="ml-auto cursor-pointer transition-opacity opacity-0 group-hover:opacity-60 hover:group-hover:opacity-100"
                 title="点击清除已选时间"
                 onClick={(e) => {
                   e.stopPropagation();
