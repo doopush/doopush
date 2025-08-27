@@ -5,6 +5,7 @@ import (
 
 	"github.com/doopush/doopush/api/internal/config"
 	"github.com/doopush/doopush/api/internal/gateway"
+	"github.com/doopush/doopush/api/pkg/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -41,6 +42,11 @@ func startGateway() {
 	server, err := gateway.NewGatewayServer()
 	if err != nil {
 		log.Fatal("网关服务器创建失败:", err)
+	}
+
+	// 开发环境启动时根据端口结束进程
+	if config.GetString("APP_ENV") == "development" {
+		utils.KillProcessByPort(server.GetPort())
 	}
 
 	if err := server.Start(); err != nil {

@@ -219,3 +219,8 @@ func loadGatewayConfig() (*GatewayConfig, error) {
 
 	return cfg, nil
 }
+
+// GetPort 获取端口
+func (s *GatewayServer) GetPort() int {
+	return s.config.Port
+}

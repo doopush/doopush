@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/doopush/doopush/api/internal/config"
 	"github.com/doopush/doopush/api/internal/controllers"
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/middleware"
+	"github.com/doopush/doopush/api/pkg/utils"
 
 	_ "github.com/doopush/doopush/api/docs"
 
@@ -191,6 +193,13 @@ func startServer() {
 	port := config.GetString("API_PORT")
 	if port == "" {
 		port = "5002"
+	}
+
+	// 开发环境启动时根据端口结束进程
+	if config.GetString("APP_ENV") == "development" {
+		if portInt, err := strconv.Atoi(port); err == nil {
+			utils.KillProcessByPort(portInt)
+		}
 	}
 
 	log.Printf("服务器启动在端口: %s", port)
