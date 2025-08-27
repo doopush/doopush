@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { add, format } from 'date-fns';
 import { type Locale, zhCN } from 'date-fns/locale';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Clock } from 'lucide-react';
 import * as React from 'react';
 import { useImperativeHandle, useRef } from 'react';
@@ -669,6 +669,10 @@ type DateTimePickerProps = {
    * Show the default month and time when popup the calendar. Default is the current Date().
    **/
   defaultPopupValue?: Date;
+  /**
+   * Show the clear button or not. Default is true.
+   **/
+  showClearButton?: boolean;
 } & Pick<DayPickerProps, 'locale' | 'weekStartsOn' | 'showWeekNumber' | 'showOutsideDays'>;
 
 type DateTimePickerRef = {
@@ -690,6 +694,7 @@ const DateTimePicker = React.forwardRef<Partial<DateTimePickerRef>, DateTimePick
       granularity = 'second',
       placeholder = 'Pick a date',
       className,
+      showClearButton = true,
       ...props
     },
     ref,
@@ -777,13 +782,14 @@ const DateTimePicker = React.forwardRef<Partial<DateTimePickerRef>, DateTimePick
           <Button
             variant="outline"
             className={cn(
-              'w-full justify-start text-left font-normal',
+              'w-full justify-start text-left font-normal min-w-0 overflow-hidden',
               !displayDate && 'text-muted-foreground',
               className,
             )}
             ref={buttonRef}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
+            <span className="truncate">
             {displayDate ? (
               format(
                 displayDate,
@@ -793,7 +799,21 @@ const DateTimePicker = React.forwardRef<Partial<DateTimePickerRef>, DateTimePick
                 },
               )
             ) : (
-              <span>{placeholder}</span>
+              placeholder
+            )}
+            </span>
+            {/* 点击中断 */}
+            {displayDate && showClearButton && (
+              <div
+                className="ml-auto cursor-pointer transition-opacity opacity-60 hover:opacity-100"
+                title="点击清除已选时间"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange?.(undefined);
+                }}
+              >
+                <X className="h-4 w-4 scale-90" />
+              </div>
             )}
           </Button>
         </PopoverTrigger>
