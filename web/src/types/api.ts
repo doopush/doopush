@@ -312,6 +312,7 @@ export interface PushTarget {
   tag_ids?: number[]
   group_ids?: number[]
   platform?: string
+  channel?: string
 }
 
 export interface SendPushRequest {

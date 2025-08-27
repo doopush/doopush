@@ -36,6 +36,7 @@ type PushTarget struct {
 	TagIDs    []uint `json:"tag_ids,omitempty"`
 	GroupIDs  []uint `json:"group_ids,omitempty"`
 	Platform  string `json:"platform,omitempty" example:"ios"`
+	Channel   string `json:"channel,omitempty" example:"fcm"` // 推送通道筛选
 }
 
 // SendPush 发送推送
@@ -115,6 +116,11 @@ func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.
 	// 平台筛选
 	if target.Platform != "" {
 		query = query.Where("platform = ?", target.Platform)
+	}
+
+	// 通道筛选
+	if target.Channel != "" {
+		query = query.Where("channel = ?", target.Channel)
 	}
 
 	switch target.Type {

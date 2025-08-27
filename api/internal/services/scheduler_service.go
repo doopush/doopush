@@ -472,6 +472,40 @@ func (s *SchedulerService) buildPushTarget(push models.ScheduledPush) (PushTarge
 	switch push.TargetType {
 	case "all":
 		target.Type = "all"
+		// 广播推送：检查是否有平台或厂商筛选条件
+		if push.TargetValue != "" {
+			var filterConfig map[string]interface{}
+			if err := json.Unmarshal([]byte(push.TargetValue), &filterConfig); err == nil {
+				// 如果target_value是JSON格式，尝试解析筛选条件
+				if platform, ok := filterConfig["platform"].(string); ok && platform != "" {
+					target.Platform = platform
+				}
+				if channel, ok := filterConfig["channel"].(string); ok && channel != "" {
+					target.Channel = channel
+				}
+			} else {
+				// 如果不是JSON格式，尝试解析简单的字符串格式
+				targetValue := strings.TrimSpace(push.TargetValue)
+				if targetValue != "" && targetValue != "{}" {
+					// 尝试解析 platform:ios 或 channel:xx 格式
+					if strings.Contains(targetValue, ":") {
+						parts := strings.Split(targetValue, ":")
+						if len(parts) == 2 {
+							key := strings.TrimSpace(parts[0])
+							value := strings.TrimSpace(parts[1])
+							if key == "platform" && (value == "ios" || value == "android") {
+								target.Platform = value
+							} else if key == "channel" {
+								target.Channel = value
+							}
+						}
+					} else if targetValue == "ios" || targetValue == "android" {
+						// 直接指定平台
+						target.Platform = targetValue
+					}
+				}
+			}
+		}
 	case "devices":
 		target.Type = "devices"
 		// target_value 可能存储的是JSON数组格式或逗号分隔的token列表

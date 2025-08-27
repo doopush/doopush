@@ -123,6 +123,9 @@ func (ctrl *SchedulerController) CreateScheduledPush(ctx *gin.Context) {
 		case "batch":
 			targetType = "devices"
 			targetValue = req.TargetConfig
+		case "broadcast":
+			targetType = "all"
+			targetValue = req.TargetConfig
 		case "all":
 			targetType = "all"
 			targetValue = ""
@@ -354,6 +357,9 @@ func (ctrl *SchedulerController) UpdateScheduledPush(ctx *gin.Context) {
 			targetValue = req.TargetConfig
 		case "batch":
 			targetType = "devices"
+			targetValue = req.TargetConfig
+		case "broadcast":
+			targetType = "all"
 			targetValue = req.TargetConfig
 		case "all":
 			targetType = "all"
