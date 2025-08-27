@@ -70,7 +70,14 @@ const pushFormSchema = z.object({
   device_ids: z.string().optional(),
   platform: z.string().optional(),
   vendor: z.string().optional(),
-  schedule_time: z.string().optional(),
+  schedule_time: z.string().optional().refine((val) => {
+    if (!val) return true; // 可选字段，空值通过验证
+    const scheduledTime = new Date(val);
+    const now = new Date();
+    return scheduledTime > now;
+  }, {
+    message: '定时发送时间必须是未来时间'
+  }),
 })
 
 type PushFormData = z.infer<typeof pushFormSchema>

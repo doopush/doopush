@@ -153,6 +153,12 @@ func (ctrl *SchedulerController) CreateScheduledPush(ctx *gin.Context) {
 		return
 	}
 
+	// 验证调度时间必须是未来时间
+	if scheduleTime.Before(time.Now()) || scheduleTime.Equal(time.Now()) {
+		response.BadRequest(ctx, "调度时间必须是未来时间")
+		return
+	}
+
 	timezone := req.Timezone
 	if timezone == "" {
 		timezone = "UTC"
@@ -385,6 +391,12 @@ func (ctrl *SchedulerController) UpdateScheduledPush(ctx *gin.Context) {
 	scheduleTime, err := time.Parse(time.RFC3339, scheduleTimeStr)
 	if err != nil {
 		response.BadRequest(ctx, "调度时间格式错误")
+		return
+	}
+
+	// 验证调度时间必须是未来时间
+	if scheduleTime.Before(time.Now()) || scheduleTime.Equal(time.Now()) {
+		response.BadRequest(ctx, "调度时间必须是未来时间")
 		return
 	}
 

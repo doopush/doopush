@@ -43,7 +43,13 @@ const editScheduledPushSchema = z.object({
   title: z.string().min(1, '请输入推送标题').max(200, '标题不超过200个字符'),
   content: z.string().min(1, '请输入推送内容').max(1000, '内容不超过1000个字符'),
   payload: z.string().optional(),
-  scheduled_at: z.string().min(1, '请选择执行时间'),
+  scheduled_at: z.string().min(1, '请选择执行时间').refine((val) => {
+    const scheduledTime = new Date(val);
+    const now = new Date();
+    return scheduledTime > now;
+  }, {
+    message: '执行时间必须是未来时间'
+  }),
   push_type: z.enum(['single', 'batch', 'broadcast']),
   target_config: z.string().min(1, '请配置推送目标'),
   repeat_type: z.enum(['none', 'daily', 'weekly', 'monthly']),
