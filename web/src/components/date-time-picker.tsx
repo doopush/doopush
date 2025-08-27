@@ -1,6 +1,13 @@
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { add, format } from 'date-fns';
 import { type Locale, zhCN } from 'date-fns/locale';
@@ -424,6 +431,175 @@ const TimePeriodSelect = React.forwardRef<HTMLButtonElement, PeriodSelectorProps
 
 TimePeriodSelect.displayName = 'TimePeriodSelect';
 
+// 生成时间选项的工具函数
+const generateTimeOptions = (type: 'hours' | 'minutes' | 'seconds', step = 1) => {
+  if (type === 'hours') {
+    return Array.from({ length: 24 }, (_, i) => ({
+      value: i.toString().padStart(2, '0'),
+      label: i.toString().padStart(2, '0'),
+    }));
+  }
+  // 分钟和秒按指定步长生成
+  const options = [];
+  for (let i = 0; i < 60; i += step) {
+    options.push({
+      value: i.toString().padStart(2, '0'),
+      label: i.toString().padStart(2, '0'),
+    });
+  }
+  return options;
+};
+
+interface DropdownTimePickerInputProps {
+  picker: TimePickerType;
+  date?: Date | null;
+  onDateChange?: (date: Date | undefined) => void;
+  period?: Period;
+  onRightFocus?: () => void;
+  onLeftFocus?: () => void;
+  className?: string;
+}
+
+const DropdownTimePickerInput = React.forwardRef<HTMLButtonElement, DropdownTimePickerInputProps>(
+  (
+    {
+      className,
+      date = new Date(new Date().setHours(0, 0, 0, 0)),
+      onDateChange,
+      picker,
+      period,
+      onLeftFocus,
+      onRightFocus,
+    },
+    ref,
+  ) => {
+    const [flag, setFlag] = React.useState<boolean>(false);
+    const [prevIntKey, setPrevIntKey] = React.useState<string>('0');
+    const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+
+    /**
+     * allow the user to enter the second digit within 2 seconds
+     * otherwise start again with entering first digit
+     */
+    React.useEffect(() => {
+      if (flag) {
+        const timer = setTimeout(() => {
+          setFlag(false);
+        }, 2000);
+
+        return () => clearTimeout(timer);
+      }
+    }, [flag]);
+
+    const calculatedValue = React.useMemo(() => {
+      return getDateByType(date, picker);
+    }, [date, picker]);
+
+    const calculateNewValue = (key: string) => {
+      /*
+       * If picker is '12hours' and the first digit is 0, then the second digit is automatically set to 1.
+       * The second entered digit will break the condition and the value will be set to 10-12.
+       */
+      if (picker === '12hours') {
+        if (flag && calculatedValue.slice(1, 2) === '1' && prevIntKey === '0') return `0${key}`;
+      }
+
+      return !flag ? `0${key}` : calculatedValue.slice(1, 2) + key;
+    };
+
+    const handleValueChange = (newValue: string) => {
+      const tempDate = date ? new Date(date) : new Date();
+      onDateChange?.(setDateByType(tempDate, newValue, picker, period));
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (e.key === 'Tab') return;
+      e.preventDefault();
+      
+      // 关闭下拉菜单如果是数字键或箭头键
+      if ((e.key >= '0' && e.key <= '9') || ['ArrowUp', 'ArrowDown'].includes(e.key)) {
+        setIsDropdownOpen(false);
+      }
+      
+      if (e.key === 'ArrowRight') onRightFocus?.();
+      if (e.key === 'ArrowLeft') onLeftFocus?.();
+      
+      if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
+        const step = e.key === 'ArrowUp' ? 1 : -1;
+        const newValue = getArrowByType(calculatedValue, step, picker);
+        if (flag) setFlag(false);
+        const tempDate = date ? new Date(date) : new Date();
+        onDateChange?.(setDateByType(tempDate, newValue, picker, period));
+      }
+      
+      if (e.key >= '0' && e.key <= '9') {
+        if (picker === '12hours') setPrevIntKey(e.key);
+
+        const newValue = calculateNewValue(e.key);
+        if (flag) onRightFocus?.();
+        setFlag((prev) => !prev);
+        const tempDate = date ? new Date(date) : new Date();
+        onDateChange?.(setDateByType(tempDate, newValue, picker, period));
+      }
+    };
+
+    // 根据类型生成选项
+    const options = React.useMemo(() => {
+      if (picker === 'hours' || picker === '12hours') {
+        return picker === '12hours' 
+          ? Array.from({ length: 12 }, (_, i) => ({
+              value: (i + 1).toString().padStart(2, '0'),
+              label: (i + 1).toString().padStart(2, '0'),
+            }))
+          : generateTimeOptions('hours');
+      }
+      // 分钟和秒
+      return generateTimeOptions(picker === 'minutes' ? 'minutes' : 'seconds');
+    }, [picker]);
+
+    return (
+      <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            ref={ref}
+            variant="outline"
+            className={cn(
+              'focus:bg-accent focus:text-accent-foreground w-12 h-10 text-center font-mono text-base tabular-nums p-0',
+              className,
+            )}
+            onKeyDown={handleKeyDown}
+          >
+            {calculatedValue}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-16 min-w-16 p-1" align="center">
+          <ScrollArea className="h-[200px]">
+            <div className="flex flex-col gap-0.5">
+              {options.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  className={cn(
+                    "h-8 justify-center text-center font-mono cursor-pointer focus:bg-accent",
+                    calculatedValue === option.value && "bg-primary text-primary-foreground"
+                  )}
+                  onClick={() => {
+                    handleValueChange(option.value);
+                    setIsDropdownOpen(false);
+                  }}
+                >
+                  {option.label}
+                </DropdownMenuItem>
+              ))}
+            </div>
+          </ScrollArea>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  },
+);
+
+DropdownTimePickerInput.displayName = 'DropdownTimePickerInput';
+
 interface TimePickerInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   picker: TimePickerType;
   date?: Date | null;
@@ -549,16 +725,16 @@ interface TimePickerProps {
 }
 
 interface TimePickerRef {
-  minuteRef: HTMLInputElement | null;
-  hourRef: HTMLInputElement | null;
-  secondRef: HTMLInputElement | null;
+  minuteRef: HTMLButtonElement | null;
+  hourRef: HTMLButtonElement | null;
+  secondRef: HTMLButtonElement | null;
 }
 
 const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
   ({ date, onChange, hourCycle = 24, granularity = 'second' }, ref) => {
-    const minuteRef = React.useRef<HTMLInputElement>(null);
-    const hourRef = React.useRef<HTMLInputElement>(null);
-    const secondRef = React.useRef<HTMLInputElement>(null);
+    const minuteRef = React.useRef<HTMLButtonElement>(null);
+    const hourRef = React.useRef<HTMLButtonElement>(null);
+    const secondRef = React.useRef<HTMLButtonElement>(null);
     const periodRef = React.useRef<HTMLButtonElement>(null);
     const [period, setPeriod] = React.useState<Period>(date && date.getHours() >= 12 ? 'PM' : 'AM');
 
@@ -577,10 +753,9 @@ const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
         <label htmlFor="datetime-picker-hour-input" className="cursor-pointer">
           <Clock className="mr-2 h-4 w-4" />
         </label>
-        <TimePickerInput
+        <DropdownTimePickerInput
           picker={hourCycle === 24 ? 'hours' : '12hours'}
           date={date}
-          id="datetime-picker-hour-input"
           onDateChange={onChange}
           ref={hourRef}
           period={period}
@@ -589,7 +764,7 @@ const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
         {(granularity === 'minute' || granularity === 'second') && (
           <>
             :
-            <TimePickerInput
+            <DropdownTimePickerInput
               picker="minutes"
               date={date}
               onDateChange={onChange}
@@ -602,7 +777,7 @@ const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
         {granularity === 'second' && (
           <>
             :
-            <TimePickerInput
+            <DropdownTimePickerInput
               picker="seconds"
               date={date}
               onDateChange={onChange}
@@ -861,5 +1036,5 @@ const DateTimePicker = React.forwardRef<Partial<DateTimePickerRef>, DateTimePick
 
 DateTimePicker.displayName = 'DateTimePicker';
 
-export { DateTimePicker, TimePickerInput, TimePicker };
+export { DateTimePicker, TimePickerInput, DropdownTimePickerInput, TimePicker };
 export type { TimePickerType, DateTimePickerProps, DateTimePickerRef };
