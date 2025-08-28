@@ -272,7 +272,7 @@ func (s *ExportService) cleanupExpiredToken(token *models.ExportToken) {
 
 // ensureExportDir 确保导出目录存在
 func (s *ExportService) ensureExportDir() (string, error) {
-	exportDir := filepath.Join("tmp", "exports")
+	exportDir := filepath.Join("uploads", "tmp", "exports")
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		return "", fmt.Errorf("创建导出目录失败: %v", err)
 	}
