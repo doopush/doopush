@@ -140,6 +140,12 @@ class PushNotificationManager: NSObject, DooPushDelegate, ObservableObject {
         notifications.removeAll()
     }
     
+    /// 手动上报统计数据
+    func reportStatistics() {
+        DooPushManager.shared.reportStatistics()
+        Logger.info("📊 手动触发统计数据上报")
+    }
+    
     // MARK: - Private Methods
     
     private func updateSDKStatus() {

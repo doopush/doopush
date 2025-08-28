@@ -90,6 +90,11 @@ import Foundation
         return apiURL(for: "apps/\(appId)/devices")
     }
     
+    /// 获取统计上报API URL
+    public func statisticsReportURL() -> String {
+        return apiURL(for: "apps/\(appId)/push/statistics/report")
+    }
+    
     /// 验证配置是否有效
     public var isValid: Bool {
         return !appId.isEmpty && !apiKey.isEmpty && !baseURL.isEmpty

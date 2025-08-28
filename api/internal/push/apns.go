@@ -227,28 +227,41 @@ type APNsAlert struct {
 
 // SendPush 发送APNs推送
 func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	// 构建推送载荷
-	payload := APNsPayload{
-		Aps: APNsAps{
-			Alert: APNsAlert{
-				Title: pushLog.Title,
-				Body:  pushLog.Content,
-			},
-			Sound: "default",
-			Badge: 1,
+	// 构建 APNs 标准 aps 字段
+	apsMap := map[string]interface{}{
+		"alert": map[string]interface{}{
+			"title": pushLog.Title,
+			"body":  pushLog.Content,
 		},
+		"sound": "default",
+		"badge": 1,
 	}
 
-	// 添加自定义数据
+	// 顶层载荷对象（根级字典），自定义键与统计标识合并在顶层
+	payloadMap := map[string]interface{}{"aps": apsMap}
+
+	// 合并自定义数据到顶层（避免嵌入额外层级）
 	if pushLog.Payload != "" {
 		var customData map[string]interface{}
 		if err := json.Unmarshal([]byte(pushLog.Payload), &customData); err == nil {
-			payload.CustomData = customData
+			for k, v := range customData {
+				if k == "aps" { // 避免覆盖标准字段
+					continue
+				}
+				payloadMap[k] = v
+			}
 		}
 	}
 
+	// 注入统计标识，供客户端上报使用
+	payloadMap["push_log_id"] = pushLog.ID
+	if pushLog.DedupKey != "" {
+		payloadMap["dedup_key"] = pushLog.DedupKey
+	}
+	payloadMap["dp_source"] = "doopush"
+
 	// 序列化载荷
-	payloadJSON, err := json.Marshal(payload)
+	payloadJSON, err := json.Marshal(payloadMap)
 	if err != nil {
 		return &models.PushResult{
 			AppID:        pushLog.AppID,

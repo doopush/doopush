@@ -55,6 +55,12 @@ public struct DooPushNotificationData {
     /// 推送ID
     public let pushId: String?
     
+    /// 推送日志ID（用于统计）
+    public let pushLogID: UInt?
+    
+    /// 去重键（用于统计）
+    public let dedupKey: String?
+    
     /// 标题
     public let title: String?
     
@@ -113,6 +119,18 @@ public struct DooPushNotificationData {
         
         // 推送ID（如果存在）
         self.pushId = userInfo["push_id"] as? String ?? userInfo["id"] as? String
+        
+        // 推送日志ID（用于统计上报）
+        if let logIdString = userInfo["push_log_id"] as? String {
+            self.pushLogID = UInt(logIdString)
+        } else if let logIdNumber = userInfo["push_log_id"] as? NSNumber {
+            self.pushLogID = logIdNumber.uintValue
+        } else {
+            self.pushLogID = nil
+        }
+        
+        // 去重键（用于统计上报）
+        self.dedupKey = userInfo["dedup_key"] as? String
     }
     
     /// 是否包含自定义数据

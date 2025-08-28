@@ -69,7 +69,7 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
     ) {
         let userInfo = notification.request.content.userInfo
         
-        // 让DooPush SDK处理通知
+        // 让DooPush SDK处理通知（记录接收统计）
         _ = DooPushManager.shared.handleNotification(userInfo)
         
         // 在前台也显示通知
@@ -84,8 +84,23 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
     ) {
         let userInfo = response.notification.request.content.userInfo
         
-        // 让DooPush SDK处理通知点击
-        _ = DooPushManager.shared.handleNotification(userInfo)
+        // 根据操作类型处理不同的统计事件
+        switch response.actionIdentifier {
+        case UNNotificationDefaultActionIdentifier:
+            // 用户点击了通知本身，记录点击统计
+            _ = DooPushManager.shared.handleNotificationClick(userInfo)
+            
+            // 同时记录应用打开统计（因为点击通知会打开应用）
+            _ = DooPushManager.shared.handleNotificationOpen(userInfo)
+            
+        case UNNotificationDismissActionIdentifier:
+            // 用户划掉了通知，只记录点击统计
+            _ = DooPushManager.shared.handleNotificationClick(userInfo)
+            
+        default:
+            // 其他自定义操作，记录点击统计
+            _ = DooPushManager.shared.handleNotificationClick(userInfo)
+        }
         
         completionHandler()
     }

@@ -217,6 +217,12 @@ struct SettingsView: View {
             }
             .foregroundColor(.blue)
             
+            Button("上报统计数据") {
+                pushManager.reportStatistics()
+                showToast(message: "统计数据上报已触发")
+            }
+            .foregroundColor(.green)
+            
             Button("清空通知历史") {
                 showClearConfirm = true
             }

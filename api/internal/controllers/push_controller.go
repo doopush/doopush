@@ -649,3 +649,53 @@ func (ctrl *PushController) SendBroadcast(ctx *gin.Context) {
 
 	response.Success(ctx, result)
 }
+
+// PushStatisticsReportRequest 推送统计上报请求
+type PushStatisticsReportRequest struct {
+	DeviceToken string                               `json:"device_token" binding:"required" example:"1234567890abcdef"`
+	Statistics  []services.PushStatisticsEventReport `json:"statistics" binding:"required,min=1"`
+}
+
+// ReportPushStatistics 上报推送统计数据
+// @Summary 上报推送统计
+// @Description SDK上报推送点击和打开事件统计数据
+// @Tags 推送管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param appId path int true "应用ID"
+// @Param request body PushStatisticsReportRequest true "统计上报数据"
+// @Success 200 {object} response.APIResponse{data=object} "上报成功"
+// @Failure 400 {object} response.APIResponse "请求参数错误"
+// @Failure 401 {object} response.APIResponse "API密钥无效"
+// @Failure 404 {object} response.APIResponse "设备或推送记录不存在"
+// @Router /apps/{appId}/push/statistics/report [post]
+func (ctrl *PushController) ReportPushStatistics(ctx *gin.Context) {
+	appID, err := strconv.ParseUint(ctx.Param("appId"), 10, 64)
+	if err != nil {
+		response.BadRequest(ctx, "无效的应用ID")
+		return
+	}
+
+	var req PushStatisticsReportRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(ctx, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 处理统计上报
+	err = ctrl.pushService.ReportPushStatistics(uint(appID), req.DeviceToken, req.Statistics)
+	if err != nil {
+		if err.Error() == "设备不存在" {
+			response.NotFound(ctx, err.Error())
+		} else {
+			response.BadRequest(ctx, err.Error())
+		}
+		return
+	}
+
+	response.Success(ctx, gin.H{
+		"message": "统计数据上报成功",
+		"count":   len(req.Statistics),
+	})
+}

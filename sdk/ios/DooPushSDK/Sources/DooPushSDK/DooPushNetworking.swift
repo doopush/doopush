@@ -131,6 +131,47 @@ public class DooPushNetworking {
         }
     }
     
+    // MARK: - 统计数据上报
+    
+    /// 上报推送统计数据
+    /// - Parameters:
+    ///   - appId: 应用ID
+    ///   - deviceToken: 设备token
+    ///   - events: 统计事件列表
+    ///   - completion: 完成回调
+    public func reportStatistics(
+        appId: String,
+        deviceToken: String,
+        events: [StatisticsEvent],
+        completion: @escaping (Result<Void, DooPushError>) -> Void
+    ) {
+        guard let config = config else {
+            completion(.failure(.notConfigured))
+            return
+        }
+        
+        let url = config.statisticsReportURL()
+        
+        let requestBody = StatisticsReportRequest(
+            deviceToken: deviceToken,
+            statistics: events.map { event in
+                StatisticsEventReport(
+                    pushLogId: event.pushLogID,
+                    dedupKey: event.dedupKey,
+                    event: event.event.rawValue,
+                    timestamp: event.timestamp
+                )
+            }
+        )
+        
+        performVoidRequest(
+            url: url,
+            method: .POST,
+            body: requestBody,
+            completion: completion
+        )
+    }
+    
     // MARK: - 通用请求方法
     
     /// HTTP 方法枚举
@@ -482,3 +523,31 @@ private struct VoidResponse: Codable {}
 
 /// 空数据结构（用于错误响应解析）
 private struct Empty: Codable {}
+
+// MARK: - 统计上报数据结构
+
+/// 统计上报请求
+private struct StatisticsReportRequest: Codable {
+    let deviceToken: String
+    let statistics: [StatisticsEventReport]
+    
+    enum CodingKeys: String, CodingKey {
+        case deviceToken = "device_token"
+        case statistics
+    }
+}
+
+/// 统计事件上报
+private struct StatisticsEventReport: Codable {
+    let pushLogId: UInt?
+    let dedupKey: String?
+    let event: String
+    let timestamp: Int64
+    
+    enum CodingKeys: String, CodingKey {
+        case pushLogId = "push_log_id"
+        case dedupKey = "dedup_key"
+        case event
+        case timestamp
+    }
+}

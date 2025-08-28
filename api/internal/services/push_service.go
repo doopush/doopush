@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/doopush/doopush/api/internal/database"
@@ -501,4 +502,103 @@ func (s *PushService) getPlatformStats(appID uint, startDate time.Time) []Platfo
 	}
 
 	return platformStats
+}
+
+// PushStatisticsEventReport 推送统计事件上报结构（与控制器保持一致）
+type PushStatisticsEventReport struct {
+	PushLogID uint   `json:"push_log_id,omitempty"`
+	DedupKey  string `json:"dedup_key,omitempty"`
+	Event     string `json:"event" binding:"required,oneof=click open"`
+	Timestamp int64  `json:"timestamp" binding:"required"`
+}
+
+// ReportPushStatistics 处理推送统计数据上报
+func (s *PushService) ReportPushStatistics(appID uint, deviceToken string, reports []PushStatisticsEventReport) error {
+	// 验证设备是否存在
+	var device models.Device
+	if err := database.DB.Where("app_id = ? AND token = ? AND status = 1", appID, deviceToken).First(&device).Error; err != nil {
+		return errors.New("设备不存在")
+	}
+
+	// 按日期分组统计，用于批量更新 PushStatistics 表
+	dateStatsMap := make(map[string]*models.PushStatistics)
+
+	// 处理每个统计事件
+	for _, report := range reports {
+		if report.Event != "click" && report.Event != "open" {
+			continue // 跳过无效事件类型
+		}
+
+		// 通过 push_log_id 或 dedup_key 查找推送记录
+		var pushLog models.PushLog
+		var found bool
+
+		if report.PushLogID > 0 {
+			// 优先使用 push_log_id
+			err := database.DB.Where("id = ? AND app_id = ? AND device_id = ?", report.PushLogID, appID, device.ID).First(&pushLog).Error
+			found = (err == nil)
+		} else if report.DedupKey != "" {
+			// 使用 dedup_key 查找
+			err := database.DB.Where("dedup_key = ? AND app_id = ? AND device_id = ?", report.DedupKey, appID, device.ID).First(&pushLog).Error
+			found = (err == nil)
+		}
+
+		if !found {
+			log.Printf("推送记录不存在: push_log_id=%d, dedup_key=%s", report.PushLogID, report.DedupKey)
+			continue // 跳过找不到的推送记录
+		}
+
+		// 计算事件发生的日期
+		eventTime := time.Unix(report.Timestamp, 0)
+		dateStr := eventTime.Format("2006-01-02")
+
+		// 获取或创建日期统计记录
+		if _, exists := dateStatsMap[dateStr]; !exists {
+			var stat models.PushStatistics
+			err := database.DB.Where("app_id = ? AND date = ?", appID, eventTime.Truncate(24*time.Hour)).First(&stat).Error
+			if err != nil {
+				// 如果不存在，创建新记录
+				stat = models.PushStatistics{
+					AppID:         appID,
+					Date:          eventTime.Truncate(24 * time.Hour),
+					TotalPushes:   0,
+					SuccessPushes: 0,
+					FailedPushes:  0,
+					ClickCount:    0,
+					OpenCount:     0,
+				}
+			}
+			dateStatsMap[dateStr] = &stat
+		}
+
+		// 更新对应的统计数据
+		switch report.Event {
+		case "click":
+			dateStatsMap[dateStr].ClickCount++
+		case "open":
+			dateStatsMap[dateStr].OpenCount++
+		}
+
+		log.Printf("统计事件记录: 设备=%s, 事件=%s, 推送=%d", deviceToken, report.Event, pushLog.ID)
+	}
+
+	// 批量更新或创建统计记录
+	for dateStr, stat := range dateStatsMap {
+		if stat.ID == 0 {
+			// 新建记录
+			if err := database.DB.Create(stat).Error; err != nil {
+				log.Printf("创建统计记录失败: %s - %v", dateStr, err)
+				return errors.New("统计数据保存失败")
+			}
+		} else {
+			// 更新现有记录
+			if err := database.DB.Save(stat).Error; err != nil {
+				log.Printf("更新统计记录失败: %s - %v", dateStr, err)
+				return errors.New("统计数据更新失败")
+			}
+		}
+		log.Printf("统计数据已更新: %s - 点击:%d, 打开:%d", dateStr, stat.ClickCount, stat.OpenCount)
+	}
+
+	return nil
 }

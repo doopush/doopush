@@ -25,6 +25,9 @@ import UserNotifications
     /// TCP 连接管理器
     private lazy var tcpConnection = DooPushTCPConnection()
     
+    /// 统计管理器
+    private lazy var statisticsManager = DooPushStatistics.shared
+    
     private override init() {
         super.init()
         setupTCPConnection()
@@ -54,6 +57,9 @@ import UserNotifications
         
         // 配置网络管理器
         networking.configure(with: config!)
+        
+        // 配置统计管理器
+        statisticsManager.configure(config: config!, networking: networking)
         
         // 检查是否需要更新设备信息
         checkAndUpdateDeviceInfoIfNeeded()
@@ -252,8 +258,42 @@ import UserNotifications
     /// 记录推送接收统计
     /// - Parameter pushData: 推送数据
     private func recordNotificationReceived(_ pushData: DooPushNotificationData) {
-        // TODO: 实现推送统计上报
-        DooPushLogger.info("推送统计记录: \(pushData)")
+        statisticsManager.recordNotificationReceived(pushData: pushData, userInfo: pushData.rawData)
+    }
+    
+    /// 处理推送通知点击事件
+    /// - Parameter userInfo: 通知数据
+    /// - Returns: 是否处理了该通知
+    @objc public func handleNotificationClick(_ userInfo: [AnyHashable: Any]) -> Bool {
+        DooPushLogger.info("处理推送通知点击: \(userInfo)")
+        
+        // 解析推送数据
+        let pushData = DooPushNotificationParser.parse(userInfo)
+        
+        // 记录点击统计
+        statisticsManager.recordNotificationClick(pushData: pushData, userInfo: userInfo)
+        
+        return true
+    }
+    
+    /// 处理推送通知导致的应用打开事件
+    /// - Parameter userInfo: 通知数据
+    /// - Returns: 是否处理了该通知
+    @objc public func handleNotificationOpen(_ userInfo: [AnyHashable: Any]) -> Bool {
+        DooPushLogger.info("处理推送导致的应用打开: \(userInfo)")
+        
+        // 解析推送数据
+        let pushData = DooPushNotificationParser.parse(userInfo)
+        
+        // 记录打开统计
+        statisticsManager.recordNotificationOpen(pushData: pushData, userInfo: userInfo)
+        
+        return true
+    }
+    
+    /// 立即上报统计数据
+    @objc public func reportStatistics() {
+        statisticsManager.reportPendingEvents()
     }
     
     // MARK: - 工具方法
