@@ -346,23 +346,24 @@ func (s *PushService) GetPushStatistics(appID uint, days int) (*PushStatisticsRe
 	// 计算时间范围
 	endDate := time.Now()
 	startDate := endDate.AddDate(0, 0, -days+1)
+	startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
 
 	// 总体统计
 	var totalPushes, successPushes, failedPushes, totalDevices int64
 
-	// 统计推送总数
+	// 统计推送总数（半开区间，包含今日）
 	database.DB.Model(&models.PushLog{}).
-		Where("app_id = ? AND created_at >= ?", appID, startDate).
+		Where("app_id = ? AND created_at >= ? AND created_at < ?", appID, startDate, endDate).
 		Count(&totalPushes)
 
 	// 统计成功推送
 	database.DB.Model(&models.PushLog{}).
-		Where("app_id = ? AND status = 'sent' AND created_at >= ?", appID, startDate).
+		Where("app_id = ? AND status = 'sent' AND created_at >= ? AND created_at < ?", appID, startDate, endDate).
 		Count(&successPushes)
 
 	// 统计失败推送
 	database.DB.Model(&models.PushLog{}).
-		Where("app_id = ? AND status = 'failed' AND created_at >= ?", appID, startDate).
+		Where("app_id = ? AND status = 'failed' AND created_at >= ? AND created_at < ?", appID, startDate, endDate).
 		Count(&failedPushes)
 
 	// 统计设备总数
@@ -370,21 +371,21 @@ func (s *PushService) GetPushStatistics(appID uint, days int) (*PushStatisticsRe
 		Where("app_id = ? AND status = 1", appID).
 		Count(&totalDevices)
 
-	// 获取每日统计数据
+	// 获取每日统计数据（按自然日）
 	dailyStats := s.getDailyStats(appID, startDate, endDate)
 
 	// 获取平台统计数据
 	platformStats := s.getPlatformStats(appID, startDate)
 
-	// 计算总点击数和打开数（从已有的统计表或模拟）
+	// 计算总点击数和打开数（统计表使用自然日 date）
 	var totalClicks, totalOpens int64
 	database.DB.Model(&models.PushStatistics{}).
-		Where("app_id = ? AND date >= ?", appID, startDate).
+		Where("app_id = ? AND date >= ? AND date <= ?", appID, startDate, endDate).
 		Select("COALESCE(SUM(click_count), 0)").
 		Scan(&totalClicks)
 
 	database.DB.Model(&models.PushStatistics{}).
-		Where("app_id = ? AND date >= ?", appID, startDate).
+		Where("app_id = ? AND date >= ? AND date <= ?", appID, startDate, endDate).
 		Select("COALESCE(SUM(open_count), 0)").
 		Scan(&totalOpens)
 
@@ -406,27 +407,28 @@ func (s *PushService) getDailyStats(appID uint, startDate, endDate time.Time) []
 
 	// 生成日期范围
 	for d := startDate; d.Before(endDate) || d.Equal(endDate); d = d.AddDate(0, 0, 1) {
-		dateStr := d.Format("2006-01-02")
-		nextDay := d.AddDate(0, 0, 1)
+		dayStart := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, d.Location())
+		nextDay := dayStart.AddDate(0, 0, 1)
+		dateStr := dayStart.Format("2006-01-02")
 
-		// 查询当日推送统计
+		// 查询当日推送统计（半开区间）
 		var totalPushes, successPushes, failedPushes int64
 		database.DB.Model(&models.PushLog{}).
-			Where("app_id = ? AND created_at >= ? AND created_at < ?", appID, d, nextDay).
+			Where("app_id = ? AND created_at >= ? AND created_at < ?", appID, dayStart, nextDay).
 			Count(&totalPushes)
 
 		database.DB.Model(&models.PushLog{}).
-			Where("app_id = ? AND status = 'sent' AND created_at >= ? AND created_at < ?", appID, d, nextDay).
+			Where("app_id = ? AND status = 'sent' AND created_at >= ? AND created_at < ?", appID, dayStart, nextDay).
 			Count(&successPushes)
 
 		database.DB.Model(&models.PushLog{}).
-			Where("app_id = ? AND status = 'failed' AND created_at >= ? AND created_at < ?", appID, d, nextDay).
+			Where("app_id = ? AND status = 'failed' AND created_at >= ? AND created_at < ?", appID, dayStart, nextDay).
 			Count(&failedPushes)
 
-		// 查询点击和打开数据（从统计表）
+		// 查询点击和打开数据（从统计表，使用自然日匹配）
 		var clickCount, openCount int
 		var stat models.PushStatistics
-		err := database.DB.Where("app_id = ? AND date = ?", appID, d).First(&stat).Error
+		err := database.DB.Where("app_id = ? AND date = ?", appID, dayStart).First(&stat).Error
 		if err == nil {
 			clickCount = stat.ClickCount
 			openCount = stat.OpenCount

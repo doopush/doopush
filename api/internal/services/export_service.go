@@ -437,22 +437,26 @@ func (s *ExportService) generateOverviewSheet(f *excelize.File, appID uint, star
 	sheetName := "总体统计"
 	f.SetSheetName("Sheet1", sheetName)
 
+	// 对齐日期范围
+	startDay := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
+	endDay := time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
+
 	// 查询统计数据
 	var totalPush, successPush, failedPush int64
 
-	// 总推送数（与前端逻辑保持一致）
+	// 总推送数（与统计接口一致：半开区间，含今日）
 	database.DB.Model(&models.PushLog{}).
-		Where("app_id = ? AND created_at >= ?", appID, startDate).
+		Where("app_id = ? AND created_at >= ? AND created_at < ?", appID, startDay, endDay).
 		Count(&totalPush)
 
-	// 成功推送数（与前端逻辑保持一致）
+	// 成功推送数
 	database.DB.Model(&models.PushLog{}).
-		Where("app_id = ? AND status = 'sent' AND created_at >= ?", appID, startDate).
+		Where("app_id = ? AND status = 'sent' AND created_at >= ? AND created_at < ?", appID, startDay, endDay).
 		Count(&successPush)
 
-	// 失败推送数（与前端逻辑保持一致）
+	// 失败推送数
 	database.DB.Model(&models.PushLog{}).
-		Where("app_id = ? AND status = 'failed' AND created_at >= ?", appID, startDate).
+		Where("app_id = ? AND status = 'failed' AND created_at >= ? AND created_at < ?", appID, startDay, endDay).
 		Count(&failedPush)
 
 	// 计算成功率
@@ -467,6 +471,18 @@ func (s *ExportService) generateOverviewSheet(f *excelize.File, appID uint, star
 		Where("app_id = ? AND status = 1", appID).
 		Count(&activeDevices)
 
+	// 点击/打开总数
+	var totalClicks, totalOpens int64
+	database.DB.Model(&models.PushStatistics{}).
+		Where("app_id = ? AND date >= ? AND date <= ?", appID, startDay, endDay).
+		Select("COALESCE(SUM(click_count), 0)").
+		Scan(&totalClicks)
+
+	database.DB.Model(&models.PushStatistics{}).
+		Where("app_id = ? AND date >= ? AND date <= ?", appID, startDay, endDay).
+		Select("COALESCE(SUM(open_count), 0)").
+		Scan(&totalOpens)
+
 	// 设置表头和数据
 	data := [][]interface{}{
 		{"统计项目", "数值"},
@@ -475,10 +491,20 @@ func (s *ExportService) generateOverviewSheet(f *excelize.File, appID uint, star
 		{"失败推送数", failedPush},
 		{"成功率", fmt.Sprintf("%.2f%%", successRate)},
 		{"活跃设备数", activeDevices},
-		{"总点击数", 0},   // 暂时设为0，需要根据实际业务逻辑调整
-		{"总打开数", 0},   // 暂时设为0，需要根据实际业务逻辑调整
-		{"点击率", "0%"}, // 暂时设为0，需要根据实际业务逻辑调整
-		{"打开率", "0%"}, // 暂时设为0，需要根据实际业务逻辑调整
+		{"总点击数", totalClicks},
+		{"总打开数", totalOpens},
+		{"点击率", func() string {
+			if totalPush == 0 {
+				return "0%"
+			}
+			return fmt.Sprintf("%.2f%%", float64(totalClicks)/float64(totalPush)*100)
+		}()},
+		{"打开率", func() string {
+			if totalPush == 0 {
+				return "0%"
+			}
+			return fmt.Sprintf("%.2f%%", float64(totalOpens)/float64(totalPush)*100)
+		}()},
 	}
 
 	// 写入数据
@@ -534,15 +560,15 @@ func (s *ExportService) generateDailyDataSheet(f *excelize.File, appID uint, sta
 		f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%c1", 'A'+len(headers)-1), headerStyle)
 	}
 
-	// 生成每日数据
-	current := startDate
+	// 生成每日数据（自然日）
+	current := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
+	endDay := time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 0, 0, 0, 0, endDate.Location())
 	row := 2
-	for current.Before(endDate) || current.Equal(endDate) {
+	for current.Before(endDay) || current.Equal(endDay) {
 		nextDay := current.AddDate(0, 0, 1)
 
-		// 查询当日数据
+		// 查询当日数据（半开区间）
 		var totalPush, successPush, failedPush int64
-
 		database.DB.Model(&models.PushLog{}).
 			Where("app_id = ? AND created_at >= ? AND created_at < ?", appID, current, nextDay).
 			Count(&totalPush)
@@ -555,13 +581,21 @@ func (s *ExportService) generateDailyDataSheet(f *excelize.File, appID uint, sta
 			Where("app_id = ? AND status = 'failed' AND created_at >= ? AND created_at < ?", appID, current, nextDay).
 			Count(&failedPush)
 
+		// 点击/打开（自然日匹配）
+		var clickCount, openCount int
+		var stat models.PushStatistics
+		if err := database.DB.Where("app_id = ? AND date = ?", appID, current).First(&stat).Error; err == nil {
+			clickCount = stat.ClickCount
+			openCount = stat.OpenCount
+		}
+
 		// 写入数据
 		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), current.Format("2006-01-02"))
 		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), totalPush)
 		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), successPush)
 		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), failedPush)
-		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), 0) // 点击数暂时为0
-		f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), 0) // 打开数暂时为0
+		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), clickCount)
+		f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), openCount)
 
 		current = nextDay
 		row++
