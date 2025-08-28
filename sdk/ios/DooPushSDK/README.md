@@ -134,6 +134,23 @@ DooPushManager.shared.checkPushPermissionStatus { status in
 }
 ```
 
+### 角标管理
+
+```swift
+// 设置角标数字
+DooPushManager.shared.setBadgeNumber(5)
+
+// 清除角标
+DooPushManager.shared.clearBadge()
+
+// 角标增减操作
+DooPushManager.shared.incrementBadgeNumber()  // +1
+DooPushManager.shared.decrementBadgeNumber()  // -1
+
+// 获取当前角标
+let currentBadge = DooPushManager.shared.getCurrentBadgeNumber()
+```
+
 ## API 参考
 
 ### DooPushManager
@@ -148,6 +165,13 @@ DooPushManager.shared.checkPushPermissionStatus { status in
 - `getDeviceToken() -> String?` - 获取设备 token
 - `getDeviceId() -> String?` - 获取设备唯一标识
 - `checkPushPermissionStatus(completion:)` - 检查推送权限状态
+
+#### 角标管理
+- `setBadgeNumber(_:)` - 设置应用角标数字
+- `clearBadge()` - 清除应用角标
+- `getCurrentBadgeNumber() -> Int` - 获取当前角标数字
+- `incrementBadgeNumber(by:)` - 增加角标数字
+- `decrementBadgeNumber(by:)` - 减少角标数字
 
 #### 系统回调处理
 - `didRegisterForRemoteNotifications(with:)` - 处理系统推送注册成功回调

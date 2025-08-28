@@ -322,6 +322,47 @@ import UserNotifications
         }
     }
     
+    // MARK: - 角标管理
+    
+    /// 设置应用角标数字
+    /// - Parameter number: 角标数字，0表示清除角标
+    @objc public func setBadgeNumber(_ number: Int) {
+        DispatchQueue.main.async {
+            UIApplication.shared.applicationIconBadgeNumber = number
+            DooPushLogger.info("设置应用角标数字: \(number)")
+        }
+    }
+    
+    /// 清除应用角标
+    @objc public func clearBadge() {
+        setBadgeNumber(0)
+        DooPushLogger.info("清除应用角标")
+    }
+    
+    /// 获取当前应用角标数字
+    /// - Returns: 当前角标数字
+    @objc public func getCurrentBadgeNumber() -> Int {
+        return UIApplication.shared.applicationIconBadgeNumber
+    }
+    
+    /// 增加角标数字
+    /// - Parameter increment: 增加的数量，默认为1
+    @objc public func incrementBadgeNumber(by increment: Int = 1) {
+        let currentBadge = getCurrentBadgeNumber()
+        let newBadge = max(0, currentBadge + increment)
+        setBadgeNumber(newBadge)
+        DooPushLogger.info("角标数字增加 \(increment)，当前: \(newBadge)")
+    }
+    
+    /// 减少角标数字
+    /// - Parameter decrement: 减少的数量，默认为1
+    @objc public func decrementBadgeNumber(by decrement: Int = 1) {
+        let currentBadge = getCurrentBadgeNumber()
+        let newBadge = max(0, currentBadge - decrement)
+        setBadgeNumber(newBadge)
+        DooPushLogger.info("角标数字减少 \(decrement)，当前: \(newBadge)")
+    }
+    
     // MARK: - TCP 连接管理
     
     /// 设置TCP连接

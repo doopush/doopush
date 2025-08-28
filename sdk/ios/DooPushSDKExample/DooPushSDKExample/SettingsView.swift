@@ -18,6 +18,7 @@ struct SettingsView: View {
     @State private var showToast = false
     @State private var toastMessage = ""
     @State private var showClearConfirm = false
+    @State private var badgeRefreshTrigger = 0
     
     var body: some View {
         NavigationView {
@@ -48,6 +49,13 @@ struct SettingsView: View {
                     actionButtons
                 } header: {
                     Text("操作")
+                }
+                
+                // Badge Management Section
+                Section {
+                    badgeManagementSection
+                } header: {
+                    Text("角标管理")
                 }
                 
                 // About Section
@@ -230,6 +238,56 @@ struct SettingsView: View {
         }
     }
     
+    // MARK: - Badge Management Section
+    
+    private var badgeManagementSection: some View {
+        Group {
+            // Current Badge Display
+            HStack {
+                Text("当前角标数字")
+                Spacer()
+                Text("\(UIApplication.shared.applicationIconBadgeNumber)")
+                    .font(.system(.title3, design: .monospaced))
+                    .fontWeight(.semibold)
+                    .foregroundColor(.blue)
+                    .id(badgeRefreshTrigger) // 强制UI更新
+            }
+            
+            // Quick Set Buttons
+            Button("设置为 5") {
+                updateBadge(to: 5)
+            }
+            .foregroundColor(.blue)
+            
+            Button("设置为 10") {
+                updateBadge(to: 10)
+            }
+            .foregroundColor(.blue)
+            
+            // Increment/Decrement Buttons
+            Button("角标 +1") {
+                incrementBadge()
+            }
+            .foregroundColor(.green)
+            
+            Button("角标 -1") {
+                decrementBadge()
+            }
+            .foregroundColor(.orange)
+            
+            Button("随机设置") {
+                let randomNumber = Int.random(in: 1...99)
+                updateBadge(to: randomNumber)
+            }
+            .foregroundColor(.purple)
+            
+            Button("清除角标") {
+                updateBadge(to: 0)
+            }
+            .foregroundColor(.red)
+        }
+    }
+    
     // MARK: - About Information
     
     private var aboutInformation: some View {
@@ -318,6 +376,51 @@ struct SettingsView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: Date())
+    }
+    
+    // MARK: - Badge Management Methods
+    
+    /// 更新角标数字
+    private func updateBadge(to number: Int) {
+        DooPushManager.shared.setBadgeNumber(number)
+        
+        // 立即触发UI更新
+        badgeRefreshTrigger += 1
+        
+        // 延迟一点点显示Toast
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if number == 0 {
+                showToast(message: "角标已清除")
+            } else {
+                showToast(message: "角标已设置为 \(number)")
+            }
+        }
+    }
+    
+    /// 增加角标数字
+    private func incrementBadge() {
+        DooPushManager.shared.incrementBadgeNumber()
+        
+        // 立即触发UI更新
+        badgeRefreshTrigger += 1
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            let current = UIApplication.shared.applicationIconBadgeNumber
+            showToast(message: "角标数字 +1，当前: \(current)")
+        }
+    }
+    
+    /// 减少角标数字
+    private func decrementBadge() {
+        DooPushManager.shared.decrementBadgeNumber()
+        
+        // 立即触发UI更新
+        badgeRefreshTrigger += 1
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            let current = UIApplication.shared.applicationIconBadgeNumber
+            showToast(message: "角标数字 -1，当前: \(current)")
+        }
     }
 }
 

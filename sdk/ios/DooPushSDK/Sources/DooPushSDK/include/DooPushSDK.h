@@ -31,6 +31,7 @@ FOUNDATION_EXPORT const unsigned char DooPushSDKVersionString[];
  * - 设备注册和管理
  * - 推送通知处理
  * - 配置管理
+ * - 角标管理
  * - 错误处理和日志
  * 
  * 使用方法：
@@ -48,6 +49,13 @@ FOUNDATION_EXPORT const unsigned char DooPushSDKVersionString[];
  * DooPushManager.shared.registerForPushNotifications { token, error in
  *     // 处理结果
  * }
+ * 
+ * // 角标管理
+ * DooPushManager.shared.setBadgeNumber(5)        // 设置角标为5
+ * DooPushManager.shared.clearBadge()             // 清除角标
+ * DooPushManager.shared.incrementBadgeNumber()   // 角标+1
+ * DooPushManager.shared.decrementBadgeNumber()   // 角标-1
+ * let currentBadge = DooPushManager.shared.getCurrentBadgeNumber() // 获取当前角标
  * ```
  * 
  * Objective-C:
@@ -61,5 +69,12 @@ FOUNDATION_EXPORT const unsigned char DooPushSDKVersionString[];
  * [[DooPushManager sharedInstance] registerForPushNotificationsWithCompletion:^(NSString *token, NSError *error) {
  *     // 处理结果
  * }];
+ * 
+ * // 角标管理
+ * [[DooPushManager sharedInstance] setBadgeNumber:5];          // 设置角标为5
+ * [[DooPushManager sharedInstance] clearBadge];                // 清除角标
+ * [[DooPushManager sharedInstance] incrementBadgeNumberBy:1];  // 角标+1
+ * [[DooPushManager sharedInstance] decrementBadgeNumberBy:1];  // 角标-1
+ * NSInteger currentBadge = [[DooPushManager sharedInstance] getCurrentBadgeNumber]; // 获取当前角标
  * ```
  */
