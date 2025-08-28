@@ -15,6 +15,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/net/http2"
 
+	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
 )
 
@@ -234,7 +235,7 @@ func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) 
 			"body":  pushLog.Content,
 		},
 		"sound": "default",
-		"badge": 1,
+		"badge": a.calculateBadgeCount(device.ID),
 	}
 
 	// 顶层载荷对象（根级字典），自定义键与统计标识合并在顶层
@@ -452,4 +453,38 @@ func (a *APNsProvider) TestConnection() error {
 
 	// 400或200都表示连接成功（只是token无效）
 	return nil
+}
+
+// calculateBadgeCount 计算设备的未读推送数量
+func (a *APNsProvider) calculateBadgeCount(deviceID uint) int {
+	var count int64
+
+	// 统计该设备所有未点击且推送成功的消息
+	// 注意：这里会统计当前推送之前的未读数量，当前推送发送成功后还会+1
+	err := database.DB.Model(&models.PushLog{}).
+		Joins("LEFT JOIN push_results ON push_logs.id = push_results.push_log_id").
+		Where("push_logs.device_id = ? AND push_logs.is_clicked = ? AND push_results.success = ?",
+			deviceID, false, true).
+		Count(&count).Error
+
+	if err != nil {
+		// 计算失败时返回默认值1，确保推送正常进行
+		fmt.Printf("❌ Badge计算失败: %v，使用默认值1\n", err)
+		return 1
+	}
+
+	// 当前推送如果成功，需要+1
+	count = count + 1
+
+	// 限制最大badge数量，避免显示过大的数字
+	if count > 99 {
+		return 99
+	}
+
+	// 至少显示1
+	if count <= 0 {
+		return 1
+	}
+
+	return int(count)
 }
