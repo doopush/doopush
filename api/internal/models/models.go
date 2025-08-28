@@ -34,5 +34,6 @@ func AllModels() []interface{} {
 		&AuditLog{},
 		&SystemConfig{},
 		&UploadFile{},
+		&ExportToken{},
 	}
 }

@@ -41,9 +41,11 @@ import { PushService } from '@/services/push-service'
 import { NoAppSelected } from '@/components/no-app-selected'
 import { APP_SELECTION_DESCRIPTIONS } from '@/utils/app-utils'
 import { PushLogDetailsDialog } from './components/push-log-details-dialog'
+import { useExport } from '@/hooks/use-export'
 import type { PushLog } from '@/types/api'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { toast } from 'sonner'
 
 export default function PushLogs() {
   const { currentApp } = useAuthStore()
@@ -61,6 +63,16 @@ export default function PushLogs() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const pageSize = 20
+
+  // 导出功能
+  const { isExporting, exportPushLogs } = useExport({
+    onSuccess: () => {
+      toast.success('导出成功，文件已开始下载')
+    },
+    onError: (error) => {
+      toast.error(`导出失败: ${error}`)
+    }
+  })
 
   // 加载推送日志
   useEffect(() => {
@@ -117,6 +129,19 @@ export default function PushLogs() {
     return ((log.success_count / log.total_devices) * 100).toFixed(1) + '%'
   }
 
+  const handleExport = () => {
+    if (!currentApp) return
+
+    // 构建过滤器参数
+    const filters = {
+      ...(statusFilter !== 'all' && { status: statusFilter }),
+      ...(platformFilter !== 'all' && { platform: platformFilter }),
+      ...(searchTerm && { search: searchTerm }),
+    }
+
+    exportPushLogs(currentApp.id, filters)
+  }
+
   return (
     <>
       <Header>
@@ -147,9 +172,13 @@ export default function PushLogs() {
                   <RefreshCw className="mr-2 h-4 w-4" />
                   刷新
                 </Button>
-                <Button variant="outline">
+                <Button 
+                  variant="outline" 
+                  onClick={handleExport}
+                  disabled={isExporting}
+                >
                   <Download className="mr-2 h-4 w-4" />
-                  导出
+                  {isExporting ? '导出中...' : '导出'}
                 </Button>
               </div>
             </div>

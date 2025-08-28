@@ -33,6 +33,8 @@ import { useAuthStore } from '@/stores/auth-store'
 import { PushService } from '@/services/push-service'
 import { NoAppSelected } from '@/components/no-app-selected'
 import { APP_SELECTION_DESCRIPTIONS } from '@/utils/app-utils'
+import { useExport } from '@/hooks/use-export'
+import { toast } from 'sonner'
 import {
   BarChart,
   Bar,
@@ -130,6 +132,16 @@ export default function PushStatistics() {
     total_opens: 0,
   })
 
+  // 导出功能
+  const { isExporting, exportPushStatistics } = useExport({
+    onSuccess: () => {
+      toast.success('导出成功，文件已开始下载')
+    },
+    onError: (error) => {
+      toast.error(`导出失败: ${error}`)
+    }
+  })
+
   // 加载统计数据
   useEffect(() => {
     if (currentApp) {
@@ -196,6 +208,17 @@ export default function PushStatistics() {
     ? ((totalStats.total_opens / totalStats.success_pushes) * 100).toFixed(1)
     : '0'
 
+  const handleExport = () => {
+    if (!currentApp) return
+
+    // 构建统计参数
+    const params = {
+      time_range: timeRange,
+    }
+
+    exportPushStatistics(currentApp.id, params)
+  }
+
   return (
     <>
       <Header>
@@ -236,9 +259,13 @@ export default function PushStatistics() {
                   <RefreshCw className="mr-2 h-4 w-4" />
                   刷新
                 </Button>
-                <Button variant="outline">
+                <Button 
+                  variant="outline" 
+                  onClick={handleExport}
+                  disabled={isExporting}
+                >
                   <Download className="mr-2 h-4 w-4" />
-                  导出报告
+                  {isExporting ? '导出中...' : '导出报告'}
                 </Button>
               </div>
             </div>

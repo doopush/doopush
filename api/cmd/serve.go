@@ -8,6 +8,7 @@ import (
 	"github.com/doopush/doopush/api/internal/controllers"
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/middleware"
+	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/utils"
 
 	_ "github.com/doopush/doopush/api/docs"
@@ -34,6 +35,10 @@ var serveCmd = &cobra.Command{
 		// 连接数据库
 		database.Connect()
 		database.AutoMigrate()
+
+		// 启动导出文件清理调度器
+		exportService := services.NewExportService()
+		exportService.StartCleanupScheduler()
 
 		// 启动服务器
 		startServer()
@@ -74,6 +79,7 @@ func startServer() {
 	schedulerCtrl := controllers.NewSchedulerController()
 	auditCtrl := controllers.NewAuditController()
 	uploadCtrl := controllers.NewUploadController()
+	exportCtrl := controllers.NewExportController()
 
 	// 基础路由 (无需认证)
 	r.GET("/health", healthCtrl.Check)
@@ -81,7 +87,7 @@ func startServer() {
 	// API路由组
 	api := r.Group("/api/v1")
 	{
-		// 健康检查
+		// 健康检查 (无需认证)
 		api.GET("/health", healthCtrl.Check)
 
 		// 认证相关 (无需认证)
@@ -176,7 +182,14 @@ func startServer() {
 			authenticated.GET("/audit-logs", auditCtrl.GetGlobalAuditLogs)
 			authenticated.GET("/audit-logs/statistics", auditCtrl.GetActionStatistics)
 			authenticated.GET("/apps/:appId/audit-logs", auditCtrl.GetAppAuditLogs)
+
+			// 导出功能
+			authenticated.POST("/apps/:appId/export/push-logs", exportCtrl.ExportPushLogs)
+			authenticated.POST("/apps/:appId/export/push-statistics", exportCtrl.ExportPushStatistics)
 		}
+
+		// 导出文件下载 (无需认证)
+		api.GET("/export/download/:token", exportCtrl.DownloadFile)
 
 		// API Key认证的路由 (供客户端SDK使用)
 		apiKeyRoutes := api.Group("")
