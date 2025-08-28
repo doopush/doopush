@@ -357,7 +357,7 @@ export function ScheduledPush() {
                 <TableHead>推送信息</TableHead>
                 <TableHead>执行时间</TableHead>
                 <TableHead>重复类型</TableHead>
-                <TableHead>推送目标</TableHead>
+                <TableHead>推送类型</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead>创建时间</TableHead>
                 <TableHead className="text-right">操作</TableHead>
@@ -411,7 +411,8 @@ export function ScheduledPush() {
                     <TableCell>
                       <Badge variant="secondary">
                         {push.push_type === 'single' ? '单设备' : 
-                         push.push_type === 'batch' ? '批量推送' : '广播推送'}
+                         push.push_type === 'batch' ? '批量推送' : 
+                         push.push_type === 'groups' ? '分组推送' : '广播推送'}
                       </Badge>
                     </TableCell>
                     <TableCell>

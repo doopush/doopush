@@ -47,6 +47,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { GroupSelector } from './components/group-selector'
 
 import { useAuthStore } from '@/stores/auth-store'
 import { PushService } from '@/services/push-service'
@@ -64,10 +65,11 @@ const pushFormSchema = z.object({
     url: z.string().url('请输入有效的URL').optional().or(z.literal('')),
     data: z.string().optional(),
   }).optional(),
-  target_type: z.enum(['single', 'batch', 'broadcast']).refine(val => val, {
+  target_type: z.enum(['single', 'batch', 'broadcast', 'groups']).refine(val => val, {
     message: '请选择推送类型',
   }),
   device_ids: z.string().optional(),
+  group_ids: z.array(z.number()).optional(),
   platform: z.string().optional(),
   vendor: z.string().optional(),
   schedule_time: z.string().optional().refine((val) => {
@@ -216,6 +218,24 @@ export default function PushSend() {
               vendor: data.vendor || undefined,
             })
             break
+            
+          case 'groups':
+            if (!data.group_ids || data.group_ids.length === 0) {
+              throw new Error('请选择至少一个设备分组')
+            }
+            await PushService.sendPush(currentApp.id, {
+              title: data.title,
+              content: data.content,
+              payload: data.payload,
+              target: {
+                type: 'groups',
+                group_ids: data.group_ids,
+                platform: data.platform || undefined,
+                channel: data.vendor || undefined,
+              },
+              schedule_time: data.schedule_time,
+            })
+            break
         }
         
         toast.success('推送发送成功')
@@ -247,6 +267,12 @@ export default function PushSend() {
       title: '广播推送',
       description: '向所有设备或指定平台发送推送',
       icon: <Send className="h-5 w-5" />,
+    },
+    {
+      id: 'groups',
+      title: '分组推送',
+      description: '向指定的设备分组发送推送',
+      icon: <UserCheck className="h-5 w-5" />,
     },
   ]
 
@@ -515,6 +541,81 @@ export default function PushSend() {
                                   </FormItem>
                                 )}
                               />
+                            </div>
+                          )}
+
+                          {activeTab === 'groups' && (
+                            <div className='space-y-4'>
+                              <FormField
+                                control={form.control}
+                                name="group_ids"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>选择设备分组 *</FormLabel>
+                                    <FormControl>
+                                      <GroupSelector
+                                        value={field.value || []}
+                                        onChange={field.onChange}
+                                        appId={currentApp.id}
+                                      />
+                                    </FormControl>
+                                    <FormDescription>
+                                      选择要推送的设备分组，支持多选
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                <FormField
+                                  control={form.control}
+                                  name="platform"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>指定平台 (可选)</FormLabel>
+                                      <Select onValueChange={(value) => field.onChange(value === 'all' ? '' : value)} value={field.value || 'all'}>
+                                        <FormControl>
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="选择平台" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="all">全部平台</SelectItem>
+                                          <SelectItem value="ios">仅 iOS</SelectItem>
+                                          <SelectItem value="android">仅 Android</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name="vendor"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>指定厂商 (可选)</FormLabel>
+                                      <Select onValueChange={(value) => field.onChange(value === 'all' ? '' : value)} value={field.value || 'all'}>
+                                        <FormControl>
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="选择厂商" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="all">全部厂商</SelectItem>
+                                          <SelectItem value="huawei">华为</SelectItem>
+                                          <SelectItem value="xiaomi">小米</SelectItem>
+                                          <SelectItem value="oppo">OPPO</SelectItem>
+                                          <SelectItem value="vivo">VIVO</SelectItem>
+                                          <SelectItem value="honor">荣耀</SelectItem>
+                                          <SelectItem value="samsung">三星</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
                             </div>
                           )}
                         </div>

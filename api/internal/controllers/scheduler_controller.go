@@ -129,7 +129,7 @@ func (ctrl *SchedulerController) CreateScheduledPush(ctx *gin.Context) {
 		case "all":
 			targetType = "all"
 			targetValue = ""
-		case "group":
+		case "groups":
 			targetType = "groups"
 			targetValue = req.TargetConfig
 		case "tag":
@@ -139,6 +139,11 @@ func (ctrl *SchedulerController) CreateScheduledPush(ctx *gin.Context) {
 			targetType = "all"
 			targetValue = ""
 		}
+	}
+
+	// 确保 targetValue 有值
+	if targetValue == "" && req.TargetConfig != "" {
+		targetValue = req.TargetConfig
 	}
 
 	// repeat_type转换：前端"none" -> 后端"once"
@@ -370,7 +375,7 @@ func (ctrl *SchedulerController) UpdateScheduledPush(ctx *gin.Context) {
 		case "all":
 			targetType = "all"
 			targetValue = ""
-		case "group":
+		case "groups":
 			targetType = "groups"
 			targetValue = req.TargetConfig
 		case "tag":
@@ -380,6 +385,11 @@ func (ctrl *SchedulerController) UpdateScheduledPush(ctx *gin.Context) {
 			targetType = "all"
 			targetValue = ""
 		}
+	}
+
+	// 确保 targetValue 有值
+	if targetValue == "" && req.TargetConfig != "" {
+		targetValue = req.TargetConfig
 	}
 
 	// repeat_type转换：前端"none" -> 后端"once"

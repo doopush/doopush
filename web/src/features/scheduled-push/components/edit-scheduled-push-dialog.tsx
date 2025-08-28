@@ -37,6 +37,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { ScheduledPushService } from '@/services/scheduled-push-service'
 import { toast } from 'sonner'
 import type { ScheduledPush } from '@/types/api'
+import { GroupSelector } from '../../push/components/group-selector'
 
 // 表单验证规则
 const editScheduledPushSchema = z.object({
@@ -50,8 +51,9 @@ const editScheduledPushSchema = z.object({
   }, {
     message: '执行时间必须是未来时间'
   }),
-  push_type: z.enum(['single', 'batch', 'broadcast']),
-  target_config: z.string().min(1, '请配置推送目标'),
+  push_type: z.enum(['single', 'batch', 'broadcast', 'groups']),
+  target_config: z.string().optional(),
+  group_ids: z.array(z.number()).optional(),
   repeat_type: z.enum(['none', 'daily', 'weekly', 'monthly']),
   repeat_config: z.string().optional(),
   timezone: z.string().optional(),
@@ -80,6 +82,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
       scheduled_at: '',
       push_type: 'broadcast',
       target_config: '',
+      group_ids: [],
       repeat_type: 'none',
       repeat_config: '',
       timezone: 'Asia/Shanghai',
@@ -108,13 +111,27 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
         return backendRepeatType as 'none' | 'daily' | 'weekly' | 'monthly'
       }
 
+      // 处理分组推送的 group_ids
+      let groupIds: number[] = []
+      if (push.push_type === 'groups' && push.target_config) {
+        try {
+          const parsed = JSON.parse(push.target_config)
+          if (Array.isArray(parsed)) {
+            groupIds = parsed
+          }
+        } catch (_error) {
+          console.warn('Failed to parse target_config for groups:', push.target_config)
+        }
+      }
+
       form.reset({
         title: push.title || '',
         content: push.content || '',
         payload: push.payload || '',
         scheduled_at: getFormattedScheduledAt(),
         push_type: push.push_type || 'broadcast',
-        target_config: push.target_config || '',
+        target_config: push.push_type === 'groups' ? '' : (push.target_config || ''),
+        group_ids: groupIds,
         repeat_type: getFrontendRepeatType(push.repeat_type || 'once'),
         repeat_config: push.repeat_config || '',
         timezone: push.timezone || 'Asia/Shanghai',
@@ -123,6 +140,95 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
     }
   }, [push, form])
 
+  // 保存用户在不同推送类型下的输入值
+  const [userInputs, setUserInputs] = useState<{
+    single: string
+    batch: string
+    broadcast: string
+    groups: number[]
+  }>({
+    single: '',
+    batch: '',
+    broadcast: '',
+    groups: []
+  })
+
+  // 当推送数据变化时，初始化用户输入值
+  useEffect(() => {
+    if (push) {
+      if (push.push_type === 'groups' && push.target_config) {
+        try {
+          const parsed = JSON.parse(push.target_config)
+          if (Array.isArray(parsed)) {
+            setUserInputs(prev => ({
+              ...prev,
+              groups: parsed
+            }))
+          }
+        } catch (_error) {
+          console.warn('Failed to parse target_config for groups:', push.target_config)
+        }
+      } else {
+        setUserInputs(prev => ({
+          ...prev,
+          [push.push_type]: push.target_config || ''
+        }))
+      }
+    }
+  }, [push])
+
+  // 跟踪上一个推送类型
+  const [previousPushType, setPreviousPushType] = useState<string | null>(null)
+
+  // 监听推送类型变化，智能切换目标配置
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'push_type') {
+        const currentPushType = value.push_type
+        
+        if (currentPushType && currentPushType !== previousPushType) {
+          // 先保存当前推送类型下的用户输入
+          const updatedUserInputs = { ...userInputs }
+          
+          if (previousPushType === 'groups') {
+            const currentGroupIds = form.getValues('group_ids') || []
+            updatedUserInputs.groups = currentGroupIds
+          } else if (previousPushType && previousPushType !== 'groups') {
+            const currentTargetConfig = form.getValues('target_config') || ''
+            updatedUserInputs[previousPushType as 'single' | 'batch' | 'broadcast'] = currentTargetConfig
+          }
+          
+          // 更新状态
+          setUserInputs(updatedUserInputs)
+
+          // 使用 setTimeout 确保状态更新后再设置表单值
+          setTimeout(() => {
+            if (currentPushType === 'groups') {
+              form.setValue('target_config', '')
+              form.setValue('group_ids', updatedUserInputs.groups)
+            } else {
+              const targetConfigValue = updatedUserInputs[currentPushType as 'single' | 'batch' | 'broadcast'] || ''
+              form.setValue('group_ids', [])
+              form.setValue('target_config', targetConfigValue)
+            }
+          }, 0)
+          
+          // 更新 previousPushType
+          setPreviousPushType(currentPushType)
+        }
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [form, userInputs, previousPushType])
+
+  // 初始化 previousPushType
+  useEffect(() => {
+    if (push && push.push_type) {
+      setPreviousPushType(push.push_type)
+    }
+  }, [push])
+
   const onSubmit = async (data: EditScheduledPushFormData) => {
     if (!currentApp) return
 
@@ -130,7 +236,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
       setLoading(true)
       
       // 格式化 target_config 字段根据推送类型
-      let formattedTargetConfig = data.target_config.trim()
+      let formattedTargetConfig = (data.target_config || '').trim()
       
       if (data.push_type === 'single') {
         // 单设备推送：支持设备token格式
@@ -195,6 +301,13 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
           toast.error('广播推送目标配置格式错误，请输入有效的JSON配置')
           return
         }
+      } else if (data.push_type === 'groups') {
+        // 分组推送：将 group_ids 转换为 target_config
+        if (!data.group_ids || data.group_ids.length === 0) {
+          toast.error('请选择至少一个设备分组')
+          return
+        }
+        formattedTargetConfig = JSON.stringify(data.group_ids)
       }
 
       // 创建请求数据
@@ -221,6 +334,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
   }
 
   const repeatType = form.watch('repeat_type')
+  const pushType = form.watch('push_type')
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -432,6 +546,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                           <SelectItem value="single">单设备推送</SelectItem>
                           <SelectItem value="batch">批量推送</SelectItem>
                           <SelectItem value="broadcast">广播推送</SelectItem>
+                          <SelectItem value="groups">分组推送</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -439,24 +554,47 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="target_config"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>目标配置 *</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="推送目标的配置"
-                          className="resize-none font-mono text-sm"
-                          rows={4}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {pushType === 'groups' ? (
+                  <FormField
+                    control={form.control}
+                    name="group_ids"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>选择设备分组 *</FormLabel>
+                        <FormControl>
+                          <GroupSelector
+                            value={field.value || []}
+                            onChange={field.onChange}
+                            appId={currentApp?.id || 0}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          选择要推送的设备分组，支持多选
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="target_config"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>目标配置 *</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="推送目标的配置"
+                            className="resize-none font-mono text-sm"
+                            rows={4}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
 
               {/* 状态控制 */}

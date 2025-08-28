@@ -11,6 +11,7 @@ import (
 	"github.com/doopush/doopush/api/internal/models"
 	"github.com/doopush/doopush/api/internal/push"
 	"github.com/doopush/doopush/api/pkg/utils"
+	"gorm.io/gorm"
 )
 
 // PushService 推送服务
@@ -160,19 +161,55 @@ func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.
 		return devices, nil
 
 	case "groups":
-		// 分组设备
+		// 分组设备 - 通过分组条件查询
 		if len(target.GroupIDs) == 0 {
 			return nil, errors.New("未指定目标分组")
 		}
-		var devices []models.Device
-		err := database.DB.Table("devices").
-			Joins("JOIN device_group_maps ON devices.id = device_group_maps.device_id").
-			Where("devices.app_id = ? AND devices.status = 1 AND device_group_maps.group_id IN ?", appID, target.GroupIDs).
-			Find(&devices).Error
-		if err != nil {
-			return nil, errors.New("获取分组设备失败")
+
+		var allDevices []models.Device
+		deviceMap := make(map[uint]models.Device) // 用于去重
+
+		for _, groupID := range target.GroupIDs {
+			// 获取分组信息
+			group, err := s.getGroupByID(appID, groupID)
+			if err != nil {
+				log.Printf("获取分组 %d 失败: %v", groupID, err)
+				continue
+			}
+
+			// 解析分组条件
+			var filterRules []FilterRule
+			if group.Conditions != "" {
+				if err := json.Unmarshal([]byte(group.Conditions), &filterRules); err != nil {
+					log.Printf("解析分组 %d 条件失败: %v", groupID, err)
+					continue
+				}
+			}
+
+			// 应用筛选规则查询设备
+			groupQuery := database.DB.Debug().Where("app_id = ? AND status = 1", appID)
+			groupQuery = s.applyFilterRules(groupQuery, filterRules)
+
+			var groupDevices []models.Device
+			if err := groupQuery.Find(&groupDevices).Error; err != nil {
+				log.Printf("查询分组 %d 设备失败: %v", groupID, err)
+				continue
+			}
+
+			// 添加到结果中（去重）
+			for _, device := range groupDevices {
+				if _, exists := deviceMap[device.ID]; !exists {
+					deviceMap[device.ID] = device
+					allDevices = append(allDevices, device)
+				}
+			}
 		}
-		return devices, nil
+
+		if len(allDevices) == 0 {
+			return nil, errors.New("指定分组中没有找到符合条件的设备")
+		}
+
+		return allDevices, nil
 
 	default:
 		return nil, errors.New("无效的推送目标类型")
@@ -603,4 +640,43 @@ func (s *PushService) ReportPushStatistics(appID uint, deviceToken string, repor
 	}
 
 	return nil
+}
+
+// getGroupByID 根据ID获取分组信息
+func (s *PushService) getGroupByID(appID, groupID uint) (*models.DeviceGroup, error) {
+	var group models.DeviceGroup
+	err := database.DB.Where("app_id = ? AND id = ? AND status = 1", appID, groupID).First(&group).Error
+	if err != nil {
+		return nil, fmt.Errorf("分组不存在或已禁用")
+	}
+	return &group, nil
+}
+
+// applyFilterRules 应用筛选规则到查询
+func (s *PushService) applyFilterRules(query *gorm.DB, filterRules []FilterRule) *gorm.DB {
+	for _, rule := range filterRules {
+		switch rule.Operator {
+		case "equals":
+			if rule.Value.StringValue != "" {
+				query = query.Where(fmt.Sprintf("%s = ?", rule.Field), rule.Value.StringValue)
+			}
+		case "contains":
+			if rule.Value.StringValue != "" {
+				query = query.Where(fmt.Sprintf("%s LIKE ?", rule.Field), fmt.Sprintf("%%%s%%", rule.Value.StringValue))
+			}
+		case "in":
+			if len(rule.Value.StringValues) > 0 {
+				query = query.Where(fmt.Sprintf("%s IN ?", rule.Field), rule.Value.StringValues)
+			}
+		case "not_in":
+			if len(rule.Value.StringValues) > 0 {
+				query = query.Where(fmt.Sprintf("%s NOT IN ?", rule.Field), rule.Value.StringValues)
+			}
+		case "is_null":
+			query = query.Where(fmt.Sprintf("%s IS NULL", rule.Field))
+		case "is_not_null":
+			query = query.Where(fmt.Sprintf("%s IS NOT NULL", rule.Field))
+		}
+	}
+	return query
 }

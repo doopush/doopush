@@ -201,7 +201,7 @@ export interface ScheduledPush {
   content: string
   payload?: string
   template_id: number | null
-  push_type: 'single' | 'batch' | 'broadcast'
+  push_type: 'single' | 'batch' | 'broadcast' | 'groups'
   target_type: string
   target_config: string
   scheduled_at: string

@@ -36,6 +36,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { ScheduledPushService } from '@/services/scheduled-push-service'
 import { requireApp } from '@/utils/app-utils'
 import { toast } from 'sonner'
+import { GroupSelector } from '../../push/components/group-selector'
 
 // 表单验证规则
 const createScheduledPushSchema = z.object({
@@ -52,8 +53,9 @@ const createScheduledPushSchema = z.object({
   repeat_type: z.enum(['none', 'daily', 'weekly', 'monthly']),
   repeat_config: z.string().optional(),
   timezone: z.string().optional(),
-  push_type: z.enum(['single', 'batch', 'broadcast']),
-  target_config: z.string().min(1, '请配置推送目标'),
+  push_type: z.enum(['single', 'batch', 'broadcast', 'groups']),
+  target_config: z.string().optional(),
+  group_ids: z.array(z.number()).optional(),
   template_id: z.number().optional(),
 })
 
@@ -81,6 +83,7 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
       timezone: 'Asia/Shanghai',
       push_type: 'broadcast',
       target_config: '',
+      group_ids: [],
     },
   })
 
@@ -93,7 +96,7 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
       setLoading(true)
       
       // 格式化 target_config 字段根据推送类型
-      let formattedTargetConfig = data.target_config.trim()
+      let formattedTargetConfig = (data.target_config || '').trim()
       
       if (data.push_type === 'single') {
         // 单设备推送：支持设备token格式
@@ -135,6 +138,14 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
           toast.error('批量推送目标配置格式错误，请输入有效的设备Token列表')
           return
         }
+      } else if (data.push_type === 'groups') {
+        // 分组推送：验证分组ID
+        if (!data.group_ids || data.group_ids.length === 0) {
+          toast.error('请选择至少一个设备分组')
+          return
+        }
+        // 分组推送不需要 target_config，使用 group_ids
+        formattedTargetConfig = JSON.stringify(data.group_ids)
       } else if (data.push_type === 'broadcast') {
         // 广播推送：确保是 {} 或有效的JSON对象格式
         try {
@@ -403,6 +414,7 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
                             <SelectItem value="single">单设备推送</SelectItem>
                             <SelectItem value="batch">批量推送</SelectItem>
                             <SelectItem value="broadcast">广播推送</SelectItem>
+                            <SelectItem value="groups">分组推送</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -410,33 +422,56 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="target_config"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>目标配置 *</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder={
-                              pushType === 'single' ? '输入设备Token' :
-                              pushType === 'batch' ? '输入多个设备Token，用逗号分隔' :
-                              '输入筛选条件，例如: platform:ios 或 {} (所有设备)'
-                            }
-                            className="resize-none font-mono text-sm"
-                            rows={4}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          {pushType === 'single' && '输入单个设备Token，自动转换为 [Token] 格式'}
-                          {pushType === 'batch' && '输入多个设备Token，支持逗号分隔或JSON数组格式'}
-                          {pushType === 'broadcast' && '输入筛选条件，支持键值对或JSON格式，空白表示所有设备'}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {pushType === 'groups' ? (
+                    <FormField
+                      control={form.control}
+                      name="group_ids"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>选择设备分组 *</FormLabel>
+                          <FormControl>
+                            <GroupSelector
+                              value={field.value || []}
+                              onChange={field.onChange}
+                              appId={currentApp?.id || 0}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            选择要推送的设备分组，支持多选
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="target_config"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>目标配置 *</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder={
+                                pushType === 'single' ? '输入设备Token' :
+                                pushType === 'batch' ? '输入多个设备Token，用逗号分隔' :
+                                '输入筛选条件，例如: platform:ios 或 {} (所有设备)'
+                              }
+                              className="resize-none font-mono text-sm"
+                              rows={4}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {pushType === 'single' && '输入单个设备Token，自动转换为 [Token] 格式'}
+                            {pushType === 'batch' && '输入多个设备Token，支持逗号分隔或JSON数组格式'}
+                            {pushType === 'broadcast' && '输入筛选条件，支持键值对或JSON格式，空白表示所有设备'}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </CardContent>
               </Card>
             </form>
