@@ -1,0 +1,47 @@
+# Gradle 构建产物
+/build/
+.gradle/
+
+# 本地配置文件
+local.properties
+
+# IntelliJ IDEA
+*.iml
+.idea/
+
+# OS 生成的文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Android Studio 生成的文件
+*.apk
+*.ap_
+*.dex
+*.class
+
+# 签名文件
+*.jks
+*.keystore
+
+# 其他临时文件
+*.tmp
+*.temp
+*~
+
+# Log 文件
+*.log
+
+# 测试结果
+/test-results/
+/androidTest-results/
+
+# Lint 结果
+lint-results*.xml
+
+# Kotlin Metadata
+*.kotlin_metadata

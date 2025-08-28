@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -108,7 +109,7 @@ func (d *DeviceController) RegisterDevice(c *gin.Context) {
 		Device:  device,
 		Gateway: gatewayConfig,
 	}
-
+	fmt.Printf("registrationResponse %+v\n", registrationResponse)
 	c.JSON(http.StatusCreated, response.APIResponse{
 		Code:    201,
 		Message: "设备注册成功",

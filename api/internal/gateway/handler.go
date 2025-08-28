@@ -166,6 +166,8 @@ func (h *GatewayHandler) OnTraffic(c gnet.Conn) gnet.Action {
 		return h.sendError(c, "消息格式错误")
 	}
 
+	fmt.Printf("消息: %+v\n", msg)
+
 	// 处理消息
 	return h.handleMessage(c, conn, msg)
 }

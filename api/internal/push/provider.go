@@ -107,18 +107,12 @@ func (m *PushManager) createAndroidProvider(app *models.App, channel string) (Pu
 	}
 
 	// 解析配置
-	var androidConfig struct {
-		ServerKey string `json:"server_key"`
-		AppID     string `json:"app_id"`
-		AppKey    string `json:"app_key"`
-		AppSecret string `json:"app_secret"`
-	}
-
+	var androidConfig AndroidConfig
 	if err := json.Unmarshal([]byte(config.Config), &androidConfig); err != nil {
 		return nil, fmt.Errorf("Android %s 配置格式错误", channel)
 	}
 
-	return NewAndroidProvider(channel, androidConfig.ServerKey), nil
+	return NewAndroidProvider(channel, androidConfig), nil
 }
 
 // SendPush 统一推送接口
@@ -258,10 +252,11 @@ func (m *PushManager) validateAPNsConfig(configJSON string) error {
 // validateAndroidConfig 验证Android配置
 func (m *PushManager) validateAndroidConfig(channel, configJSON string) error {
 	var androidConfig struct {
-		ServerKey string `json:"server_key"`
-		AppID     string `json:"app_id"`
-		AppKey    string `json:"app_key"`
-		AppSecret string `json:"app_secret"`
+		ServerKey   string `json:"server_key"`
+		AppID       string `json:"app_id"`
+		AppKey      string `json:"app_key"`
+		AppSecret   string `json:"app_secret"`
+		PackageName string `json:"package_name,omitempty"`
 	}
 
 	if err := json.Unmarshal([]byte(configJSON), &androidConfig); err != nil {
@@ -273,7 +268,7 @@ func (m *PushManager) validateAndroidConfig(channel, configJSON string) error {
 		if androidConfig.ServerKey == "" {
 			return fmt.Errorf("FCM配置缺少server_key")
 		}
-	case "huawei", "xiaomi", "oppo", "vivo":
+	case "huawei", "oppo", "vivo":
 		if androidConfig.AppID == "" {
 			return fmt.Errorf("%s配置缺少app_id", channel)
 		}
@@ -283,11 +278,27 @@ func (m *PushManager) validateAndroidConfig(channel, configJSON string) error {
 		if androidConfig.AppSecret == "" {
 			return fmt.Errorf("%s配置缺少app_secret", channel)
 		}
+	case "xiaomi":
+		if androidConfig.AppSecret == "" {
+			return fmt.Errorf("小米推送配置缺少app_secret")
+		}
+		if androidConfig.AppID == "" {
+			return fmt.Errorf("小米推送配置缺少app_id")
+		}
+		if androidConfig.AppKey == "" {
+			return fmt.Errorf("小米推送配置缺少app_key")
+		}
+		// 小米的包名是可选的，如果没有提供则使用默认值
 	default:
 		return fmt.Errorf("不支持的Android推送通道: %s", channel)
 	}
 
-	// TODO: 可以添加实际的连接测试
+	// 对于小米推送，暂时跳过连接测试（需要真实的provider实例）
+	if channel == "xiaomi" {
+		// 这里可以添加基本的配置格式验证
+		fmt.Printf("✅ 小米推送配置格式验证成功\n")
+	}
+
 	return nil
 }
 
@@ -328,7 +339,7 @@ func (m *PushManager) TestConfigWithDevice(title, content, platform, channel, de
 		normalizeConfig(&apnsConfig)
 		provider, err = NewAPNsProviderWithConfig(apnsConfig)
 	case "android":
-		provider = NewAndroidProvider(channel, "")
+		provider = NewAndroidProvider(channel, AndroidConfig{})
 		// TODO: 实现真实的Android推送提供者创建
 	default:
 		return &models.PushResult{

@@ -1,0 +1,102 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'maven-publish'
+}
+
+android {
+    namespace 'com.doopush.sdk'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    
+    // 网络请求
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    
+    // 小米推送
+    // implementation 'com.xiaomi.mipush:mipush-sdk:5.0.8'
+    implementation (name: 'MiPush_SDK_Client_6_0_1-C_3rd', ext: 'aar')
+    
+    // 华为推送 (预留)
+    // implementation 'com.huawei.hms:push:6.11.0.300'
+    
+    // OPPO推送 (预留)
+    // implementation 'com.heytap.msp:push:3.1.0'
+    
+    // VIVO推送 (预留)
+    // implementation 'com.vivo.push:vivo-push:3.0.0.4'
+    
+    // 魅族推送 (预留)
+    // implementation 'com.meizu.flyme.internet:push-internal:4.1.4'
+    
+    // 测试依赖
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
+
+publishing {
+    publications {
+        release(MavenPublication) {
+            // from components.release
+            afterEvaluate {
+                from components.findByName('release')
+            }
+            groupId = 'com.doopush'
+            artifactId = 'doopush-sdk-android'
+            version = '1.0.0'
+        }
+        // You might want to define a debug publication as well, or handle it differently
+        debug(MavenPublication) {
+            // from components.debug
+             // 使用 afterEvaluate 确保 Android 组件已创建
+            afterEvaluate {
+                from components.findByName('debug')
+            }
+            groupId = 'com.doopush'
+            artifactId = 'doopush-sdk-android-debug'
+            version = '1.0.0'
+        }
+    }
+}
