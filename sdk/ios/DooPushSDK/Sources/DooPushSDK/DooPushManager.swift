@@ -61,6 +61,9 @@ import UserNotifications
         // 配置统计管理器
         statisticsManager.configure(config: config!, networking: networking)
         
+        // 默认启用自动通知事件采集
+        enableAutomaticNotificationTracking()
+        
         // 检查是否需要更新设备信息
         checkAndUpdateDeviceInfoIfNeeded()
         
@@ -435,6 +438,9 @@ import UserNotifications
     @objc private func applicationDidBecomeActive() {
         DooPushLogger.info("应用变为活跃状态")
         tcpConnection.applicationDidBecomeActive()
+        
+        // 确保自动采集处于启用状态（若外部更改了 delegate，这里会重新包裹并转发）
+        enableAutomaticNotificationTracking()
         
         // 检查是否需要重试设备注册（网络权限申请后）
         if let pendingToken = pendingDeviceToken {

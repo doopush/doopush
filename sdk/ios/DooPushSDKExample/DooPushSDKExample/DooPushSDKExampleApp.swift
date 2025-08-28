@@ -35,7 +35,6 @@ struct DooPushSDKExampleApp: App {
                 .environmentObject(pushManager)
                 .onAppear {
                     configurePushSDK()
-                    UNUserNotificationCenter.current().delegate = notificationDelegate
                 }
         }
     }
@@ -57,51 +56,6 @@ struct DooPushSDKExampleApp: App {
     }
 }
 
-// MARK: - NotificationDelegate for handling notifications
+// MARK: - NotificationDelegate (示例保留，占位用，具体处理由 SDK 代理转发)
 
-class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, ObservableObject {
-    
-    // 前台收到推送通知时调用
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        let userInfo = notification.request.content.userInfo
-        
-        // 让DooPush SDK处理通知（记录接收统计）
-        _ = DooPushManager.shared.handleNotification(userInfo)
-        
-        // 在前台也显示通知
-        completionHandler([.banner, .sound, .badge])
-    }
-    
-    // 用户点击推送通知时调用
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        let userInfo = response.notification.request.content.userInfo
-        
-        // 根据操作类型处理不同的统计事件
-        switch response.actionIdentifier {
-        case UNNotificationDefaultActionIdentifier:
-            // 用户点击了通知本身，记录点击统计
-            _ = DooPushManager.shared.handleNotificationClick(userInfo)
-            
-            // 同时记录应用打开统计（因为点击通知会打开应用）
-            _ = DooPushManager.shared.handleNotificationOpen(userInfo)
-            
-        case UNNotificationDismissActionIdentifier:
-            // 用户划掉了通知，只记录点击统计
-            _ = DooPushManager.shared.handleNotificationClick(userInfo)
-            
-        default:
-            // 其他自定义操作，记录点击统计
-            _ = DooPushManager.shared.handleNotificationClick(userInfo)
-        }
-        
-        completionHandler()
-    }
-}
+class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, ObservableObject {}
