@@ -328,41 +328,81 @@ import UserNotifications
     // MARK: - 角标管理
     
     /// 设置应用角标数字
-    /// - Parameter number: 角标数字，0表示清除角标
-    @objc public func setBadgeNumber(_ number: Int) {
-        DispatchQueue.main.async {
-            UIApplication.shared.applicationIconBadgeNumber = number
-            DooPushLogger.info("设置应用角标数字: \(number)")
+    /// - Parameters:
+    ///   - number: 角标数字，0表示清除角标
+    ///   - completion: 完成回调，可选
+    @objc public func setBadgeNumber(_ number: Int, completion: ((Error?) -> Void)? = nil) {
+        let clampedNumber = max(0, number)
+        
+        DispatchQueue.main.async { [weak self] in
+            // 首先保存到本地存储
+            self?.storage.saveBadgeCount(clampedNumber)
+            
+            // 根据iOS版本选择合适的API
+            if #available(iOS 17.0, *) {
+                UNUserNotificationCenter.current().setBadgeCount(clampedNumber) { error in
+                    if let error = error {
+                        DooPushLogger.error("设置应用角标失败: \(error.localizedDescription)")
+                        completion?(error)
+                    } else {
+                        DooPushLogger.info("设置应用角标数字: \(clampedNumber)")
+                        completion?(nil)
+                    }
+                }
+            } else {
+                // iOS 17以下版本使用旧API
+                UIApplication.shared.applicationIconBadgeNumber = clampedNumber
+                DooPushLogger.info("设置应用角标数字: \(clampedNumber)")
+                completion?(nil)
+            }
         }
     }
     
     /// 清除应用角标
-    @objc public func clearBadge() {
-        setBadgeNumber(0)
+    /// - Parameter completion: 完成回调，可选
+    @objc public func clearBadge(completion: ((Error?) -> Void)? = nil) {
+        setBadgeNumber(0, completion: completion)
         DooPushLogger.info("清除应用角标")
     }
     
     /// 获取当前应用角标数字
-    /// - Returns: 当前角标数字
+    /// - Returns: 当前角标数字（优先从系统获取，失败则从本地存储获取）
     @objc public func getCurrentBadgeNumber() -> Int {
-        return UIApplication.shared.applicationIconBadgeNumber
+        // 优先尝试从系统获取badge数字
+        if Thread.isMainThread {
+            let systemBadge = UIApplication.shared.applicationIconBadgeNumber
+            // 如果系统badge和本地存储不一致，更新本地存储以保持同步
+            let storedBadge = storage.getBadgeCount()
+            if systemBadge != storedBadge {
+                storage.saveBadgeCount(systemBadge)
+                DooPushLogger.debug("同步系统badge到本地存储: \(systemBadge)")
+            }
+            return systemBadge
+        } else {
+            // 非主线程时，从本地存储获取
+            return storage.getBadgeCount()
+        }
     }
     
     /// 增加角标数字
-    /// - Parameter increment: 增加的数量，默认为1
-    @objc public func incrementBadgeNumber(by increment: Int = 1) {
+    /// - Parameters:
+    ///   - increment: 增加的数量，默认为1
+    ///   - completion: 完成回调，可选
+    @objc public func incrementBadgeNumber(by increment: Int = 1, completion: ((Error?) -> Void)? = nil) {
         let currentBadge = getCurrentBadgeNumber()
         let newBadge = max(0, currentBadge + increment)
-        setBadgeNumber(newBadge)
+        setBadgeNumber(newBadge, completion: completion)
         DooPushLogger.info("角标数字增加 \(increment)，当前: \(newBadge)")
     }
     
     /// 减少角标数字
-    /// - Parameter decrement: 减少的数量，默认为1
-    @objc public func decrementBadgeNumber(by decrement: Int = 1) {
+    /// - Parameters:
+    ///   - decrement: 减少的数量，默认为1
+    ///   - completion: 完成回调，可选
+    @objc public func decrementBadgeNumber(by decrement: Int = 1, completion: ((Error?) -> Void)? = nil) {
         let currentBadge = getCurrentBadgeNumber()
         let newBadge = max(0, currentBadge - decrement)
-        setBadgeNumber(newBadge)
+        setBadgeNumber(newBadge, completion: completion)
         DooPushLogger.info("角标数字减少 \(decrement)，当前: \(newBadge)")
     }
     

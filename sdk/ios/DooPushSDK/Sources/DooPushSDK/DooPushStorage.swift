@@ -12,6 +12,7 @@ public class DooPushStorage {
         static let lastDeviceUpdate = "DooPushSDK.LastDeviceUpdate"
         static let installationId = "DooPushSDK.InstallationId"
         static let sdkVersion = "DooPushSDK.SDKVersion"
+        static let badgeCount = "DooPushSDK.BadgeCount"
     }
     
     /// UserDefaults 实例
@@ -261,5 +262,28 @@ public class DooPushStorage {
     public func printStorageStatus() {
         let status = getStorageStatus()
         DooPushLogger.debug("存储状态: \(status)")
+    }
+    
+    // MARK: - Badge管理
+    
+    /// 保存角标数字
+    /// - Parameter count: 角标数字
+    public func saveBadgeCount(_ count: Int) {
+        userDefaults.set(count, forKey: Keys.badgeCount)
+        userDefaults.synchronize()
+        DooPushLogger.debug("角标数字已保存: \(count)")
+    }
+    
+    /// 获取保存的角标数字
+    /// - Returns: 角标数字，默认为0
+    public func getBadgeCount() -> Int {
+        return userDefaults.integer(forKey: Keys.badgeCount)
+    }
+    
+    /// 清除保存的角标数字
+    public func clearBadgeCount() {
+        userDefaults.removeObject(forKey: Keys.badgeCount)
+        userDefaults.synchronize()
+        DooPushLogger.debug("已清除保存的角标数字")
     }
 }

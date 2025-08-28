@@ -240,7 +240,7 @@ struct SettingsView: View {
             HStack {
                 Text("当前角标数字")
                 Spacer()
-                Text("\(UIApplication.shared.applicationIconBadgeNumber)")
+                Text("\(DooPushManager.shared.getCurrentBadgeNumber())")
                     .font(.system(.title3, design: .monospaced))
                     .fontWeight(.semibold)
                     .foregroundColor(.blue)
@@ -399,7 +399,7 @@ struct SettingsView: View {
         badgeRefreshTrigger += 1
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            let current = UIApplication.shared.applicationIconBadgeNumber
+            let current = DooPushManager.shared.getCurrentBadgeNumber()
             showToast(message: "角标数字 +1，当前: \(current)")
         }
     }
@@ -412,7 +412,7 @@ struct SettingsView: View {
         badgeRefreshTrigger += 1
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            let current = UIApplication.shared.applicationIconBadgeNumber
+            let current = DooPushManager.shared.getCurrentBadgeNumber()
             showToast(message: "角标数字 -1，当前: \(current)")
         }
     }
