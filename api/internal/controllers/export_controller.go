@@ -42,10 +42,10 @@ type ExportPushStatisticsRequest struct {
 // @Produce json
 // @Param appId path int true "应用ID"
 // @Param request body ExportPushLogsRequest true "导出请求"
-// @Success 200 {object} response.Response{data=services.ExportResult}
-// @Failure 400 {object} response.Response
-// @Failure 401 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.APIResponse{data=services.ExportResult}
+// @Failure 400 {object} response.APIResponse
+// @Failure 401 {object} response.APIResponse
+// @Failure 500 {object} response.APIResponse
 // @Router /apps/{appId}/export/push-logs [post]
 func (c *ExportController) ExportPushLogs(ctx *gin.Context) {
 	// 获取应用ID
@@ -96,10 +96,10 @@ func (c *ExportController) ExportPushLogs(ctx *gin.Context) {
 // @Produce json
 // @Param appId path int true "应用ID"
 // @Param request body ExportPushStatisticsRequest true "导出请求"
-// @Success 200 {object} response.Response{data=services.ExportResult}
-// @Failure 400 {object} response.Response
-// @Failure 401 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Success 200 {object} response.APIResponse{data=services.ExportResult}
+// @Failure 400 {object} response.APIResponse
+// @Failure 401 {object} response.APIResponse
+// @Failure 500 {object} response.APIResponse
 // @Router /apps/{appId}/export/push-statistics [post]
 func (c *ExportController) ExportPushStatistics(ctx *gin.Context) {
 	// 获取应用ID
@@ -167,9 +167,9 @@ func (c *ExportController) ExportPushStatistics(ctx *gin.Context) {
 // @Produce application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 // @Param token path string true "下载令牌"
 // @Success 200 {file} file "Excel文件"
-// @Failure 400 {object} response.Response
-// @Failure 404 {object} response.Response
-// @Failure 500 {object} response.Response
+// @Failure 400 {object} response.APIResponse
+// @Failure 404 {object} response.APIResponse
+// @Failure 500 {object} response.APIResponse
 // @Router /export/download/{token} [get]
 func (c *ExportController) DownloadFile(ctx *gin.Context) {
 	// 获取令牌
