@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -55,6 +55,7 @@ import { ScheduledPushService } from '@/services/scheduled-push-service'
 import { NoAppSelected } from '@/components/no-app-selected'
 import { requireApp, APP_SELECTION_DESCRIPTIONS } from '@/utils/app-utils'
 import { toast } from 'sonner'
+import { useLocation } from '@tanstack/react-router'
 
 // 推送表单验证规则
 const pushFormSchema = z.object({
@@ -86,6 +87,7 @@ type PushFormData = z.infer<typeof pushFormSchema>
 
 export default function PushSend() {
   const { currentApp } = useAuthStore()
+  const location = useLocation()
   const [sending, setSending] = useState(false)
   const [activeTab, setActiveTab] = useState('single')
 
@@ -106,6 +108,46 @@ export default function PushSend() {
       schedule_time: '',
     },
   })
+
+  // 处理复用数据回填
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search)
+    const reuseParam = searchParams.get('reuse')
+    
+    if (reuseParam) {
+      try {
+        const reuseData = JSON.parse(decodeURIComponent(reuseParam))
+        
+        // 设置表单数据
+        form.setValue('title', reuseData.title || '')
+        form.setValue('content', reuseData.content || '')
+        
+        // 处理payload数据
+        if (reuseData.payload) {
+          const payload = typeof reuseData.payload === 'string' 
+            ? JSON.parse(reuseData.payload) 
+            : reuseData.payload
+          form.setValue('payload.action', payload.action || '')
+          form.setValue('payload.url', payload.url || '')
+          form.setValue('payload.data', payload.data || '')
+        }
+        
+        // 设置为单设备推送
+        form.setValue('target_type', 'single')
+        setActiveTab('single')
+        
+        // 设置设备Token
+        if (reuseData.device_token) {
+          form.setValue('device_ids', reuseData.device_token)
+        }
+        
+        toast.success('已复用推送内容，请检查并修改后发送')
+      } catch (error) {
+        console.error('解析复用数据失败:', error)
+        toast.error('复用数据格式错误')
+      }
+    }
+  }, [location.search, form])
 
   const onSubmit = async (data: PushFormData) => {
     if (!requireApp(currentApp)) {

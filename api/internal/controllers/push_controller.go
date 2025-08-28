@@ -233,6 +233,12 @@ func (p *PushController) GetPushLogs(c *gin.Context) {
 					"updated_at": log.UpdatedAt,
 				}
 
+				// 添加设备信息（如果预加载成功）
+				if log.Device.ID > 0 {
+					enrichedLog["device_token"] = log.Device.Token
+					enrichedLog["device_platform"] = log.Device.Platform
+				}
+
 				// 计算统计信息（基于关联的推送结果）
 				var totalDevices, successCount, failedCount, pendingCount int64
 
@@ -259,8 +265,8 @@ func (p *PushController) GetPushLogs(c *gin.Context) {
 				enrichedLog["pending_count"] = pendingCount
 
 				// 添加目标相关字段（从现有数据推导）
-				enrichedLog["target_type"] = "devices"
-				enrichedLog["target_value"] = ""
+				enrichedLog["target_type"] = "single" // 单设备推送
+				enrichedLog["target_value"] = log.DeviceID
 				enrichedLog["platform_stats"] = ""
 
 				result[i] = enrichedLog

@@ -97,6 +97,8 @@ export interface PushLog {
   id: number
   app_id: number
   device_id?: number
+  device_token?: string
+  device_platform?: string
   title: string
   content: string
   payload: string

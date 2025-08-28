@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
 import { 
   History, 
- 
+
   RefreshCw,
   Eye,
   Download,
   CheckCircle,
   XCircle,
   Clock,
-  Send
+  Send,
+  Copy,
+  MoreHorizontal
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,6 +30,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
@@ -46,9 +55,11 @@ import type { PushLog } from '@/types/api'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { toast } from 'sonner'
+import { useNavigate } from '@tanstack/react-router'
 
 export default function PushLogs() {
   const { currentApp } = useAuthStore()
+  const navigate = useNavigate()
   const [logs, setLogs] = useState<PushLog[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -112,6 +123,42 @@ export default function PushLogs() {
   const handleViewLog = (log: PushLog) => {
     setSelectedLog(log)
     setLogDetailsOpen(true)
+  }
+
+  const handleReusePush = (log: PushLog) => {
+    try {
+      // 解析payload
+      let payload = { action: '', url: '', data: '' }
+      if (log.payload) {
+        try {
+          payload = JSON.parse(log.payload)
+        } catch (e) {
+          console.warn('解析payload失败:', e)
+        }
+      }
+
+      // 将单设备推送历史数据转换为表单数据格式
+      const pushData = {
+        title: log.title,
+        content: log.content,
+        payload: payload,
+        target_type: 'single', // 固定为单设备推送
+        device_token: log.device_token, // 设备token
+      }
+      
+      // 通过URL参数传递数据到发送推送页面
+      navigate({
+        to: '/push/send',
+        search: {
+          reuse: encodeURIComponent(JSON.stringify(pushData))
+        }
+      })
+      
+      toast.success('已复用推送内容到单设备推送表单，请检查并修改后发送')
+    } catch (error) {
+      console.error('复用推送数据失败:', error)
+      toast.error('复用推送数据失败，请重试')
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -306,13 +353,24 @@ export default function PushLogs() {
                           }
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewLog(log)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleReusePush(log)}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                复用推送
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleViewLog(log)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                查看详情
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))
