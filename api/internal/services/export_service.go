@@ -440,23 +440,19 @@ func (s *ExportService) generateOverviewSheet(f *excelize.File, appID uint, star
 	// 查询统计数据
 	var totalPush, successPush, failedPush int64
 
-	// 总推送数
+	// 总推送数（与前端逻辑保持一致）
 	database.DB.Model(&models.PushLog{}).
-		Where("app_id = ? AND created_at BETWEEN ? AND ?", appID, startDate, endDate).
+		Where("app_id = ? AND created_at >= ?", appID, startDate).
 		Count(&totalPush)
 
-	// 成功推送数
+	// 成功推送数（与前端逻辑保持一致）
 	database.DB.Model(&models.PushLog{}).
-		Joins("JOIN push_results ON push_logs.id = push_results.push_log_id").
-		Where("push_logs.app_id = ? AND push_logs.created_at BETWEEN ? AND ? AND push_results.success = ?",
-			appID, startDate, endDate, true).
+		Where("app_id = ? AND status = 'sent' AND created_at >= ?", appID, startDate).
 		Count(&successPush)
 
-	// 失败推送数
+	// 失败推送数（与前端逻辑保持一致）
 	database.DB.Model(&models.PushLog{}).
-		Joins("JOIN push_results ON push_logs.id = push_results.push_log_id").
-		Where("push_logs.app_id = ? AND push_logs.created_at BETWEEN ? AND ? AND push_results.success = ?",
-			appID, startDate, endDate, false).
+		Where("app_id = ? AND status = 'failed' AND created_at >= ?", appID, startDate).
 		Count(&failedPush)
 
 	// 计算成功率
@@ -465,10 +461,10 @@ func (s *ExportService) generateOverviewSheet(f *excelize.File, appID uint, star
 		successRate = float64(successPush) / float64(totalPush) * 100
 	}
 
-	// 活跃设备数
+	// 活跃设备数（与前端显示逻辑保持一致）
 	var activeDevices int64
 	database.DB.Model(&models.Device{}).
-		Where("app_id = ? AND last_active_at BETWEEN ? AND ?", appID, startDate, endDate).
+		Where("app_id = ? AND status = 1", appID).
 		Count(&activeDevices)
 
 	// 设置表头和数据
@@ -552,15 +548,11 @@ func (s *ExportService) generateDailyDataSheet(f *excelize.File, appID uint, sta
 			Count(&totalPush)
 
 		database.DB.Model(&models.PushLog{}).
-			Joins("JOIN push_results ON push_logs.id = push_results.push_log_id").
-			Where("push_logs.app_id = ? AND push_logs.created_at >= ? AND push_logs.created_at < ? AND push_results.success = ?",
-				appID, current, nextDay, true).
+			Where("app_id = ? AND status = 'sent' AND created_at >= ? AND created_at < ?", appID, current, nextDay).
 			Count(&successPush)
 
 		database.DB.Model(&models.PushLog{}).
-			Joins("JOIN push_results ON push_logs.id = push_results.push_log_id").
-			Where("push_logs.app_id = ? AND push_logs.created_at >= ? AND push_logs.created_at < ? AND push_results.success = ?",
-				appID, current, nextDay, false).
+			Where("app_id = ? AND status = 'failed' AND created_at >= ? AND created_at < ?", appID, current, nextDay).
 			Count(&failedPush)
 
 		// 写入数据
@@ -616,27 +608,25 @@ func (s *ExportService) generatePlatformDistributionSheet(f *excelize.File, appI
 	for _, platform := range platforms {
 		var totalPush, successPush, failedPush int64
 
-		// 总推送数
+		// 总推送数（与前端逻辑保持一致）
 		database.DB.Model(&models.PushLog{}).
 			Joins("JOIN devices ON push_logs.device_id = devices.id").
-			Where("push_logs.app_id = ? AND devices.platform = ? AND push_logs.created_at BETWEEN ? AND ?",
-				appID, platform, startDate, endDate).
+			Where("push_logs.app_id = ? AND devices.platform = ? AND push_logs.created_at >= ?",
+				appID, platform, startDate).
 			Count(&totalPush)
 
-		// 成功推送数
+		// 成功推送数（与前端逻辑保持一致）
 		database.DB.Model(&models.PushLog{}).
 			Joins("JOIN devices ON push_logs.device_id = devices.id").
-			Joins("JOIN push_results ON push_logs.id = push_results.push_log_id").
-			Where("push_logs.app_id = ? AND devices.platform = ? AND push_logs.created_at BETWEEN ? AND ? AND push_results.success = ?",
-				appID, platform, startDate, endDate, true).
+			Where("push_logs.app_id = ? AND devices.platform = ? AND push_logs.status = 'sent' AND push_logs.created_at >= ?",
+				appID, platform, startDate).
 			Count(&successPush)
 
-		// 失败推送数
+		// 失败推送数（与前端逻辑保持一致）
 		database.DB.Model(&models.PushLog{}).
 			Joins("JOIN devices ON push_logs.device_id = devices.id").
-			Joins("JOIN push_results ON push_logs.id = push_results.push_log_id").
-			Where("push_logs.app_id = ? AND devices.platform = ? AND push_logs.created_at BETWEEN ? AND ? AND push_results.success = ?",
-				appID, platform, startDate, endDate, false).
+			Where("push_logs.app_id = ? AND devices.platform = ? AND push_logs.status = 'failed' AND push_logs.created_at >= ?",
+				appID, platform, startDate).
 			Count(&failedPush)
 
 		// 计算成功率
