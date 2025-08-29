@@ -33,12 +33,19 @@ type PushRequest struct {
 
 // PushTarget 推送目标
 type PushTarget struct {
-	Type      string `json:"type" binding:"required,oneof=all devices tags groups" example:"devices"`
-	DeviceIDs []uint `json:"device_ids,omitempty"`
-	TagIDs    []uint `json:"tag_ids,omitempty"`
-	GroupIDs  []uint `json:"group_ids,omitempty"`
-	Platform  string `json:"platform,omitempty" example:"ios"`
-	Channel   string `json:"channel,omitempty" example:"fcm"` // 推送通道筛选
+	Type      string      `json:"type" binding:"required,oneof=all devices tags groups" example:"devices"`
+	DeviceIDs []uint      `json:"device_ids,omitempty"`
+	TagIDs    []uint      `json:"tag_ids,omitempty"` // 保留旧的TagIDs用于兼容
+	GroupIDs  []uint      `json:"group_ids,omitempty"`
+	Tags      []TagFilter `json:"tags,omitempty"` // 新的设备标签筛选
+	Platform  string      `json:"platform,omitempty" example:"ios"`
+	Channel   string      `json:"channel,omitempty" example:"fcm"` // 推送通道筛选
+}
+
+// TagFilter 标签筛选条件
+type TagFilter struct {
+	TagName  string `json:"tag_name" binding:"required" example:"user_type"`
+	TagValue string `json:"tag_value,omitempty" example:"vip"` // 可选，不提供则匹配所有值
 }
 
 // SendPush 发送推送
@@ -146,17 +153,39 @@ func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.
 		return devices, nil
 
 	case "tags":
-		// 标签设备
-		if len(target.TagIDs) == 0 {
+		// 设备标签筛选
+		if len(target.Tags) == 0 && len(target.TagIDs) == 0 {
 			return nil, errors.New("未指定目标标签")
 		}
+
 		var devices []models.Device
-		err := database.DB.Table("devices").
-			Joins("JOIN device_tag_maps ON devices.id = device_tag_maps.device_id").
-			Where("devices.app_id = ? AND devices.status = 1 AND device_tag_maps.tag_id IN ?", appID, target.TagIDs).
-			Find(&devices).Error
-		if err != nil {
-			return nil, errors.New("获取标签设备失败")
+
+		// 优先使用新的标签筛选方式
+		if len(target.Tags) > 0 {
+			// 使用新的设备标签筛选
+			deviceTokens, err := s.getDeviceTokensByTags(appID, target.Tags)
+			if err != nil {
+				return nil, fmt.Errorf("根据标签获取设备失败: %v", err)
+			}
+
+			if len(deviceTokens) == 0 {
+				return []models.Device{}, nil // 返回空列表而不是错误
+			}
+
+			// 根据设备Token获取设备信息
+			err = query.Where("token IN ?", deviceTokens).Find(&devices).Error
+			if err != nil {
+				return nil, errors.New("获取标签设备失败")
+			}
+		} else {
+			// 兼容旧的TagIDs方式
+			err := database.DB.Table("devices").
+				Joins("JOIN device_tag_maps ON devices.id = device_tag_maps.device_id").
+				Where("devices.app_id = ? AND devices.status = 1 AND device_tag_maps.tag_id IN ?", appID, target.TagIDs).
+				Find(&devices).Error
+			if err != nil {
+				return nil, errors.New("获取标签设备失败")
+			}
 		}
 		return devices, nil
 
@@ -697,4 +726,34 @@ func (s *PushService) applyFilterRules(query *gorm.DB, filterRules []FilterRule)
 		}
 	}
 	return query
+}
+
+// getDeviceTokensByTags 根据标签筛选条件获取设备Token列表
+func (s *PushService) getDeviceTokensByTags(appID uint, tags []TagFilter) ([]string, error) {
+	if len(tags) == 0 {
+		return []string{}, nil
+	}
+
+	// 使用TagService来获取设备Token
+	tagService := NewTagService()
+	var allDeviceTokens []string
+	deviceTokenSet := make(map[string]bool) // 用于去重
+
+	for _, tag := range tags {
+		// 调用TagService的方法获取设备Token列表
+		deviceTokens, err := tagService.GetDevicesByTag(appID, tag.TagName, tag.TagValue)
+		if err != nil {
+			return nil, fmt.Errorf("获取标签 %s=%s 的设备失败: %v", tag.TagName, tag.TagValue, err)
+		}
+
+		// 合并结果并去重
+		for _, token := range deviceTokens {
+			if !deviceTokenSet[token] {
+				deviceTokenSet[token] = true
+				allDeviceTokens = append(allDeviceTokens, token)
+			}
+		}
+	}
+
+	return allDeviceTokens, nil
 }

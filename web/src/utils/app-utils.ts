@@ -27,7 +27,7 @@ export const APP_SELECTION_DESCRIPTIONS = {
   config: '请先选择一个应用来管理推送配置',
   devices: '请先选择一个应用来查看其设备列表',
   deviceGroups: '请先选择一个应用来管理设备分组',
-  userTags: '请在左侧边栏选择一个应用来管理用户标签',
+  deviceTags: '请在左侧边栏选择一个应用来管理设备标签',
   scheduledPush: '选择应用后查看定时推送',
 } as const
 

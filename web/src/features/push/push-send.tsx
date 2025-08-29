@@ -4,12 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { 
   Send, 
- 
+  Tag,
   Smartphone, 
-
   Loader2,
   Clock,
-
   UserCheck
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -53,6 +51,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { PushService } from '@/services/push-service'
 import { ScheduledPushService } from '@/services/scheduled-push-service'
 import { NoAppSelected } from '@/components/no-app-selected'
+import { TagSelector } from '@/components/tag-selector'
 import { requireApp, APP_SELECTION_DESCRIPTIONS } from '@/utils/app-utils'
 import { toast } from 'sonner'
 import { useLocation } from '@tanstack/react-router'
@@ -66,10 +65,14 @@ const pushFormSchema = z.object({
     url: z.string().url('请输入有效的URL').optional().or(z.literal('')),
     data: z.string().optional(),
   }).optional(),
-  target_type: z.enum(['single', 'batch', 'broadcast', 'groups']).refine(val => val, {
+  target_type: z.enum(['single', 'batch', 'tags', 'broadcast', 'groups']).refine(val => val, {
     message: '请选择推送类型',
   }),
   device_ids: z.string().optional(),
+  tags: z.array(z.object({
+    tag_name: z.string().min(1, '标签名称不能为空'),
+    tag_value: z.string().optional(),
+  })).optional(),
   group_ids: z.array(z.number()).optional(),
   platform: z.string().optional(),
   vendor: z.string().optional(),
@@ -103,6 +106,7 @@ export default function PushSend() {
       },
       target_type: 'single',
       device_ids: '',
+      tags: [],
       platform: '',
       vendor: '',
       schedule_time: '',
@@ -189,6 +193,15 @@ export default function PushSend() {
             targetConfig = JSON.stringify(deviceIds)
             break
           }
+
+          case 'tags': {
+            if (!data.tags || data.tags.length === 0) {
+              toast.error('请至少添加一个标签筛选条件')
+              return
+            }
+            targetConfig = JSON.stringify(data.tags)
+            break
+          }
             
           case 'broadcast': {
             const broadcastConfig: Record<string, string> = {}
@@ -250,6 +263,25 @@ export default function PushSend() {
             })
             break
           }
+
+          case 'tags': {
+            if (!data.tags || data.tags.length === 0) {
+              toast.error('请至少添加一个标签筛选条件')
+              return
+            }
+            await PushService.sendByTags(currentApp.id, {
+              title: data.title,
+              content: data.content,
+              payload: data.payload,
+              target: {
+                type: 'tags',
+                tags: data.tags,
+                platform: data.platform || undefined,
+                channel: data.vendor || undefined,
+              }
+            })
+            break
+          }
             
           case 'broadcast':
             await PushService.sendBroadcast(currentApp.id, {
@@ -303,6 +335,12 @@ export default function PushSend() {
       title: '批量推送',
       description: '向多个指定设备发送推送',
       icon: <UserCheck className="h-5 w-5" />,
+    },
+    {
+      id: 'tags',
+      title: '标签推送',
+      description: '向具有指定标签的设备发送推送',
+      icon: <Tag className="h-5 w-5" />,
     },
     {
       id: 'broadcast',
@@ -531,6 +569,14 @@ export default function PushSend() {
                                   <FormMessage />
                                 </FormItem>
                               )}
+                            />
+                          )}
+
+                          {activeTab === 'tags' && (
+                            <TagSelector
+                              appId={currentApp.id}
+                              value={form.watch('tags') || []}
+                              onChange={(tags) => form.setValue('tags', tags)}
                             />
                           )}
 
