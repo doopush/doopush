@@ -1,5 +1,5 @@
 import apiClient from './api-client'
-import type { DeviceGroup, Device } from '@/types/api'
+import type { DeviceGroup, Device, PaginationEnvelope } from '@/types/api'
 
 export interface FilterRule {
   field: string
@@ -23,26 +23,16 @@ export interface UpdateGroupRequest {
   is_active: boolean
 }
 
-export interface GroupsResponse {
-  groups: DeviceGroup[]
-  total: number
-  page: number
-  page_size: number
-}
-
 export interface GroupDetailsResponse {
   group: DeviceGroup
-  devices: Device[]
-  total: number
-  page: number
-  page_size: number
+  items: Device[]
 }
 
 export class GroupService {
   /**
    * 获取设备分组列表
    */
-  static async getGroups(appId: number, page = 1, pageSize = 20): Promise<GroupsResponse> {
+  static async getGroups(appId: number, page = 1, pageSize = 20): Promise<PaginationEnvelope<DeviceGroup>> {
     return apiClient.get(`/apps/${appId}/device-groups`, {
       params: { page, page_size: pageSize }
     })
@@ -51,7 +41,7 @@ export class GroupService {
   /**
    * 获取分组详情
    */
-  static async getGroup(appId: number, groupId: number, page = 1, pageSize = 20): Promise<GroupDetailsResponse> {
+  static async getGroup(appId: number, groupId: number, page = 1, pageSize = 20): Promise<PaginationEnvelope<GroupDetailsResponse>> {
     return apiClient.get(`/apps/${appId}/device-groups/${groupId}`, {
       params: { page, page_size: pageSize }
     })

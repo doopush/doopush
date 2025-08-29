@@ -239,14 +239,12 @@ func (ctrl *SchedulerController) GetScheduledPushes(ctx *gin.Context) {
 		return
 	}
 
-	response.Success(ctx, gin.H{
-		"data": pushes,
-		"pagination": gin.H{
-			"total":     total,
-			"page":      page,
-			"page_size": pageSize,
-		},
-	})
+	// 统一的分页响应结构
+	// 改为: { current_page, page_size, total_items, total_pages, data: { items: [] } }
+	// 使用 utils.NewPaginationResponse 构建
+	response.Success(ctx, utils.NewPaginationResponse(page, pageSize, total, gin.H{
+		"items": pushes,
+	}))
 }
 
 // GetScheduledPushStats 获取定时推送统计数据

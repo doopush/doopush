@@ -6,6 +6,7 @@ import (
 	"github.com/doopush/doopush/api/internal/models"
 	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/response"
+	"github.com/doopush/doopush/api/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -174,8 +175,13 @@ func (ctrl *TagController) GetAppTagStatistics(ctx *gin.Context) {
 	}
 
 	limit := 20
+	// 兼容 limit 与 page_size
 	if limitStr := ctx.Query("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	} else if ps := ctx.Query("page_size"); ps != "" {
+		if l, err := strconv.Atoi(ps); err == nil && l > 0 && l <= 100 {
 			limit = l
 		}
 	}
@@ -188,7 +194,10 @@ func (ctrl *TagController) GetAppTagStatistics(ctx *gin.Context) {
 		return
 	}
 
-	response.Success(ctx, result)
+	// 使用统一分页响应封装
+	response.Success(ctx, utils.NewPaginationResponse(page, limit, int64(result.Pagination.Total), gin.H{
+		"items": result.Data,
+	}))
 }
 
 // BatchAddDeviceTagsRequest 批量添加设备标签请求
@@ -284,4 +293,63 @@ func (ctrl *TagController) GetDevicesByTag(ctx *gin.Context) {
 	}
 
 	response.Success(ctx, deviceTokens)
+}
+
+// ListDeviceTagsRequest 标签管理分页查询参数
+type ListDeviceTagsRequest struct {
+	Page        int    `form:"page,default=1"`
+	PageSize    int    `form:"page_size,default=20"`
+	DeviceToken string `form:"device_token"`
+	TagName     string `form:"tag_name"`
+	TagValue    string `form:"tag_value"`
+	Search      string `form:"search"`
+}
+
+// ListDeviceTags 分页获取设备标签（管理页使用）
+// @Summary 分页获取设备标签
+// @Description 按设备token/标签名/标签值/关键字筛选设备标签，返回统一分页结构
+// @Tags 设备标签
+// @Accept json
+// @Produce json
+// @Param appId path int true "应用ID"
+// @Param page query int false "页码" example(1)
+// @Param page_size query int false "每页数量" example(20)
+// @Param device_token query string false "设备Token"
+// @Param tag_name query string false "标签名称"
+// @Param tag_value query string false "标签值"
+// @Param search query string false "搜索关键词"
+// @Success 200 {object} response.APIResponse{data=utils.PaginationResponse[[]models.DeviceTag]}
+// @Failure 400 {object} response.APIResponse "请求参数错误"
+// @Router /apps/{appId}/device-tags [get]
+func (ctrl *TagController) ListDeviceTags(ctx *gin.Context) {
+	appID, err := strconv.ParseUint(ctx.Param("appId"), 10, 64)
+	if err != nil {
+		response.BadRequest(ctx, "无效的应用ID")
+		return
+	}
+
+	// 解析查询参数
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("page_size", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 200 {
+		pageSize = 20
+	}
+
+	deviceToken := ctx.Query("device_token")
+	tagName := ctx.Query("tag_name")
+	tagValue := ctx.Query("tag_value")
+	search := ctx.Query("search")
+
+	tags, total, svcErr := ctrl.tagService.ListDeviceTags(uint(appID), page, pageSize, deviceToken, tagName, tagValue, search)
+	if svcErr != nil {
+		response.InternalServerError(ctx, "获取设备标签失败")
+		return
+	}
+
+	response.Success(ctx, utils.NewPaginationResponse(page, pageSize, total, gin.H{
+		"items": tags,
+	}))
 }

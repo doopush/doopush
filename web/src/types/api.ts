@@ -179,57 +179,28 @@ export interface TagStatistic {
   updated_at?: string
 }
 
-export interface PaginationInfo {
-  page: number
-  limit: number
-  total: number
+// ===== 统一分页请求/响应 =====
+export interface SortField {
+  key: string
+  desc: boolean
+}
+
+export interface PaginationRequest<F extends Record<string, unknown> = Record<string, unknown>> {
+  page?: number
+  page_size?: number
+  sorts?: SortField[]
+  filters?: F
+}
+
+export interface PaginationEnvelope<TData> {
+  current_page: number
+  page_size: number
+  total_items: number
   total_pages: number
-  has_next: boolean
-  has_prev: boolean
-}
-
-export interface TagStatisticsResponse {
-  data: TagStatistic[]
-  pagination: PaginationInfo
-}
-
-// ===== 设备分组 =====
-export interface DeviceGroup {
-  id: number
-  app_id: number
-  name: string
-  description: string
-  filter_rules: string // JSON字符串
-  device_count: number
-  status: number // 1=启用, 0=禁用
-  created_at: string
-  updated_at: string
-}
-
-// ===== 定时推送 =====
-export interface ScheduledPush {
-  id: number
-  app_id: number
-  name: string
-  title: string
-  content: string
-  payload?: string
-  badge?: number
-  template_id: number | null
-  push_type: 'single' | 'batch' | 'broadcast' | 'groups'
-  target_type: string
-  target_config: string
-  scheduled_at: string
-  timezone: string
-  repeat_type: 'once' | 'daily' | 'weekly' | 'monthly'
-  repeat_config?: string
-  cron_expr?: string
-  next_run_at?: string
-  last_run_at?: string
-  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed'
-  created_by: number
-  created_at: string
-  updated_at: string
+  data: {
+    items: TData[]
+    // 这里可按需扩展：额外统计字段等
+  }
 }
 
 // ===== 上传文件 =====
@@ -286,13 +257,7 @@ export interface PushStatistics {
   updated_at: string
 }
 
-// ===== 请求类型 =====
-export interface PaginationParams {
-  page?: number
-  limit?: number
-  page_size?: number
-}
-
+// ===== 认证与通用响应 =====
 export interface LoginRequest {
   username: string
   password: string
@@ -318,6 +283,12 @@ export interface UpdateProfileRequest {
 export interface ChangePasswordRequest {
   old_password: string
   new_password: string
+}
+
+export interface APIResponse<T = unknown> {
+  code: number
+  message: string
+  data: T
 }
 
 // ===== 推送请求 =====
@@ -349,29 +320,27 @@ export interface SendPushRequest {
   schedule_time?: string
 }
 
-// ===== 筛选规则 =====
-export interface FilterRule {
-  field: string
-  operator: 'equals' | 'contains' | 'in' | 'not_in' | 'is_null' | 'is_not_null'
-  value: {
-    string_value?: string
-    string_values?: string[]
-  }
-}
-
-// ===== 通用响应类型 =====
-export interface APIResponse<T = unknown> {
-  code: number
-  message: string
-  data: T
-}
-
-export interface PaginatedResponse<T = unknown> {
-  data: T[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    pages: number
-  }
+export interface ScheduledPush {
+  id: number
+  app_id: number
+  name: string
+  title: string
+  content: string
+  payload?: string
+  badge?: number
+  template_id: number | null
+  push_type: 'single' | 'batch' | 'broadcast' | 'groups'
+  target_type: string
+  target_config: string
+  scheduled_at: string
+  timezone: string
+  repeat_type: 'once' | 'daily' | 'weekly' | 'monthly'
+  repeat_config?: string
+  cron_expr?: string
+  next_run_at?: string
+  last_run_at?: string
+  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed'
+  created_by: number
+  created_at: string
+  updated_at: string
 }

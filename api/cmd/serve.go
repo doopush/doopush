@@ -155,6 +155,7 @@ func startServer() {
 			authenticated.POST("/apps/:appId/templates/:id/render", templateCtrl.RenderTemplate)
 
 			// 设备标签管理
+			authenticated.GET("/apps/:appId/device-tags", tagCtrl.ListDeviceTags)
 			authenticated.GET("/apps/:appId/device-tags/:deviceToken", tagCtrl.GetDeviceTags)
 			authenticated.POST("/apps/:appId/device-tags/:deviceToken", tagCtrl.AddDeviceTag)
 			authenticated.DELETE("/apps/:appId/device-tags/:deviceToken/:tagName", tagCtrl.DeleteDeviceTag)

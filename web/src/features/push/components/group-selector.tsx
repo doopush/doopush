@@ -33,7 +33,7 @@ export function GroupSelector({ value, onChange, appId }: GroupSelectorProps) {
       setLoading(true)
       try {
         const response = await GroupService.getGroups(appId, 1, 100)
-        setGroups(response.groups)
+        setGroups(response.data.items)
       } catch (error) {
         console.error('获取分组失败:', error)
       } finally {

@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +41,7 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ConfigDrawer } from '@/components/config-drawer'
+import { Pagination } from '@/components/pagination'
 
 export function ScheduledPush() {
   const { currentApp } = useAuthStore()
@@ -49,11 +50,12 @@ export function ScheduledPush() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [repeatFilter, setRepeatFilter] = useState<string>('all')
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-  })
+  
+  // 分页（统一）
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
 
   // 对话框状态
   const [createOpen, setCreateOpen] = useState(false)
@@ -76,33 +78,27 @@ export function ScheduledPush() {
     try {
       setLoading(true)
       const response = await ScheduledPushService.getScheduledPushes(currentApp.id, {
-        page: pagination.page,
-        limit: pagination.limit,
-        search: search || undefined,
-        status: statusFilter === 'all' ? undefined : statusFilter,
-        repeat_type: repeatFilter === 'all' ? undefined : repeatFilter,
+        page: currentPage,
+        page_size: pageSize,
+        sorts: undefined,
+        filters: {
+          search: search || undefined,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          repeat_type: repeatFilter === 'all' ? undefined : repeatFilter,
+        }
       })
 
-      setScheduledPushes(response.data || [])
-      
-      // 安全检查分页信息
-      const paginationInfo = response.pagination || {
-        page: pagination.page,
-        limit: pagination.limit,
-        total: 0
-      }
-      
-      setPagination({
-        page: paginationInfo.page,
-        limit: paginationInfo.limit,
-        total: paginationInfo.total,
-      })
+      setScheduledPushes(response.data.items || [])
+      setCurrentPage(response.current_page)
+      setPageSize(response.page_size)
+      setTotalItems(response.total_items)
+      setTotalPages(response.total_pages)
     } catch (error) {
       toast.error((error as Error).message || '获取定时推送列表失败')
     } finally {
       setLoading(false)
     }
-  }, [currentApp, pagination.page, pagination.limit, search, statusFilter, repeatFilter])
+  }, [currentApp, currentPage, pageSize, search, statusFilter, repeatFilter])
 
   // 获取统计数据
   const fetchStats = useCallback(async () => {
@@ -338,19 +334,11 @@ export function ScheduledPush() {
             </SelectContent>
           </Select>
         </div>
-
-
       </div>
 
       {/* 定时推送列表表格 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>定时推送列表</CardTitle>
-          <CardDescription>
-            管理所有定时推送任务
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <Card className='p-0'>
+        <CardContent className='p-0'>
           <Table>
             <TableHeader>
               <TableRow>
@@ -479,36 +467,19 @@ export function ScheduledPush() {
               )}
             </TableBody>
           </Table>
-
-          {/* 分页控制 */}
-          {pagination.total > pagination.limit && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-muted-foreground">
-                显示 {Math.min((pagination.page - 1) * pagination.limit + 1, pagination.total)} - {Math.min(pagination.page * pagination.limit, pagination.total)} 条，
-                共 {pagination.total} 条
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                  disabled={pagination.page <= 1}
-                >
-                  上一页
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                  disabled={pagination.page * pagination.limit >= pagination.total}
-                >
-                  下一页
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
+
+      {/* 分页控制（统一组件） */}
+      <Pagination
+        className='mt-4'
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={totalItems}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+      />
 
         {/* 对话框组件 */}
         <CreateScheduledPushDialog

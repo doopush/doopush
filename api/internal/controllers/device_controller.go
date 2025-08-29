@@ -8,6 +8,7 @@ import (
 	"github.com/doopush/doopush/api/internal/config"
 	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/response"
+	"github.com/doopush/doopush/api/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -174,18 +175,9 @@ func (d *DeviceController) GetDevices(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, DeviceListResponse{
-		Devices: func() []interface{} {
-			result := make([]interface{}, len(devices))
-			for i, device := range devices {
-				result[i] = device
-			}
-			return result
-		}(),
-		Total: total,
-		Page:  page,
-		Size:  pageSize,
-	})
+	response.Success(c, utils.NewPaginationResponse(page, pageSize, total, gin.H{
+		"items": devices,
+	}))
 }
 
 // GetDevice 获取设备详情

@@ -1,9 +1,9 @@
 import apiClient from './api-client'
 import type { 
   PushLog, 
- 
   SendPushRequest, 
-  PaginationParams,
+  PaginationRequest,
+  PaginationEnvelope,
   PushResult,
 } from '@/types/api'
 
@@ -93,19 +93,9 @@ export class PushService {
   }
 
   /**
-   * 获取推送日志
+   * 获取推送日志（统一分页响应）
    */
-  static async getPushLogs(appId: number, params?: PaginationParams & {
-    status?: string
-    platform?: string
-    start_time?: string
-    end_time?: string
-  }): Promise<{
-    logs: PushLog[]
-    total: number
-    page: number
-    page_size: number
-  }> {
+  static async getPushLogs(appId: number, params?: PaginationRequest<{ status?: string; platform?: string; start_time?: string; end_time?: string }>): Promise<PaginationEnvelope<PushLog>> {
     return apiClient.get(`/apps/${appId}/push/logs`, { params })
   }
 

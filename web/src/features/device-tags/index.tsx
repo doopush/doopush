@@ -20,6 +20,7 @@ import { NoAppSelected } from '@/components/no-app-selected'
 import type { TagStatistic, DeviceTag } from '@/types/api'
 import { Tag, Smartphone, Plus, Edit, Trash2, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
+import { Pagination } from '@/components/pagination'
 
 export function DeviceTags() {
   const [tagStats, setTagStats] = useState<TagStatistic[] | null>(null)
@@ -31,32 +32,52 @@ export function DeviceTags() {
   const [statsSearchQuery, setStatsSearchQuery] = useState('')
   const [isTagsLoading, setIsTagsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('statistics')
-  
+
+  // 管理列表分页（前端分页）
+  const [mgmtCurrentPage, setMgmtCurrentPage] = useState(1)
+  const [mgmtPageSize, setMgmtPageSize] = useState(20)
+  const [mgmtTotalItems, setMgmtTotalItems] = useState(0)
+  const [mgmtTotalPages, setMgmtTotalPages] = useState(0)
+
   // 对话框状态
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingTag, setEditingTag] = useState<DeviceTag | null>(null)
   const [deletingTag, setDeletingTag] = useState<DeviceTag | null>(null)
-  
+
   // 表单状态
   const [formData, setFormData] = useState({
     device_token: '',
     tag_name: '',
     tag_value: ''
   })
-  
+
   const { currentApp } = useAuthStore()
+
+  // 分页（用于标签统计）
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
 
   useEffect(() => {
     if (currentApp?.id) {
       loadTagStatistics()
       if (activeTab === 'management') {
-        loadAllDeviceTags()
+        loadDeviceTagsPaged()
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp?.id, activeTab])
+  }, [currentApp?.id, activeTab, currentPage, pageSize, statsSearchQuery])
+
+  // 管理页：当分页或搜索变更时，自动加载后端分页数据
+  useEffect(() => {
+    if (currentApp?.id && activeTab === 'management') {
+      loadDeviceTagsPaged()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentApp?.id, activeTab, mgmtCurrentPage, mgmtPageSize, searchQuery])
 
   useEffect(() => {
     // 过滤标签
@@ -64,7 +85,7 @@ export function DeviceTags() {
       setFilteredTags(deviceTags)
     } else {
       const query = searchQuery.toLowerCase()
-      const filtered = deviceTags.filter(tag => 
+      const filtered = deviceTags.filter(tag =>
         tag.device_token.toLowerCase().includes(query) ||
         tag.tag_name.toLowerCase().includes(query) ||
         tag.tag_value.toLowerCase().includes(query)
@@ -73,13 +94,18 @@ export function DeviceTags() {
     }
   }, [deviceTags, searchQuery])
 
+  // 仅当搜索词变化时重置“标签管理”分页到第1页，避免翻页后被数据更新覆盖
   useEffect(() => {
-    // 过滤统计数据
+    setMgmtCurrentPage(1)
+  }, [searchQuery])
+
+  useEffect(() => {
+    // 过滤统计数据（本地过滤当前页）
     if (!statsSearchQuery.trim()) {
       setFilteredStats(tagStats || [])
     } else {
       const query = statsSearchQuery.toLowerCase()
-      const filtered = (tagStats || []).filter(stat => 
+      const filtered = (tagStats || []).filter(stat =>
         stat.tag_name.toLowerCase().includes(query) ||
         stat.tag_value.toLowerCase().includes(query)
       )
@@ -89,11 +115,17 @@ export function DeviceTags() {
 
   const loadTagStatistics = async () => {
     if (!currentApp?.id) return
-    
+
     try {
       setIsLoading(true)
-      const response = await TagService.getTagStatistics(currentApp.id, 1, 100) // 获取前100个标签用于统计展示
-      setTagStats(response.data || [])
+      const resp = await TagService.getTagStatistics(currentApp.id, {
+        page: currentPage,
+        page_size: pageSize,
+        filters: { search: statsSearchQuery || undefined }
+      })
+      setTagStats(resp.data.items || [])
+      setTotalItems(resp.total_items)
+      setTotalPages(resp.total_pages)
     } catch (error) {
       console.error('加载标签统计失败:', error)
       toast.error('加载标签统计失败')
@@ -102,36 +134,23 @@ export function DeviceTags() {
     }
   }
 
-  const loadAllDeviceTags = async () => {
+  const loadDeviceTagsPaged = async () => {
     if (!currentApp?.id) return
-    
+
     try {
       setIsTagsLoading(true)
-      // 由于我们没有直接获取所有设备标签的API，我们通过标签统计来获取设备信息
-      const response = await TagService.getTagStatistics(currentApp.id, 1, 100) // 获取前100个标签
-      const stats = response.data || []
-      const tags: DeviceTag[] = []
-      
-      // 为每个标签获取设备列表
-      for (const stat of stats) {
-        try {
-          const deviceTokens = await TagService.getDevicesByTag(currentApp.id, stat.tag_name, stat.tag_value)
-          deviceTokens.forEach(token => {
-            tags.push({
-              id: Math.random(), // 临时ID，实际应该从API返回
-              app_id: currentApp.id,
-              device_token: token,
-              tag_name: stat.tag_name,
-              tag_value: stat.tag_value,
-              created_at: new Date().toISOString()
-            })
-          })
-        } catch (error) {
-          console.error(`获取标签 ${stat.tag_name}=${stat.tag_value} 的设备失败:`, error)
-        }
-      }
-      
-      setDeviceTags(tags)
+      const resp = await TagService.getDeviceTagsPaged(currentApp.id, {
+        page: mgmtCurrentPage,
+        page_size: mgmtPageSize,
+        filters: {
+          search: searchQuery || undefined,
+        },
+      })
+      setDeviceTags(resp.data.items || [])
+      setMgmtCurrentPage(resp.current_page)
+      setMgmtPageSize(resp.page_size)
+      setMgmtTotalItems(resp.total_items)
+      setMgmtTotalPages(resp.total_pages)
     } catch (error) {
       console.error('加载设备标签失败:', error)
       toast.error('加载设备标签失败')
@@ -151,15 +170,15 @@ export function DeviceTags() {
         tag_name: formData.tag_name,
         tag_value: formData.tag_value
       })
-      
+
       toast.success('标签创建成功')
       setIsCreateDialogOpen(false)
       setFormData({ device_token: '', tag_name: '', tag_value: '' })
-      
-      // 刷新数据
+
       await loadTagStatistics()
       if (activeTab === 'management') {
-        await loadAllDeviceTags()
+        setMgmtCurrentPage(1)
+        await loadDeviceTagsPaged()
       }
     } catch (error) {
       console.error('创建标签失败:', error)
@@ -174,24 +193,21 @@ export function DeviceTags() {
     }
 
     try {
-      // 先删除旧标签
       await TagService.deleteDeviceTag(currentApp.id, editingTag.device_token, editingTag.tag_name)
-      
-      // 再创建新标签
       await TagService.addDeviceTag(currentApp.id, editingTag.device_token, {
         tag_name: formData.tag_name,
         tag_value: formData.tag_value
       })
-      
+
       toast.success('标签更新成功')
       setIsEditDialogOpen(false)
       setEditingTag(null)
       setFormData({ device_token: '', tag_name: '', tag_value: '' })
-      
-      // 刷新数据
+
       await loadTagStatistics()
       if (activeTab === 'management') {
-        await loadAllDeviceTags()
+        setMgmtCurrentPage(1)
+        await loadDeviceTagsPaged()
       }
     } catch (error) {
       console.error('更新标签失败:', error)
@@ -207,11 +223,11 @@ export function DeviceTags() {
       toast.success('标签删除成功')
       setIsDeleteDialogOpen(false)
       setDeletingTag(null)
-      
-      // 刷新数据
+
       await loadTagStatistics()
       if (activeTab === 'management') {
-        await loadAllDeviceTags()
+        setMgmtCurrentPage(1)
+        await loadDeviceTagsPaged()
       }
     } catch (error) {
       console.error('删除标签失败:', error)
@@ -251,7 +267,7 @@ export function DeviceTags() {
           </div>
         </Header>
 
-        <NoAppSelected 
+        <NoAppSelected
           icon={<Tag className="h-16 w-16 text-muted-foreground" />}
           description="请选择应用以管理设备标签"
         />
@@ -272,11 +288,32 @@ export function DeviceTags() {
 
       <Main>
         <div className='space-y-6'>
-          <div className='flex flex-col gap-1'>
-            <h1 className='text-2xl font-bold tracking-tight'>设备标签管理</h1>
-            <p className='text-muted-foreground'>
-              管理 "{currentApp.name}" 应用的设备标签，用于精准推送和设备分群
-            </p>
+          <div className='flex items-center justify-between mb-6 gap-4'>
+            <div className='flex flex-col gap-1'>
+              <h1 className='text-2xl font-bold tracking-tight'>设备标签管理</h1>
+              <p className='text-muted-foreground'>
+                管理 "{currentApp.name}" 应用的设备标签，用于精准推送和设备分群
+              </p>
+            </div>
+            <div className='flex items-center gap-2'>
+              {activeTab === 'statistics' ? (
+                <Button variant="outline" onClick={loadTagStatistics} disabled={isLoading}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  刷新统计
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={loadDeviceTagsPaged} disabled={isTagsLoading}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${isTagsLoading ? 'animate-spin' : ''}`} />
+                    刷新
+                  </Button>
+                  <Button onClick={openCreateDialog}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    添加标签
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
@@ -284,7 +321,7 @@ export function DeviceTags() {
               <TabsTrigger value="statistics">标签统计</TabsTrigger>
               <TabsTrigger value="management">标签管理</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="statistics" className="space-y-6">
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                 <div className="flex-1">
@@ -294,12 +331,6 @@ export function DeviceTags() {
                     onChange={(e) => setStatsSearchQuery(e.target.value)}
                     className="max-w-sm"
                   />
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={loadTagStatistics} disabled={isLoading}>
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                    刷新统计
-                  </Button>
                 </div>
               </div>
 
@@ -349,29 +380,27 @@ export function DeviceTags() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className='flex items-center gap-2 mb-3'>
+                        <div className='flex items-center gap-2'>
                           <Smartphone className='h-4 w-4 text-primary' />
                           <span className='text-2xl font-bold text-primary'>{stat.device_count}</span>
                           <span className='text-sm text-muted-foreground'>设备</span>
                         </div>
-                        {stat.updated_at && (
-                          <div className='pt-2 border-t border-border'>
-                            <p className='text-xs text-muted-foreground'>
-                              更新时间: {new Date(stat.updated_at).toLocaleString('zh-CN', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </p>
-                          </div>
-                        )}
                       </CardContent>
                     </Card>
                   ))}
                 </div>
               )}
+
+              {/* 统计分页 */}
+              <Pagination
+                className='mt-4'
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+              />
             </TabsContent>
 
             <TabsContent value="management" className="space-y-4">
@@ -383,16 +412,6 @@ export function DeviceTags() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="max-w-sm"
                   />
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={loadAllDeviceTags} disabled={isTagsLoading}>
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isTagsLoading ? 'animate-spin' : ''}`} />
-                    刷新
-                  </Button>
-                  <Button onClick={openCreateDialog}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    添加标签
-                  </Button>
                 </div>
               </div>
 
@@ -423,11 +442,11 @@ export function DeviceTags() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredTags.map((tag) => (
-                          <TableRow key={`${tag.device_token}-${tag.tag_name}`}>
+                        {deviceTags.map((tag) => (
+                          <TableRow key={`tag-${tag.id}`}>
                             <TableCell className="font-mono text-sm">
-                              {tag.device_token.length > 20 
-                                ? `${tag.device_token.slice(0, 20)}...` 
+                              {tag.device_token.length > 20
+                                ? `${tag.device_token.slice(0, 20)}...`
                                 : tag.device_token}
                             </TableCell>
                             <TableCell>
@@ -454,6 +473,17 @@ export function DeviceTags() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* 管理分页 */}
+              <Pagination
+                className='mt-4'
+                currentPage={mgmtCurrentPage}
+                totalPages={mgmtTotalPages}
+                pageSize={mgmtPageSize}
+                totalItems={mgmtTotalItems}
+                onPageChange={(p) => { setMgmtCurrentPage(p) }}
+                onPageSizeChange={(size) => { setMgmtPageSize(size); setMgmtCurrentPage(1) }}
+              />
             </TabsContent>
           </Tabs>
 
@@ -570,8 +600,8 @@ export function DeviceTags() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">设备Token:</span>
                       <span className="font-mono">
-                        {deletingTag.device_token.length > 20 
-                          ? `${deletingTag.device_token.slice(0, 20)}...` 
+                        {deletingTag.device_token.length > 20
+                          ? `${deletingTag.device_token.slice(0, 20)}...`
                           : deletingTag.device_token}
                       </span>
                     </div>

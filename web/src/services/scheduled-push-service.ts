@@ -1,5 +1,5 @@
 import { apiClient } from './api-client'
-import type { ScheduledPush, PaginationParams, APIResponse, PaginatedResponse } from '@/types/api'
+import type { ScheduledPush, PaginationRequest, PaginationEnvelope, APIResponse } from '@/types/api'
 
 export interface CreateScheduledPushRequest {
   title: string
@@ -33,11 +33,7 @@ export interface UpdateScheduledPushRequest {
 }
 
 export class ScheduledPushService {
-  static async getScheduledPushes(appId: number, params?: PaginationParams & {
-    search?: string
-    status?: string
-    repeat_type?: string
-  }): Promise<PaginatedResponse<ScheduledPush>> {
+  static async getScheduledPushes(appId: number, params?: PaginationRequest<{ search?: string; status?: string; repeat_type?: string }>): Promise<PaginationEnvelope<ScheduledPush>> {
     return apiClient.get(`/apps/${appId}/scheduled-pushes`, { params })
   }
 

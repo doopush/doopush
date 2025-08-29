@@ -40,17 +40,26 @@ import type { DeviceGroup } from '@/types/api'
 import { CreateGroupDialog } from './components/create-group-dialog'
 import { EditGroupDialog } from './components/edit-group-dialog'
 import { EditRulesDialog } from './components/edit-rules-dialog'
+import { Pagination } from '@/components/pagination'
+import { Input } from '@/components/ui/input'
 
 export function DeviceGroups() {
   const { currentApp } = useAuthStore()
   const [groups, setGroups] = useState<DeviceGroup[]>([])
   const [loading, setLoading] = useState(true)
-  
+  const [searchTerm, setSearchTerm] = useState('')
+
   // 弹窗状态
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [rulesDialogOpen, setRulesDialogOpen] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<DeviceGroup | null>(null)
+
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
 
   // 加载设备分组
   useEffect(() => {
@@ -58,15 +67,19 @@ export function DeviceGroups() {
       loadGroups()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp])
+  }, [currentApp, currentPage, pageSize, searchTerm])
 
   const loadGroups = async () => {
     if (!currentApp) return
     
     try {
       setLoading(true)
-      const data = await DeviceService.getDeviceGroups(currentApp.id)
-      setGroups(data.groups)
+      const resp = await DeviceService.getDeviceGroups(currentApp.id, { page: currentPage, page_size: pageSize, filters: { name: searchTerm } })
+      setGroups(resp.data.items)
+      setCurrentPage(resp.current_page)
+      setPageSize(resp.page_size)
+      setTotalItems(resp.total_items)
+      setTotalPages(resp.total_pages)
     } catch (error) {
       console.error('加载设备分组失败:', error)
       toast.error('加载设备分组失败')
@@ -186,127 +199,150 @@ export function DeviceGroups() {
         />
       ) : (
         <Main>
-          <div className="space-y-6">
-            <div className='flex items-center justify-between'>
-              <div className='flex flex-col gap-1'>
-                <h1 className='text-2xl font-bold tracking-tight'>设备分组管理</h1>
-                <p className='text-muted-foreground'>
-                  管理应用 "{currentApp.name}" 的设备分组，支持基于条件的自动分组
-                </p>
-              </div>
-              <div className='flex items-center gap-2'>
-                <Button
-                  onClick={handleCreateGroup}
-                  disabled={loading}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  创建分组
-                </Button>
-                <Button variant="outline" onClick={loadGroups}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  刷新
-                </Button>
-              </div>
+          <div className='flex items-center justify-between mb-6'>
+            <div className='flex flex-col gap-1'>
+              <h1 className='text-2xl font-bold tracking-tight'>设备分组管理</h1>
+              <p className='text-muted-foreground'>
+                管理应用 "{currentApp.name}" 的设备分组，支持基于条件的自动分组
+              </p>
             </div>
-
-
-
-            {/* 分组列表 */}
-            <div className="space-y-4">
-              <h4 className="font-medium">设备分组列表</h4>
-
-              {loading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="h-16 bg-muted rounded animate-pulse" />
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>分组名称</TableHead>
-                        <TableHead>描述</TableHead>
-                        <TableHead>筛选条件</TableHead>
-                        <TableHead>状态</TableHead>
-                        <TableHead>创建时间</TableHead>
-                        <TableHead className="text-right">操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {groups.length === 0 ? (
-                        <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                            暂无设备分组
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        groups.map((group) => (
-                          <TableRow key={group.id}>
-                            <TableCell>
-                              <div className="font-medium">{group.name}</div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm text-muted-foreground max-w-xs truncate">
-                                {group.description || '无描述'}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-xs text-muted-foreground max-w-xs truncate">
-                                {parseConditions(group.conditions)}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={getStatusBadge(group.status).className}>
-                                {getStatusBadge(group.status).label}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
-                              {new Date(group.created_at).toLocaleString('zh-CN', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEditGroup(group)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    编辑分组
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleEditRules(group)}>
-                                    <Filter className="mr-2 h-4 w-4" />
-                                    编辑规则
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDeleteGroup(group)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    删除分组
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+            <div className='flex items-center gap-2'>
+              <Button
+                onClick={handleCreateGroup}
+                disabled={loading}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                创建分组
+              </Button>
+              <Button variant="outline" onClick={loadGroups}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                刷新
+              </Button>
             </div>
           </div>
+
+          {/* 搜索框 */}
+          <div className='mb-6'>
+            <Input
+              placeholder='搜索分组名称...'
+              className='h-9 w-full max-w-sm'
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          {/* 分组列表 */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>分组名称</TableHead>
+                  <TableHead>描述</TableHead>
+                  <TableHead>筛选条件</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>创建时间</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  // 加载状态
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <div className="space-y-2">
+                          <div className="h-4 w-48 bg-muted rounded animate-pulse" />
+                          <div className="h-3 w-32 bg-muted rounded animate-pulse" />
+                        </div>
+                      </TableCell>
+                      <TableCell><div className="h-4 w-20 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-12 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-12 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-20 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-8 bg-muted rounded animate-pulse" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : groups.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      {searchTerm ? '未找到匹配的分组' : '暂无分组'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  groups.map((group) => (
+                    <TableRow key={group.id}>
+                      <TableCell>
+                        <div className="font-medium">{group.name}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-muted-foreground max-w-xs truncate">
+                          {group.description || '无描述'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs text-muted-foreground max-w-xs truncate">
+                          {parseConditions(group.conditions)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusBadge(group.status).className}>
+                          {getStatusBadge(group.status).label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {new Date(group.created_at).toLocaleString('zh-CN', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditGroup(group)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              编辑分组
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditRules(group)}>
+                              <Filter className="mr-2 h-4 w-4" />
+                              编辑规则
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteGroup(group)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              删除分组
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+            
+          {/* 分页控件 */}
+          <Pagination
+            className='mt-4'
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            />
 
           {/* 弹窗组件 */}
           <CreateGroupDialog

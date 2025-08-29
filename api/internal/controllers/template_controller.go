@@ -5,6 +5,7 @@ import (
 
 	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/response"
+	"github.com/doopush/doopush/api/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -127,12 +128,9 @@ func (ctrl *TemplateController) GetTemplates(ctx *gin.Context) {
 		return
 	}
 
-	response.Success(ctx, gin.H{
-		"templates": templates,
-		"total":     total,
-		"page":      page,
-		"page_size": pageSize,
-	})
+	response.Success(ctx, utils.NewPaginationResponse(page, pageSize, total, gin.H{
+		"items": templates,
+	}))
 }
 
 // GetTemplate 获取模板详情

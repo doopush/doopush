@@ -73,6 +73,16 @@ func (a *AppController) CreateApp(c *gin.Context) {
 	}
 
 	userID := c.GetUint("user_id")
+	apps, err := a.appService.GetAllUserApps(userID)
+	if err != nil {
+		response.InternalServerError(c, err.Error())
+		return
+	}
+	if len(apps) >= 50 {
+		response.BadRequest(c, "最多创建50个应用")
+		return
+	}
+
 	app, err := a.appService.CreateApp(userID, req.Name, req.PackageName, req.Description, req.Platform, req.AppIcon)
 	if err != nil {
 		response.Error(c, http.StatusUnprocessableEntity, err.Error())

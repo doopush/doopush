@@ -46,12 +46,19 @@ import { DeleteTemplateDialog } from './components/delete-template-dialog'
 import { TemplatePreviewDialog } from './components/template-preview-dialog'
 import { TemplateRenderDialog } from './components/template-render-dialog'
 import type { MessageTemplate } from '@/types/api'
+import { Pagination } from '@/components/pagination'
 
 export function Templates() {
   const { currentApp } = useAuthStore()
   const [templates, setTemplates] = useState<MessageTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  
+  // 分页
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
   
   // 对话框状态
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -67,15 +74,19 @@ export function Templates() {
       loadTemplates()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp])
+  }, [currentApp, currentPage, pageSize])
 
   const loadTemplates = async () => {
     if (!currentApp) return
     
     try {
       setLoading(true)
-      const data = await TemplateService.getTemplates(currentApp.id)
-      setTemplates(data.templates)
+      const resp = await TemplateService.getTemplates(currentApp.id, { page: currentPage, page_size: pageSize })
+      setTemplates(resp.data.items)
+      setCurrentPage(resp.current_page)
+      setPageSize(resp.page_size)
+      setTotalItems(resp.total_items)
+      setTotalPages(resp.total_pages)
     } catch (error) {
       console.error('加载模板列表失败:', error)
     } finally {
@@ -347,6 +358,17 @@ export function Templates() {
                 </TableBody>
               </Table>
             </div>
+
+            {/* 分页控件 */}
+            <Pagination
+              className='mt-4'
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+            />
 
             {/* 对话框组件 */}
             <CreateTemplateDialog 

@@ -166,3 +166,37 @@ func (s *TagService) DeleteAllDeviceTags(appID uint, deviceToken string) error {
 	return database.DB.Where("app_id = ? AND device_token = ?", appID, deviceToken).
 		Delete(&models.DeviceTag{}).Error
 }
+
+// ListDeviceTags 分页获取设备标签（支持过滤）
+func (s *TagService) ListDeviceTags(appID uint, page, pageSize int, deviceToken, tagName, tagValue, search string) ([]models.DeviceTag, int64, error) {
+	var tags []models.DeviceTag
+	var total int64
+
+	query := database.DB.Model(&models.DeviceTag{}).Where("app_id = ?", appID)
+
+	if deviceToken != "" {
+		query = query.Where("device_token = ?", deviceToken)
+	}
+	if tagName != "" {
+		query = query.Where("tag_name = ?", tagName)
+	}
+	if tagValue != "" {
+		query = query.Where("tag_value = ?", tagValue)
+	}
+	if search != "" {
+		like := "%" + search + "%"
+		query = query.Where("device_token LIKE ? OR tag_name LIKE ? OR tag_value LIKE ?", like, like, like)
+	}
+
+	// 统计总数
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	if err := query.Order("created_at DESC").Limit(pageSize).Offset(offset).Find(&tags).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return tags, total, nil
+}

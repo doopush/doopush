@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { 
   History, 
-
   RefreshCw,
   Eye,
   Download,
@@ -56,6 +55,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { useNavigate } from '@tanstack/react-router'
+import { Pagination } from '@/components/pagination'
 
 export default function PushLogs() {
   const { currentApp } = useAuthStore()
@@ -70,10 +70,11 @@ export default function PushLogs() {
   const [logDetailsOpen, setLogDetailsOpen] = useState(false)
   const [selectedLog, setSelectedLog] = useState<PushLog | null>(null)
   
-  // 分页状态
-  const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-  const pageSize = 20
+  // 分页状态（统一）
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
 
   // 导出功能
   const { isExporting, exportPushLogs } = useExport({
@@ -91,7 +92,7 @@ export default function PushLogs() {
       loadPushLogs()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp, statusFilter, platformFilter, page])
+  }, [currentApp, statusFilter, platformFilter, currentPage, pageSize])
 
   const loadPushLogs = async () => {
     if (!currentApp) return
@@ -99,14 +100,17 @@ export default function PushLogs() {
     try {
       setLoading(true)
       const params = {
-        page,
+        page: currentPage,
         page_size: pageSize,
         ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(platformFilter !== 'all' && { platform: platformFilter }),
       }
-      const data = await PushService.getPushLogs(currentApp.id, params)
-      setLogs(data.logs)
-      setTotal(data.total)
+      const resp = await PushService.getPushLogs(currentApp.id, params)
+      setLogs(resp.data.items)
+      setCurrentPage(resp.current_page)
+      setPageSize(resp.page_size)
+      setTotalItems(resp.total_items)
+      setTotalPages(resp.total_pages)
     } catch (error) {
       console.error('加载推送日志失败:', error)
     } finally {
@@ -380,32 +384,16 @@ export default function PushLogs() {
               </Table>
             </div>
 
-            {/* 分页控件 */}
-            {total > pageSize && (
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">
-                  显示第 {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} 项，共 {total} 项
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page <= 1}
-                    onClick={() => setPage(page - 1)}
-                  >
-                    上一页
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page * pageSize >= total}
-                    onClick={() => setPage(page + 1)}
-                  >
-                    下一页
-                  </Button>
-                </div>
-              </div>
-            )}
+            {/* 分页控件（统一组件） */}
+            <Pagination
+              className='mt-4'
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+            />
 
             {/* 推送详情对话框 */}
             {selectedLog && (

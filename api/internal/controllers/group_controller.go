@@ -5,6 +5,7 @@ import (
 
 	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/response"
+	"github.com/doopush/doopush/api/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -113,12 +114,9 @@ func (ctrl *GroupController) GetGroups(ctx *gin.Context) {
 		return
 	}
 
-	response.Success(ctx, gin.H{
-		"groups":    groups,
-		"total":     total,
-		"page":      page,
-		"page_size": pageSize,
-	})
+	response.Success(ctx, utils.NewPaginationResponse(page, pageSize, total, gin.H{
+		"items": groups,
+	}))
 }
 
 // GetGroup 获取分组详情
@@ -174,13 +172,10 @@ func (ctrl *GroupController) GetGroup(ctx *gin.Context) {
 		return
 	}
 
-	response.Success(ctx, gin.H{
-		"group":     group,
-		"devices":   devices,
-		"total":     total,
-		"page":      page,
-		"page_size": pageSize,
-	})
+	response.Success(ctx, utils.NewPaginationResponse(page, pageSize, total, gin.H{
+		"group": group,
+		"items": devices,
+	}))
 }
 
 // UpdateGroup 更新分组

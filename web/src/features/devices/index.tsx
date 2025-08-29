@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react'
 import { 
   Smartphone, 
- 
   MoreHorizontal, 
   Eye, 
   Power,
   PowerOff,
   Trash2,
   RefreshCw,
-
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -54,6 +52,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import type { Device } from '@/types/api'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { Pagination } from '@/components/pagination'
 
 export function Devices() {
   const { currentApp } = useAuthStore()
@@ -78,13 +77,19 @@ export function Devices() {
     active: 0,
   })
 
+  // 分页（统一）
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+
   // 加载设备列表
   useEffect(() => {
     if (currentApp) {
       loadDevices()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp, platformFilter, statusFilter])
+  }, [currentApp, platformFilter, statusFilter, currentPage, pageSize])
 
   const loadDevices = async () => {
     if (!currentApp) return
@@ -92,18 +97,24 @@ export function Devices() {
     try {
       setLoading(true)
       const params = {
+        page: currentPage,
+        page_size: pageSize,
         ...(platformFilter !== 'all' && { platform: platformFilter }),
         ...(statusFilter !== 'all' && { status: parseInt(statusFilter) }),
       }
-      const data = await DeviceService.getDevices(currentApp.id, params)
-      setDevices(data.devices)
-      
-      // 计算统计数据
+      const resp = await DeviceService.getDevices(currentApp.id, params)
+      setDevices(resp.data.items)
+      setCurrentPage(resp.current_page)
+      setPageSize(resp.page_size)
+      setTotalItems(resp.total_items)
+      setTotalPages(resp.total_pages)
+
+      // 计算统计数据（当前页）
       const stats = {
-        total: data.devices.length,
-        ios: data.devices.filter(d => d.platform === 'ios').length,
-        android: data.devices.filter(d => d.platform === 'android').length,
-        active: data.devices.filter(d => d.status === 1).length,
+        total: resp.data.items.length,
+        ios: resp.data.items.filter(d => d.platform === 'ios').length,
+        android: resp.data.items.filter(d => d.platform === 'android').length,
+        active: resp.data.items.filter(d => d.status === 1).length,
       }
       setDeviceStats(stats)
     } catch (error) {
@@ -113,7 +124,7 @@ export function Devices() {
     }
   }
 
-  // 筛选设备
+  // 筛选设备（前端再过滤一次，仅作用于当前页显示）
   const filteredDevices = devices.filter((device) =>
     device.token.toLowerCase().includes(searchTerm.toLowerCase()) ||
     device.user_agent.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -226,7 +237,7 @@ export function Devices() {
             <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 my-6'>
               <Card>
                 <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                  <CardTitle className='text-sm font-medium'>总设备数</CardTitle>
+                  <CardTitle className='text-sm font-medium'>当前页设备数</CardTitle>
                   <Smartphone className='text-muted-foreground h-4 w-4' />
                 </CardHeader>
                 <CardContent>
@@ -393,10 +404,10 @@ export function Devices() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
-                          {formatDistanceToNow(new Date(device.last_seen), { 
+                          {device.last_seen ? formatDistanceToNow(new Date(device.last_seen), { 
                             addSuffix: true, 
                             locale: zhCN 
-                          })}
+                          }) : '-'}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -440,6 +451,17 @@ export function Devices() {
                 </TableBody>
               </Table>
             </div>
+
+            {/* 分页控件（统一组件） */}
+            <Pagination
+              className='mt-4'
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+            />
 
             {/* 对话框组件 */}
             {selectedDevice && (

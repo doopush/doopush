@@ -1,20 +1,12 @@
 import apiClient from './api-client'
-import type { Device, DeviceGroup, FilterRule, PaginationParams } from '@/types/api'
+import type { Device, DeviceGroup, PaginationRequest, PaginationEnvelope } from '@/types/api'
+import type { FilterRule } from '@/services/group-service'
 
 export class DeviceService {
   /**
-   * 获取设备列表
+   * 获取设备列表（统一分页）
    */
-  static async getDevices(appId: number, params?: PaginationParams & {
-    platform?: string
-    status?: number
-    search?: string
-  }): Promise<{
-    devices: Device[]
-    total: number
-    page: number
-    size: number
-  }> {
+  static async getDevices(appId: number, params?: PaginationRequest<{ platform?: string; status?: number; search?: string }>): Promise<PaginationEnvelope<Device>> {
     return apiClient.get(`/apps/${appId}/devices`, { params })
   }
 
@@ -71,27 +63,16 @@ export class DeviceService {
   // ===== 设备分组管理 =====
 
   /**
-   * 获取设备分组列表
+   * 获取设备分组列表（统一分页）
    */
-  static async getDeviceGroups(appId: number, params?: PaginationParams): Promise<{
-    groups: DeviceGroup[]
-    total: number
-    page: number
-    size: number
-  }> {
+  static async getDeviceGroups(appId: number, params?: PaginationRequest<{ name?: string }>): Promise<PaginationEnvelope<DeviceGroup>> {
     return apiClient.get(`/apps/${appId}/device-groups`, { params })
   }
 
   /**
-   * 获取分组详情和设备列表
+   * 获取分组详情和设备列表（统一分页，data.items 为设备列表，data.group 为分组）
    */
-  static async getDeviceGroup(appId: number, groupId: number, params?: PaginationParams): Promise<{
-    group: DeviceGroup
-    devices: Device[]
-    total: number
-    page: number
-    size: number
-  }> {
+  static async getDeviceGroup(appId: number, groupId: number, params?: PaginationRequest): Promise<PaginationEnvelope<Device> & { data: { items: Device[]; group: DeviceGroup } }> {
     return apiClient.get(`/apps/${appId}/device-groups/${groupId}`, { params })
   }
 

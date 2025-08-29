@@ -9,6 +9,7 @@ import (
 	"github.com/doopush/doopush/api/internal/models"
 	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/response"
+	"github.com/doopush/doopush/api/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -215,71 +216,59 @@ func (p *PushController) GetPushLogs(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, PushLogsResponse{
-		Logs: func() []interface{} {
-			result := make([]interface{}, len(pushLogs))
-			for i, log := range pushLogs {
-				// 为每个日志添加统计信息
-				enrichedLog := gin.H{
-					"id":         log.ID,
-					"app_id":     log.AppID,
-					"device_id":  log.DeviceID,
-					"title":      log.Title,
-					"content":    log.Content,
-					"payload":    log.Payload,
-					"channel":    log.Channel,
-					"status":     log.Status,
-					"dedup_key":  log.DedupKey,
-					"send_at":    log.SendAt,
-					"badge":      log.Badge, // 添加角标数量字段
-					"created_at": log.CreatedAt,
-					"updated_at": log.UpdatedAt,
-				}
+	// 将列表改为统一分页响应结构
+	enriched := make([]interface{}, len(pushLogs))
+	for i, log := range pushLogs {
+		enrichedLog := gin.H{
+			"id":         log.ID,
+			"app_id":     log.AppID,
+			"device_id":  log.DeviceID,
+			"title":      log.Title,
+			"content":    log.Content,
+			"payload":    log.Payload,
+			"channel":    log.Channel,
+			"status":     log.Status,
+			"dedup_key":  log.DedupKey,
+			"send_at":    log.SendAt,
+			"badge":      log.Badge,
+			"created_at": log.CreatedAt,
+			"updated_at": log.UpdatedAt,
+		}
 
-				// 添加设备信息（如果预加载成功）
-				if log.Device.ID > 0 {
-					enrichedLog["device_token"] = log.Device.Token
-					enrichedLog["device_platform"] = log.Device.Platform
-				}
+		if log.Device.ID > 0 {
+			enrichedLog["device_token"] = log.Device.Token
+			enrichedLog["device_platform"] = log.Device.Platform
+		}
 
-				// 计算统计信息（基于关联的推送结果）
-				var totalDevices, successCount, failedCount, pendingCount int64
-
-				// 如果这是一个单设备推送，统计数据较简单
-				if log.PushResult != nil {
-					totalDevices = 1
-					if log.PushResult.Success {
-						successCount = 1
-					} else {
-						failedCount = 1
-					}
-				} else {
-					// 对于批量推送，需要查询所有相关的推送结果
-					database.DB.Model(&models.PushResult{}).Where("push_log_id = ?", log.ID).Count(&totalDevices)
-					database.DB.Model(&models.PushResult{}).Where("push_log_id = ? AND success = ?", log.ID, true).Count(&successCount)
-					database.DB.Model(&models.PushResult{}).Where("push_log_id = ? AND success = ?", log.ID, false).Count(&failedCount)
-					pendingCount = totalDevices - successCount - failedCount
-				}
-
-				// 添加统计字段
-				enrichedLog["total_devices"] = totalDevices
-				enrichedLog["success_count"] = successCount
-				enrichedLog["failed_count"] = failedCount
-				enrichedLog["pending_count"] = pendingCount
-
-				// 添加目标相关字段（从现有数据推导）
-				enrichedLog["target_type"] = "single" // 单设备推送
-				enrichedLog["target_value"] = log.DeviceID
-				enrichedLog["platform_stats"] = ""
-
-				result[i] = enrichedLog
+		var totalDevices, successCount, failedCount, pendingCount int64
+		if log.PushResult != nil {
+			totalDevices = 1
+			if log.PushResult.Success {
+				successCount = 1
+			} else {
+				failedCount = 1
 			}
-			return result
-		}(),
-		Total:    total,
-		Page:     page,
-		PageSize: pageSize,
-	})
+		} else {
+			database.DB.Model(&models.PushResult{}).Where("push_log_id = ?", log.ID).Count(&totalDevices)
+			database.DB.Model(&models.PushResult{}).Where("push_log_id = ? AND success = ?", log.ID, true).Count(&successCount)
+			database.DB.Model(&models.PushResult{}).Where("push_log_id = ? AND success = ?", log.ID, false).Count(&failedCount)
+			pendingCount = totalDevices - successCount - failedCount
+		}
+
+		enrichedLog["total_devices"] = totalDevices
+		enrichedLog["success_count"] = successCount
+		enrichedLog["failed_count"] = failedCount
+		enrichedLog["pending_count"] = pendingCount
+		enrichedLog["target_type"] = "single"
+		enrichedLog["target_value"] = log.DeviceID
+		enrichedLog["platform_stats"] = ""
+
+		enriched[i] = enrichedLog
+	}
+
+	response.Success(c, utils.NewPaginationResponse(page, pageSize, total, gin.H{
+		"items": enriched,
+	}))
 }
 
 // GetPushStatistics 获取推送统计

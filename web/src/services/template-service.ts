@@ -1,14 +1,11 @@
 import apiClient from './api-client'
-import type { MessageTemplate, TemplateVariable, PaginationParams } from '@/types/api'
+import type { MessageTemplate, TemplateVariable, PaginationRequest, PaginationEnvelope } from '@/types/api'
 
 export class TemplateService {
   /**
-   * 获取消息模板列表
+   * 获取消息模板列表（统一分页）
    */
-  static async getTemplates(appId: number, params?: PaginationParams): Promise<{
-    templates: MessageTemplate[]
-    total: number
-  }> {
+  static async getTemplates(appId: number, params?: PaginationRequest): Promise<PaginationEnvelope<MessageTemplate>> {
     return apiClient.get(`/apps/${appId}/templates`, { params })
   }
 
