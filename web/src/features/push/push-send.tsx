@@ -349,6 +349,12 @@ export default function PushSend() {
       icon: <UserCheck className="h-5 w-5" />,
     },
     {
+      id: 'groups',
+      title: '分组推送',
+      description: '向指定的设备分组发送推送',
+      icon: <UserCheck className="h-5 w-5" />,
+    },
+    {
       id: 'tags',
       title: '标签推送',
       description: '向具有指定标签的设备发送推送',
@@ -359,12 +365,6 @@ export default function PushSend() {
       title: '广播推送',
       description: '向所有设备或指定平台发送推送',
       icon: <Send className="h-5 w-5" />,
-    },
-    {
-      id: 'groups',
-      title: '分组推送',
-      description: '向指定的设备分组发送推送',
-      icon: <UserCheck className="h-5 w-5" />,
     },
   ]
 
@@ -507,9 +507,9 @@ export default function PushSend() {
                                     }}
                                   />
                                 </FormControl>
-                                                        <FormDescription>
-                          设置推送消息的角标数量，iOS平台原生支持，Android平台支持情况因厂商而异，必须为大于等于1的整数
-                        </FormDescription>
+                                <FormDescription>
+                                  设置推送消息的角标数量，iOS平台原生支持，Android平台支持情况因厂商而异，必须为大于等于1的整数
+                                </FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
