@@ -8,7 +8,8 @@ import {
   Smartphone, 
   Loader2,
   Clock,
-  UserCheck
+  UserCheck,
+  HelpCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -55,6 +56,7 @@ import { TagSelector } from '@/components/tag-selector'
 import { requireApp, APP_SELECTION_DESCRIPTIONS } from '@/utils/app-utils'
 import { toast } from 'sonner'
 import { useLocation } from '@tanstack/react-router'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 // 推送表单验证规则
 const pushFormSchema = z.object({
@@ -411,7 +413,7 @@ export default function PushSend() {
                         form.setValue('target_type', type.id as PushFormData['target_type'])
                       }}
                     >
-                      <CardContent className='p-4'>
+                      <CardContent className='px-4 py-1'>
                         <div className='flex items-start gap-3'>
                           <div className={`p-2 rounded-lg ${
                             activeTab === type.id 
@@ -435,6 +437,7 @@ export default function PushSend() {
 
               {/* 推送表单 */}
               <div className='lg:col-span-2'>
+                <h3 className='text-lg font-medium mb-4'>推送消息内容</h3>
                 <Card>
                   <CardHeader>
                     <CardTitle className='flex items-center gap-2'>
@@ -487,39 +490,46 @@ export default function PushSend() {
                               </FormItem>
                             )}
                           />
-
-                          <FormField
-                            control={form.control}
-                            name="badge"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>角标数量</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number"
-                                    min="1"
-                                    step="1"
-                                    placeholder="输入角标数量"
-                                    {...field}
-                                    onChange={(e) => {
-                                      const value = parseInt(e.target.value) || 1
-                                      field.onChange(value >= 1 ? value : 1)
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  设置推送消息的角标数量，iOS平台原生支持，Android平台支持情况因厂商而异，必须为大于等于1的整数
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
                         </div>
 
                         {/* 推送载荷 (可选) */}
                         <div className='space-y-4'>
                           <h4 className='font-medium'>推送载荷 (可选)</h4>
-                          <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                          <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
+                            <FormField
+                              control={form.control}
+                              name="badge"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className='flex items-center gap-1'>
+                                    角标数量
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        设置推送消息的角标数量，iOS平台原生支持，Android平台支持情况因厂商而异，必须为大于等于1的整数
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="number"
+                                      min="1"
+                                      step="1"
+                                      placeholder="输入角标数量"
+                                      {...field}
+                                      onChange={(e) => {
+                                        const value = parseInt(e.target.value) || 1
+                                        field.onChange(value >= 1 ? value : 1)
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
                             <FormField
                               control={form.control}
                               name="payload.action"
