@@ -38,6 +38,7 @@ type SendPushRequest struct {
 	Payload  PushPayload         `json:"payload,omitempty"`
 	Target   services.PushTarget `json:"target" binding:"required"`
 	Schedule *string             `json:"schedule_time,omitempty" example:"2024-12-31T10:00:00Z"`
+	Badge    *int                `json:"badge,omitempty" example:"1"`
 }
 
 // PushLogsResponse 推送日志列表响应
@@ -129,6 +130,7 @@ func (p *PushController) SendPush(c *gin.Context) {
 	pushReq := services.PushRequest{
 		Title:   req.Title,
 		Content: req.Content,
+		Badge:   req.Badge,
 		Payload: payload,
 		Target:  req.Target,
 	}
@@ -229,6 +231,7 @@ func (p *PushController) GetPushLogs(c *gin.Context) {
 					"status":     log.Status,
 					"dedup_key":  log.DedupKey,
 					"send_at":    log.SendAt,
+					"badge":      log.Badge, // 添加角标数量字段
 					"created_at": log.CreatedAt,
 					"updated_at": log.UpdatedAt,
 				}
@@ -419,6 +422,7 @@ type SendSingleRequest struct {
 	Title    string      `json:"title" binding:"required,max=200" example:"个人消息"`
 	Content  string      `json:"content" binding:"required" example:"您有一条个人消息"`
 	Payload  PushPayload `json:"payload,omitempty"`
+	Badge    *int        `json:"badge,omitempty" example:"1"`
 }
 
 // SendBatchRequest 批量推送请求
@@ -427,6 +431,7 @@ type SendBatchRequest struct {
 	Title     string      `json:"title" binding:"required,max=200" example:"批量消息"`
 	Content   string      `json:"content" binding:"required" example:"批量推送消息内容"`
 	Payload   PushPayload `json:"payload,omitempty"`
+	Badge     *int        `json:"badge,omitempty" example:"1"`
 }
 
 // SendBroadcastRequest 广播推送请求
@@ -434,6 +439,7 @@ type SendBroadcastRequest struct {
 	Title    string      `json:"title" binding:"required,max=200" example:"系统公告"`
 	Content  string      `json:"content" binding:"required" example:"系统维护通知"`
 	Payload  PushPayload `json:"payload,omitempty"`
+	Badge    *int        `json:"badge,omitempty" example:"1"`
 	Platform string      `json:"platform,omitempty" example:"ios"`  // 可选：指定平台
 	Vendor   string      `json:"vendor,omitempty" example:"huawei"` // 可选：指定厂商
 }
@@ -492,6 +498,7 @@ func (ctrl *PushController) SendSingle(ctx *gin.Context) {
 	pushReq := services.PushRequest{
 		Title:   req.Title,
 		Content: req.Content,
+		Badge:   req.Badge,
 		Payload: payload,
 		Target: services.PushTarget{
 			Type:      "devices",
@@ -574,6 +581,7 @@ func (ctrl *PushController) SendBatch(ctx *gin.Context) {
 	pushReq := services.PushRequest{
 		Title:   req.Title,
 		Content: req.Content,
+		Badge:   req.Badge,
 		Payload: payload,
 		Target: services.PushTarget{
 			Type:      "devices",
@@ -639,6 +647,7 @@ func (ctrl *PushController) SendBroadcast(ctx *gin.Context) {
 	pushReq := services.PushRequest{
 		Title:   req.Title,
 		Content: req.Content,
+		Badge:   req.Badge,
 		Payload: payload,
 		Target: services.PushTarget{
 			Type:     "all",

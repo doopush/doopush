@@ -18,8 +18,7 @@ type PushLog struct {
 	Status    string         `gorm:"size:20;default:pending;comment:推送状态" json:"status" example:"pending"`
 	DedupKey  string         `gorm:"size:64;index;comment:去重键" json:"dedup_key"`
 	SendAt    *time.Time     `gorm:"comment:发送时间" json:"send_at"`
-	IsClicked bool           `gorm:"default:false;comment:是否已点击" json:"is_clicked"`
-	ClickedAt *time.Time     `gorm:"comment:点击时间" json:"clicked_at"`
+	Badge     int            `gorm:"not null;default:1;comment:badge数量" json:"badge"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`

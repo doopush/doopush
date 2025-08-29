@@ -16,6 +16,7 @@ type ScheduledPush struct {
 	Title   string `gorm:"size:200;comment:推送标题" json:"title" example:"签到提醒"`
 	Content string `gorm:"type:text;comment:推送内容" json:"content" example:"别忘记每日签到领取奖励"`
 	Payload string `gorm:"type:json;comment:推送载荷" json:"payload" example:"{\"action\":\"open_signin\"}"`
+	Badge   int    `gorm:"not null;default:1;comment:badge数量" json:"badge" example:"1"`
 
 	TemplateID   *uint          `gorm:"comment:模板ID" json:"template_id"`
 	PushType     string         `gorm:"size:20;not null;comment:推送类型" json:"push_type" example:"broadcast"`

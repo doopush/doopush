@@ -43,6 +43,7 @@ const createScheduledPushSchema = z.object({
   title: z.string().min(1, '请输入推送标题').max(200, '标题不超过200个字符'),
   content: z.string().min(1, '请输入推送内容').max(1000, '内容不超过1000个字符'),
   payload: z.string().optional(),
+  badge: z.number().int('角标必须是整数').min(1, '角标数量必须大于等于1').optional(),
   scheduled_at: z.string().min(1, '请选择执行时间').refine((val) => {
     const scheduledTime = new Date(val);
     const now = new Date();
@@ -77,6 +78,7 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
       title: '',
       content: '',
       payload: '',
+      badge: 1,
       scheduled_at: '',
       repeat_type: 'none',
       repeat_config: '',
@@ -252,6 +254,33 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
                             {...field}
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="badge"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>角标数量</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number"
+                            min="1"
+                            step="1"
+                            placeholder="输入角标数量"
+                            {...field}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value) || 1
+                              field.onChange(value >= 1 ? value : 1)
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          设置推送消息的角标数量，iOS平台原生支持，Android平台支持情况因厂商而异，必须为大于等于1的整数
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

@@ -60,6 +60,7 @@ import { useLocation } from '@tanstack/react-router'
 const pushFormSchema = z.object({
   title: z.string().min(1, '推送标题不能为空').max(200, '标题不能超过200个字符'),
   content: z.string().min(1, '推送内容不能为空').max(1000, '内容不能超过1000个字符'),
+  badge: z.number().int('角标必须是整数').min(1, '角标数量必须大于等于1').optional(),
   payload: z.object({
     action: z.string().optional(),
     url: z.string().url('请输入有效的URL').optional().or(z.literal('')),
@@ -99,6 +100,7 @@ export default function PushSend() {
     defaultValues: {
       title: '',
       content: '',
+      badge: 1,
       payload: {
         action: '',
         url: '',
@@ -125,6 +127,11 @@ export default function PushSend() {
         // 设置表单数据
         form.setValue('title', reuseData.title || '')
         form.setValue('content', reuseData.content || '')
+        
+        // 设置角标数量
+        if (reuseData.badge !== undefined) {
+          form.setValue('badge', reuseData.badge)
+        }
         
         // 处理payload数据
         if (reuseData.payload) {
@@ -241,6 +248,7 @@ export default function PushSend() {
               device_id: data.device_ids,
               title: data.title,
               content: data.content,
+              badge: data.badge,
               payload: data.payload,
             })
             break
@@ -259,6 +267,7 @@ export default function PushSend() {
               device_ids: deviceIds,
               title: data.title,
               content: data.content,
+              badge: data.badge,
               payload: data.payload,
             })
             break
@@ -272,6 +281,7 @@ export default function PushSend() {
             await PushService.sendByTags(currentApp.id, {
               title: data.title,
               content: data.content,
+              badge: data.badge,
               payload: data.payload,
               target: {
                 type: 'tags',
@@ -287,6 +297,7 @@ export default function PushSend() {
             await PushService.sendBroadcast(currentApp.id, {
               title: data.title,
               content: data.content,
+              badge: data.badge,
               payload: data.payload,
               platform: data.platform || undefined,
               vendor: data.vendor || undefined,
@@ -300,6 +311,7 @@ export default function PushSend() {
             await PushService.sendPush(currentApp.id, {
               title: data.title,
               content: data.content,
+              badge: data.badge,
               payload: data.payload,
               target: {
                 type: 'groups',
@@ -471,6 +483,33 @@ export default function PushSend() {
                                     {...field}
                                   />
                                 </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="badge"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>角标数量</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    placeholder="输入角标数量"
+                                    {...field}
+                                    onChange={(e) => {
+                                      const value = parseInt(e.target.value) || 1
+                                      field.onChange(value >= 1 ? value : 1)
+                                    }}
+                                  />
+                                </FormControl>
+                                                        <FormDescription>
+                          设置推送消息的角标数量，iOS平台原生支持，Android平台支持情况因厂商而异，必须为大于等于1的整数
+                        </FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}

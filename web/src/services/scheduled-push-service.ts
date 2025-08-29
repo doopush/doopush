@@ -5,6 +5,7 @@ export interface CreateScheduledPushRequest {
   title: string
   content: string
   payload?: string
+  badge?: number
   scheduled_at: string
   repeat_type: 'none' | 'daily' | 'weekly' | 'monthly'
   repeat_config?: string
@@ -19,6 +20,7 @@ export interface UpdateScheduledPushRequest {
   title?: string
   content?: string
   payload?: string
+  badge?: number
   scheduled_at?: string
   repeat_type?: 'none' | 'daily' | 'weekly' | 'monthly'
   repeat_config?: string

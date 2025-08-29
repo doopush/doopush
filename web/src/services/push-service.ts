@@ -22,6 +22,7 @@ export class PushService {
     device_id: string
     title: string
     content: string
+    badge?: number
     payload?: {
       action?: string
       url?: string
@@ -38,6 +39,7 @@ export class PushService {
     device_ids: string[]
     title: string
     content: string
+    badge?: number
     payload?: {
       action?: string
       url?: string
@@ -53,6 +55,7 @@ export class PushService {
   static async sendBroadcast(appId: number, data: {
     title: string
     content: string
+    badge?: number
     payload?: {
       action?: string
       url?: string
@@ -70,6 +73,7 @@ export class PushService {
   static async sendByTags(appId: number, data: {
     title: string
     content: string
+    badge?: number
     payload?: {
       action?: string
       url?: string

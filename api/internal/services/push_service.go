@@ -29,6 +29,7 @@ type PushRequest struct {
 	Payload  map[string]interface{} `json:"payload,omitempty"`
 	Target   PushTarget             `json:"target" binding:"required"`
 	Schedule *time.Time             `json:"schedule_time,omitempty"`
+	Badge    *int                   `json:"badge,omitempty"` // 新增角标字段
 }
 
 // PushTarget 推送目标
@@ -94,6 +95,13 @@ func (s *PushService) SendPush(appID uint, userID uint, req PushRequest) ([]mode
 			Channel:  device.Channel,
 			Status:   "pending",
 			DedupKey: dedupKey,
+		}
+
+		// 设置角标数量
+		if req.Badge != nil {
+			pushLog.Badge = *req.Badge
+		} else {
+			pushLog.Badge = 1 // 默认角标数量为1
 		}
 
 		// 如果是定时推送，添加到队列
@@ -643,24 +651,6 @@ func (s *PushService) ReportPushStatistics(appID uint, deviceToken string, repor
 		switch report.Event {
 		case "click":
 			dateStatsMap[dateStr].ClickCount++
-			// 更新推送日志的点击状态
-			if !pushLog.IsClicked {
-				clickTime := time.Unix(report.Timestamp, 0)
-				result := database.DB.Model(&models.PushLog{}).
-					Where("id = ? AND app_id = ? AND device_id = ?", pushLog.ID, appID, device.ID).
-					Updates(map[string]interface{}{
-						"is_clicked": true,
-						"clicked_at": &clickTime,
-					})
-
-				if result.Error != nil {
-					log.Printf("更新推送点击状态失败: push_log_id=%d, error=%v", pushLog.ID, result.Error)
-				} else if result.RowsAffected > 0 {
-					log.Printf("✅ 推送点击状态已更新: push_log_id=%d, device=%s", pushLog.ID, deviceToken)
-				} else {
-					log.Printf("⚠️ 推送点击状态更新无影响: push_log_id=%d, device=%s", pushLog.ID, deviceToken)
-				}
-			}
 		case "open":
 			dateStatsMap[dateStr].OpenCount++
 		}

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
 )
 
@@ -73,9 +72,6 @@ func (a *AndroidProvider) SendPush(device *models.Device, pushLog *models.PushLo
 
 // sendFCM 发送FCM推送
 func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	// 计算badge数量
-	badgeCount := a.calculateBadgeCount(device.ID)
-
 	// 构建FCM载荷
 	payload := FCMPayload{
 		To: device.Token,
@@ -83,7 +79,7 @@ func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog
 			Title: pushLog.Title,
 			Body:  pushLog.Content,
 			Sound: "default",
-			Badge: fmt.Sprintf("%d", badgeCount), // FCM的badge是字符串形式
+			Badge: fmt.Sprintf("%d", pushLog.Badge), // FCM的badge是字符串形式
 		},
 		Priority: "high",
 	}
@@ -100,7 +96,7 @@ func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog
 	}
 
 	// 添加badge到data字段，确保客户端可以获取
-	dataMap["badge"] = badgeCount
+	dataMap["badge"] = pushLog.Badge
 	dataMap["push_log_id"] = pushLog.ID
 	if pushLog.DedupKey != "" {
 		dataMap["dedup_key"] = pushLog.DedupKey
@@ -132,9 +128,6 @@ func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog
 
 // sendHuawei 发送华为推送
 func (a *AndroidProvider) sendHuawei(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	// 计算badge数量
-	badgeCount := a.calculateBadgeCount(device.ID)
-
 	result := &models.PushResult{
 		AppID:        pushLog.AppID,
 		PushLogID:    pushLog.ID,
@@ -143,7 +136,7 @@ func (a *AndroidProvider) sendHuawei(device *models.Device, pushLog *models.Push
 	}
 
 	if result.Success {
-		fmt.Printf("模拟华为推送成功: %s -> %s (badge: %d)\n", device.Token[:20]+"...", pushLog.Title, badgeCount)
+		fmt.Printf("模拟华为推送成功: %s -> %s (badge: %d)\n", device.Token[:20]+"...", pushLog.Title, pushLog.Badge)
 	} else {
 		result.ErrorCode = "HMS_ERROR"
 		result.ErrorMessage = "华为推送服务暂时不可用"
@@ -154,9 +147,6 @@ func (a *AndroidProvider) sendHuawei(device *models.Device, pushLog *models.Push
 
 // sendXiaomi 发送小米推送
 func (a *AndroidProvider) sendXiaomi(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	// 计算badge数量
-	badgeCount := a.calculateBadgeCount(device.ID)
-
 	result := &models.PushResult{
 		AppID:        pushLog.AppID,
 		PushLogID:    pushLog.ID,
@@ -165,7 +155,7 @@ func (a *AndroidProvider) sendXiaomi(device *models.Device, pushLog *models.Push
 	}
 
 	if result.Success {
-		fmt.Printf("模拟小米推送成功: %s -> %s (badge: %d)\n", device.Token[:20]+"...", pushLog.Title, badgeCount)
+		fmt.Printf("模拟小米推送成功: %s -> %s (badge: %d)\n", device.Token[:20]+"...", pushLog.Title, pushLog.Badge)
 	} else {
 		result.ErrorCode = "MIPUSH_ERROR"
 		result.ErrorMessage = "小米推送服务暂时不可用"
@@ -176,9 +166,6 @@ func (a *AndroidProvider) sendXiaomi(device *models.Device, pushLog *models.Push
 
 // sendOPPO 发送OPPO推送
 func (a *AndroidProvider) sendOPPO(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	// 计算badge数量
-	badgeCount := a.calculateBadgeCount(device.ID)
-
 	result := &models.PushResult{
 		AppID:        pushLog.AppID,
 		PushLogID:    pushLog.ID,
@@ -187,7 +174,7 @@ func (a *AndroidProvider) sendOPPO(device *models.Device, pushLog *models.PushLo
 	}
 
 	if result.Success {
-		fmt.Printf("模拟OPPO推送成功: %s -> %s (badge: %d)\n", device.Token[:20]+"...", pushLog.Title, badgeCount)
+		fmt.Printf("模拟OPPO推送成功: %s -> %s (badge: %d)\n", device.Token[:20]+"...", pushLog.Title, pushLog.Badge)
 	} else {
 		result.ErrorCode = "OPPO_ERROR"
 		result.ErrorMessage = "OPPO推送服务暂时不可用"
@@ -198,9 +185,6 @@ func (a *AndroidProvider) sendOPPO(device *models.Device, pushLog *models.PushLo
 
 // sendVIVO 发送VIVO推送
 func (a *AndroidProvider) sendVIVO(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	// 计算badge数量
-	badgeCount := a.calculateBadgeCount(device.ID)
-
 	result := &models.PushResult{
 		AppID:        pushLog.AppID,
 		PushLogID:    pushLog.ID,
@@ -209,45 +193,11 @@ func (a *AndroidProvider) sendVIVO(device *models.Device, pushLog *models.PushLo
 	}
 
 	if result.Success {
-		fmt.Printf("模拟VIVO推送成功: %s -> %s (badge: %d)\n", device.Token[:20]+"...", pushLog.Title, badgeCount)
+		fmt.Printf("模拟VIVO推送成功: %s -> %s (badge: %d)\n", device.Token[:20]+"...", pushLog.Title, pushLog.Badge)
 	} else {
 		result.ErrorCode = "VIVO_ERROR"
 		result.ErrorMessage = "VIVO推送服务暂时不可用"
 	}
 
 	return result
-}
-
-// calculateBadgeCount 计算设备的未读推送数量
-func (a *AndroidProvider) calculateBadgeCount(deviceID uint) int {
-	var count int64
-
-	// 统计该设备所有未点击且推送成功的消息
-	// 注意：这里会统计当前推送之前的未读数量，当前推送发送成功后还会+1
-	err := database.DB.Model(&models.PushLog{}).
-		Joins("LEFT JOIN push_results ON push_logs.id = push_results.push_log_id").
-		Where("push_logs.device_id = ? AND push_logs.is_clicked = ? AND push_results.success = ?",
-			deviceID, false, true).
-		Count(&count).Error
-
-	if err != nil {
-		// 计算失败时返回默认值1，确保推送正常进行
-		fmt.Printf("❌ Android Badge计算失败: %v，使用默认值1\n", err)
-		return 1
-	}
-
-	// 当前推送如果成功，需要+1
-	count = count + 1
-
-	// 限制最大badge数量，避免显示过大的数字
-	if count > 99 {
-		return 99
-	}
-
-	// 至少显示1
-	if count <= 0 {
-		return 1
-	}
-
-	return int(count)
 }

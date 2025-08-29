@@ -113,6 +113,7 @@ export interface PushLog {
   status: 'pending' | 'processing' | 'sent' | 'failed'
   dedup_key?: string
   send_at: string | null
+  badge?: number
   created_at: string
   updated_at: string
 }
@@ -213,6 +214,7 @@ export interface ScheduledPush {
   title: string
   content: string
   payload?: string
+  badge?: number
   template_id: number | null
   push_type: 'single' | 'batch' | 'broadcast' | 'groups'
   target_type: string
@@ -337,6 +339,7 @@ export interface TagFilter {
 export interface SendPushRequest {
   title: string
   content: string
+  badge?: number
   payload?: {
     action?: string
     url?: string

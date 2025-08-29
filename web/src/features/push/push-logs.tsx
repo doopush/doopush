@@ -141,6 +141,7 @@ export default function PushLogs() {
       const pushData = {
         title: log.title,
         content: log.content,
+        badge: log.badge || 1, // 添加角标数量，默认为1
         payload: payload,
         target_type: 'single', // 固定为单设备推送
         device_token: log.device_token, // 设备token

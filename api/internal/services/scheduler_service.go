@@ -30,11 +30,12 @@ func NewSchedulerService() *SchedulerService {
 
 // CreateScheduledPush 创建定时推送
 func (s *SchedulerService) CreateScheduledPush(appID uint, userID uint, name string, templateID *uint, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, cronExpr string) (*models.ScheduledPush, error) {
-	return s.CreateScheduledPushWithContent(appID, userID, name, "", "", "", "", targetType, targetValue, scheduleTime, timezone, repeatType, "", cronExpr)
+	badge := 1
+	return s.CreateScheduledPushWithContent(appID, userID, name, "", "", "", "", targetType, targetValue, scheduleTime, timezone, repeatType, "", cronExpr, &badge)
 }
 
 // CreateScheduledPushWithContent 创建包含推送内容的定时推送
-func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uint, name, title, content, payload, pushType, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, repeatConfig, cronExpr string) (*models.ScheduledPush, error) {
+func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uint, name, title, content, payload, pushType, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, repeatConfig, cronExpr string, badge *int) (*models.ScheduledPush, error) {
 	// 检查任务名是否重复
 	var existingPush models.ScheduledPush
 	err := database.DB.Where("app_id = ? AND name = ?", appID, name).First(&existingPush).Error
@@ -67,12 +68,19 @@ func (s *SchedulerService) CreateScheduledPushWithContent(appID uint, userID uin
 		}
 	}
 
+	// 设置badge数量
+	badgeValue := 1 // 默认值
+	if badge != nil {
+		badgeValue = *badge
+	}
+
 	scheduledPush := &models.ScheduledPush{
 		AppID:        appID,
 		Name:         name,
 		Title:        title,   // 推送标题
 		Content:      content, // 推送内容
 		Payload:      payload, // 推送载荷
+		Badge:        badgeValue,
 		PushType:     pushType,
 		TargetType:   targetType,
 		TargetValue:  targetValue,
@@ -225,7 +233,7 @@ func (s *SchedulerService) UpdateScheduledPush(appID uint, pushID uint, name str
 }
 
 // UpdateScheduledPushWithContent 更新包含推送内容的定时推送
-func (s *SchedulerService) UpdateScheduledPushWithContent(appID uint, pushID uint, name, title, content, payload, pushType, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, repeatConfig, cronExpr, status string) (*models.ScheduledPush, error) {
+func (s *SchedulerService) UpdateScheduledPushWithContent(appID uint, pushID uint, name, title, content, payload, pushType, targetType, targetValue string, scheduleTime time.Time, timezone, repeatType, repeatConfig, cronExpr, status string, badge *int) (*models.ScheduledPush, error) {
 	var push models.ScheduledPush
 	err := database.DB.Where("app_id = ? AND id = ?", appID, pushID).First(&push).Error
 	if err != nil {
@@ -267,11 +275,18 @@ func (s *SchedulerService) UpdateScheduledPushWithContent(appID uint, pushID uin
 		}
 	}
 
+	// 设置badge数量
+	badgeValue := 1 // 默认值
+	if badge != nil {
+		badgeValue = *badge
+	}
+
 	// 更新任务信息（包含推送内容）
 	push.Name = name
 	push.Title = title
 	push.Content = content
 	push.Payload = payload
+	push.Badge = badgeValue
 	push.PushType = pushType
 	push.TargetType = targetType
 	push.TargetValue = targetValue
@@ -451,6 +466,7 @@ func (s *SchedulerService) executeActualPush(push models.ScheduledPush) error {
 	pushRequest := PushRequest{
 		Title:   push.Title,
 		Content: push.Content,
+		Badge:   &push.Badge,
 		Payload: payloadMap,
 		Target:  target,
 		// Schedule 为 nil 表示立即推送

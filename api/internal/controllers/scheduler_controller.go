@@ -28,6 +28,7 @@ type CreateScheduledPushRequest struct {
 	Title        string `json:"title" binding:"required" example:"推送标题"`
 	Content      string `json:"content" binding:"required" example:"推送内容"`
 	Payload      string `json:"payload" example:"{}"`
+	Badge        *int   `json:"badge,omitempty" example:"1"`
 	ScheduledAt  string `json:"scheduled_at" binding:"required" example:"2024-01-01T10:00:00Z"`
 	PushType     string `json:"push_type" binding:"required" example:"single"`
 	TargetConfig string `json:"target_config" example:"device_token_or_config"`
@@ -50,6 +51,7 @@ type UpdateScheduledPushRequest struct {
 	Title        string `json:"title" binding:"required" example:"推送标题"`
 	Content      string `json:"content" binding:"required" example:"推送内容"`
 	Payload      string `json:"payload" example:"{}"`
+	Badge        *int   `json:"badge,omitempty" example:"1"`
 	ScheduledAt  string `json:"scheduled_at" binding:"required" example:"2024-01-01T10:00:00Z"`
 	PushType     string `json:"push_type" binding:"required" example:"single"`
 	TargetConfig string `json:"target_config" example:"device_token_or_config"`
@@ -183,7 +185,7 @@ func (ctrl *SchedulerController) CreateScheduledPush(ctx *gin.Context) {
 	// 创建定时推送任务，包含推送内容
 	push, err := ctrl.schedulerService.CreateScheduledPushWithContent(
 		uint(appID), userID, name, req.Title, req.Content, payload, req.PushType,
-		targetType, targetValue, scheduleTime, timezone, repeatType, req.RepeatConfig, req.CronExpr,
+		targetType, targetValue, scheduleTime, timezone, repeatType, req.RepeatConfig, req.CronExpr, req.Badge,
 	)
 	if err != nil {
 		response.BadRequest(ctx, err.Error())
@@ -428,7 +430,7 @@ func (ctrl *SchedulerController) UpdateScheduledPush(ctx *gin.Context) {
 
 	push, err := ctrl.schedulerService.UpdateScheduledPushWithContent(
 		uint(appID), uint(pushID), name, req.Title, req.Content, payload, req.PushType,
-		targetType, targetValue, scheduleTime, timezone, repeatType, req.RepeatConfig, req.CronExpr, req.Status,
+		targetType, targetValue, scheduleTime, timezone, repeatType, req.RepeatConfig, req.CronExpr, req.Status, req.Badge,
 	)
 	if err != nil {
 		response.BadRequest(ctx, err.Error())
