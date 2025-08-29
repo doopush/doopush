@@ -65,6 +65,30 @@ export class PushService {
   }
 
   /**
+   * 标签推送
+   */
+  static async sendByTags(appId: number, data: {
+    title: string
+    content: string
+    payload?: {
+      action?: string
+      url?: string
+      data?: string
+    }
+    target: {
+      type: 'tags'
+      tags: Array<{
+        tag_name: string
+        tag_value?: string
+      }>
+      platform?: string
+      channel?: string
+    }
+  }): Promise<PushLog[]> {
+    return apiClient.post(`/apps/${appId}/push`, data)
+  }
+
+  /**
    * 获取推送日志
    */
   static async getPushLogs(appId: number, params?: PaginationParams & {

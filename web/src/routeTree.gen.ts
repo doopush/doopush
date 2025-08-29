@@ -13,11 +13,11 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedUserTagsRouteImport } from './routes/_authenticated/user-tags'
 import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
 import { Route as AuthenticatedScheduledPushRouteImport } from './routes/_authenticated/scheduled-push'
 import { Route as AuthenticatedPushRouteImport } from './routes/_authenticated/push'
 import { Route as AuthenticatedDevicesRouteImport } from './routes/_authenticated/devices'
+import { Route as AuthenticatedDeviceTagsRouteImport } from './routes/_authenticated/device-tags'
 import { Route as AuthenticatedDeviceGroupsRouteImport } from './routes/_authenticated/device-groups'
 import { Route as AuthenticatedConfigRouteImport } from './routes/_authenticated/config'
 import { Route as AuthenticatedAuditLogsRouteImport } from './routes/_authenticated/audit-logs'
@@ -60,11 +60,6 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedUserTagsRoute = AuthenticatedUserTagsRouteImport.update({
-  id: '/user-tags',
-  path: '/user-tags',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedTemplatesRoute = AuthenticatedTemplatesRouteImport.update({
   id: '/templates',
   path: '/templates',
@@ -84,6 +79,11 @@ const AuthenticatedPushRoute = AuthenticatedPushRouteImport.update({
 const AuthenticatedDevicesRoute = AuthenticatedDevicesRouteImport.update({
   id: '/devices',
   path: '/devices',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDeviceTagsRoute = AuthenticatedDeviceTagsRouteImport.update({
+  id: '/device-tags',
+  path: '/device-tags',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDeviceGroupsRoute =
@@ -220,11 +220,11 @@ export interface FileRoutesByFullPath {
   '/audit-logs': typeof AuthenticatedAuditLogsRoute
   '/config': typeof AuthenticatedConfigRoute
   '/device-groups': typeof AuthenticatedDeviceGroupsRoute
+  '/device-tags': typeof AuthenticatedDeviceTagsRoute
   '/devices': typeof AuthenticatedDevicesRoute
   '/push': typeof AuthenticatedPushRouteWithChildren
   '/scheduled-push': typeof AuthenticatedScheduledPushRoute
   '/templates': typeof AuthenticatedTemplatesRoute
-  '/user-tags': typeof AuthenticatedUserTagsRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/push/logs': typeof AuthenticatedPushLogsRoute
@@ -251,10 +251,10 @@ export interface FileRoutesByTo {
   '/audit-logs': typeof AuthenticatedAuditLogsRoute
   '/config': typeof AuthenticatedConfigRoute
   '/device-groups': typeof AuthenticatedDeviceGroupsRoute
+  '/device-tags': typeof AuthenticatedDeviceTagsRoute
   '/devices': typeof AuthenticatedDevicesRoute
   '/scheduled-push': typeof AuthenticatedScheduledPushRoute
   '/templates': typeof AuthenticatedTemplatesRoute
-  '/user-tags': typeof AuthenticatedUserTagsRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/push/logs': typeof AuthenticatedPushLogsRoute
@@ -284,11 +284,11 @@ export interface FileRoutesById {
   '/_authenticated/audit-logs': typeof AuthenticatedAuditLogsRoute
   '/_authenticated/config': typeof AuthenticatedConfigRoute
   '/_authenticated/device-groups': typeof AuthenticatedDeviceGroupsRoute
+  '/_authenticated/device-tags': typeof AuthenticatedDeviceTagsRoute
   '/_authenticated/devices': typeof AuthenticatedDevicesRoute
   '/_authenticated/push': typeof AuthenticatedPushRouteWithChildren
   '/_authenticated/scheduled-push': typeof AuthenticatedScheduledPushRoute
   '/_authenticated/templates': typeof AuthenticatedTemplatesRoute
-  '/_authenticated/user-tags': typeof AuthenticatedUserTagsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/push/logs': typeof AuthenticatedPushLogsRoute
@@ -318,11 +318,11 @@ export interface FileRouteTypes {
     | '/audit-logs'
     | '/config'
     | '/device-groups'
+    | '/device-tags'
     | '/devices'
     | '/push'
     | '/scheduled-push'
     | '/templates'
-    | '/user-tags'
     | '/'
     | '/errors/$error'
     | '/push/logs'
@@ -349,10 +349,10 @@ export interface FileRouteTypes {
     | '/audit-logs'
     | '/config'
     | '/device-groups'
+    | '/device-tags'
     | '/devices'
     | '/scheduled-push'
     | '/templates'
-    | '/user-tags'
     | '/'
     | '/errors/$error'
     | '/push/logs'
@@ -381,11 +381,11 @@ export interface FileRouteTypes {
     | '/_authenticated/audit-logs'
     | '/_authenticated/config'
     | '/_authenticated/device-groups'
+    | '/_authenticated/device-tags'
     | '/_authenticated/devices'
     | '/_authenticated/push'
     | '/_authenticated/scheduled-push'
     | '/_authenticated/templates'
-    | '/_authenticated/user-tags'
     | '/_authenticated/'
     | '/_authenticated/errors/$error'
     | '/_authenticated/push/logs'
@@ -443,13 +443,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/user-tags': {
-      id: '/_authenticated/user-tags'
-      path: '/user-tags'
-      fullPath: '/user-tags'
-      preLoaderRoute: typeof AuthenticatedUserTagsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/templates': {
       id: '/_authenticated/templates'
       path: '/templates'
@@ -476,6 +469,13 @@ declare module '@tanstack/react-router' {
       path: '/devices'
       fullPath: '/devices'
       preLoaderRoute: typeof AuthenticatedDevicesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/device-tags': {
+      id: '/_authenticated/device-tags'
+      path: '/device-tags'
+      fullPath: '/device-tags'
+      preLoaderRoute: typeof AuthenticatedDeviceTagsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/device-groups': {
@@ -677,11 +677,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAuditLogsRoute: typeof AuthenticatedAuditLogsRoute
   AuthenticatedConfigRoute: typeof AuthenticatedConfigRoute
   AuthenticatedDeviceGroupsRoute: typeof AuthenticatedDeviceGroupsRoute
+  AuthenticatedDeviceTagsRoute: typeof AuthenticatedDeviceTagsRoute
   AuthenticatedDevicesRoute: typeof AuthenticatedDevicesRoute
   AuthenticatedPushRoute: typeof AuthenticatedPushRouteWithChildren
   AuthenticatedScheduledPushRoute: typeof AuthenticatedScheduledPushRoute
   AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
-  AuthenticatedUserTagsRoute: typeof AuthenticatedUserTagsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
@@ -692,11 +692,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAuditLogsRoute: AuthenticatedAuditLogsRoute,
   AuthenticatedConfigRoute: AuthenticatedConfigRoute,
   AuthenticatedDeviceGroupsRoute: AuthenticatedDeviceGroupsRoute,
+  AuthenticatedDeviceTagsRoute: AuthenticatedDeviceTagsRoute,
   AuthenticatedDevicesRoute: AuthenticatedDevicesRoute,
   AuthenticatedPushRoute: AuthenticatedPushRouteWithChildren,
   AuthenticatedScheduledPushRoute: AuthenticatedScheduledPushRoute,
   AuthenticatedTemplatesRoute: AuthenticatedTemplatesRoute,
-  AuthenticatedUserTagsRoute: AuthenticatedUserTagsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,

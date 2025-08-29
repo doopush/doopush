@@ -24,7 +24,7 @@ func AllModels() []interface{} {
 
 		// 模板和标签
 		&MessageTemplate{},
-		&UserTag{},
+		&DeviceTag{},
 		&TagDefinition{},
 		&DeviceGroup{},
 

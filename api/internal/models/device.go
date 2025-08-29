@@ -44,8 +44,8 @@ type DeviceTagMap struct {
 	CreatedAt time.Time `json:"created_at"`
 
 	// 关联关系
-	Device Device  `gorm:"foreignKey:DeviceID" json:"device,omitempty"`
-	Tag    UserTag `gorm:"foreignKey:TagID" json:"tag,omitempty"`
+	Device Device    `gorm:"foreignKey:DeviceID" json:"device,omitempty"`
+	Tag    DeviceTag `gorm:"foreignKey:TagID" json:"tag,omitempty"`
 }
 
 // DeviceGroupMap 设备分组映射

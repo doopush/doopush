@@ -159,24 +159,35 @@ export interface TemplateVariable {
   default?: string
 }
 
-// ===== 用户标签 =====
-export interface UserTag {
+// ===== 设备标签 =====
+export interface DeviceTag {
   id: number
   app_id: number
-  user_id: string
-  key: string
-  value: string
-  description?: string
-  user_count?: number
+  device_token: string
+  tag_name: string
+  tag_value: string
   created_at: string
-  updated_at: string
 }
 
 export interface TagStatistic {
-  tag_key: string
+  tag_name: string
   tag_value: string
-  user_count: number
-  updated_at: string
+  device_count: number
+  updated_at?: string
+}
+
+export interface PaginationInfo {
+  page: number
+  limit: number
+  total: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
+}
+
+export interface TagStatisticsResponse {
+  data: TagStatistic[]
+  pagination: PaginationInfo
 }
 
 // ===== 设备分组 =====
@@ -309,10 +320,16 @@ export interface ChangePasswordRequest {
 export interface PushTarget {
   type: 'all' | 'devices' | 'tags' | 'groups'
   device_ids?: number[]
-  tag_ids?: number[]
+  tag_ids?: number[]      // 保留用于兼容
   group_ids?: number[]
+  tags?: TagFilter[]      // 新的设备标签筛选
   platform?: string
   channel?: string
+}
+
+export interface TagFilter {
+  tag_name: string
+  tag_value?: string      // 可选，不提供则匹配所有值
 }
 
 export interface SendPushRequest {

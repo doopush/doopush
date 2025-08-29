@@ -48,8 +48,8 @@ export const sidebarData: SidebarData = {
           icon: Shield,
         },
         {
-          title: '用户标签',
-          url: '/user-tags',
+          title: '设备标签',
+          url: '/device-tags',
           icon: Tag,
         },
         {

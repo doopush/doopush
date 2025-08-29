@@ -1,1 +1,1 @@
-export { UserTags } from './index.tsx'
+export { DeviceTags } from './index.tsx'

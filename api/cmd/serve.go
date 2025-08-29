@@ -154,10 +154,12 @@ func startServer() {
 			authenticated.DELETE("/apps/:appId/templates/:id", templateCtrl.DeleteTemplate)
 			authenticated.POST("/apps/:appId/templates/:id/render", templateCtrl.RenderTemplate)
 
-			// 用户标签管理
-			authenticated.GET("/apps/:appId/users/:userId/tags", tagCtrl.GetUserTags)
-			authenticated.POST("/apps/:appId/users/:userId/tags", tagCtrl.AddUserTag)
-			authenticated.DELETE("/apps/:appId/users/:userId/tags/:tagName", tagCtrl.DeleteUserTag)
+			// 设备标签管理
+			authenticated.GET("/apps/:appId/device-tags/:deviceToken", tagCtrl.GetDeviceTags)
+			authenticated.POST("/apps/:appId/device-tags/:deviceToken", tagCtrl.AddDeviceTag)
+			authenticated.DELETE("/apps/:appId/device-tags/:deviceToken/:tagName", tagCtrl.DeleteDeviceTag)
+			authenticated.POST("/apps/:appId/device-tags/batch", tagCtrl.BatchAddDeviceTags)
+			authenticated.GET("/apps/:appId/tags/devices", tagCtrl.GetDevicesByTag)
 			authenticated.GET("/apps/:appId/tags", tagCtrl.GetAppTagStatistics)
 
 			// 设备分组管理

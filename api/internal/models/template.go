@@ -27,14 +27,14 @@ type MessageTemplate struct {
 	App App `gorm:"foreignKey:AppID" json:"app,omitempty"`
 }
 
-// UserTag 用户标签关联模型 (符合需求文档中的user_tags表)
-type UserTag struct {
-	ID        uint      `gorm:"primarykey" json:"id" example:"1"`
-	AppID     uint      `gorm:"not null;index;comment:应用ID" json:"app_id" binding:"required"`
-	UserID    string    `gorm:"size:100;not null;index;comment:应用内用户ID" json:"user_id" example:"user123" binding:"required"`
-	TagName   string    `gorm:"size:100;not null;index;comment:标签名称" json:"tag_name" example:"vip_level" binding:"required"`
-	TagValue  string    `gorm:"size:200;comment:标签值" json:"tag_value" example:"gold"`
-	CreatedAt time.Time `json:"created_at"`
+// DeviceTag 设备标签模型 (基于token绑定的设备标签)
+type DeviceTag struct {
+	ID          uint      `gorm:"primarykey" json:"id" example:"1"`
+	AppID       uint      `gorm:"not null;index;comment:应用ID" json:"app_id" binding:"required"`
+	DeviceToken string    `gorm:"size:200;not null;index;comment:设备Token" json:"device_token" example:"device_token_123" binding:"required"`
+	TagName     string    `gorm:"size:100;not null;index;comment:标签名称" json:"tag_name" example:"vip_level" binding:"required"`
+	TagValue    string    `gorm:"size:200;comment:标签值" json:"tag_value" example:"gold"`
+	CreatedAt   time.Time `json:"created_at"`
 
 	// 关联关系
 	App App `gorm:"foreignKey:AppID" json:"app,omitempty"`
@@ -79,8 +79,8 @@ func (MessageTemplate) TableName() string {
 }
 
 // TableName 设置表名
-func (UserTag) TableName() string {
-	return "user_tags"
+func (DeviceTag) TableName() string {
+	return "device_tags"
 }
 
 // TableName 设置表名

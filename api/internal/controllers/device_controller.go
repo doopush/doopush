@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -24,15 +25,16 @@ func NewDeviceController() *DeviceController {
 
 // RegisterDeviceRequest 设备注册请求
 type RegisterDeviceRequest struct {
-	Token      string `json:"token" binding:"required" example:"device_token_here"`
-	BundleID   string `json:"bundle_id" binding:"required" example:"com.example.app"`
-	Platform   string `json:"platform" binding:"required,oneof=ios android" example:"ios"`
-	Channel    string `json:"channel" binding:"required" example:"apns"`
-	Brand      string `json:"brand" example:"Apple"`
-	Model      string `json:"model" example:"iPhone 14"`
-	SystemVer  string `json:"system_version" example:"17.0"`
-	AppVersion string `json:"app_version" example:"1.0.0"`
-	UserAgent  string `json:"user_agent" example:"MyApp/1.0.0 (iOS 17.0)"`
+	Token      string                   `json:"token" binding:"required" example:"device_token_here"`
+	BundleID   string                   `json:"bundle_id" binding:"required" example:"com.example.app"`
+	Platform   string                   `json:"platform" binding:"required,oneof=ios android" example:"ios"`
+	Channel    string                   `json:"channel" binding:"required" example:"apns"`
+	Brand      string                   `json:"brand" example:"Apple"`
+	Model      string                   `json:"model" example:"iPhone 14"`
+	SystemVer  string                   `json:"system_version" example:"17.0"`
+	AppVersion string                   `json:"app_version" example:"1.0.0"`
+	UserAgent  string                   `json:"user_agent" example:"MyApp/1.0.0 (iOS 17.0)"`
+	Tags       []services.DeviceTagItem `json:"tags" example:"[{\"tag_name\":\"user_type\",\"tag_value\":\"vip\"},{\"tag_name\":\"version\",\"tag_value\":\"1.0\"}]"`
 }
 
 // DeviceListResponse 设备列表响应
@@ -58,13 +60,13 @@ type DeviceRegistrationResponse struct {
 
 // RegisterDevice 注册设备
 // @Summary 注册设备
-// @Description 注册设备以接收推送通知。需要验证API Key属于指定应用且bundle_id与应用包名匹配。成功注册后返回设备信息和Gateway长连接配置
+// @Description 注册设备以接收推送通知。需要验证API Key属于指定应用且bundle_id与应用包名匹配。可以在注册时同时设置设备标签。成功注册后返回设备信息和Gateway长连接配置
 // @Tags 设备管理
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
 // @Param appId path int true "应用ID"
-// @Param request body RegisterDeviceRequest true "设备信息，必须包含bundle_id用于安全验证"
+// @Param request body RegisterDeviceRequest true "设备信息，必须包含bundle_id用于安全验证，可选包含tags数组进行标签绑定"
 // @Success 201 {object} response.APIResponse{data=DeviceRegistrationResponse} "注册成功，包含设备信息和Gateway配置"
 // @Failure 400 {object} response.APIResponse "请求参数错误"
 // @Failure 401 {object} response.APIResponse "API密钥无效或与应用不匹配"
@@ -98,6 +100,15 @@ func (d *DeviceController) RegisterDevice(c *gin.Context) {
 	if err != nil {
 		response.Error(c, http.StatusUnprocessableEntity, err.Error())
 		return
+	}
+
+	// 处理设备标签
+	if len(req.Tags) > 0 {
+		err := d.deviceService.UpdateDeviceTags(uint(appID), req.Token, req.Tags)
+		if err != nil {
+			// 标签处理失败不应该影响设备注册，只记录日志
+			log.Printf("设备注册成功但标签处理失败: %v", err)
+		}
 	}
 
 	// 构建 Gateway 配置

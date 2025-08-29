@@ -9,7 +9,7 @@ export interface CreateScheduledPushRequest {
   repeat_type: 'none' | 'daily' | 'weekly' | 'monthly'
   repeat_config?: string
   timezone?: string
-  push_type: 'single' | 'batch' | 'broadcast'
+  push_type: 'single' | 'batch' | 'tags' | 'broadcast'
   target_config: string
   template_id?: number
   template_data?: string
@@ -23,7 +23,7 @@ export interface UpdateScheduledPushRequest {
   repeat_type?: 'none' | 'daily' | 'weekly' | 'monthly'
   repeat_config?: string
   timezone?: string
-  push_type?: 'single' | 'batch' | 'broadcast'
+  push_type?: 'single' | 'batch' | 'tags' | 'broadcast'
   target_config?: string
   template_id?: number
   template_data?: string

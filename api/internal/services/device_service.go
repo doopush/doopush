@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/doopush/doopush/api/internal/database"
@@ -74,6 +75,40 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 	}
 
 	return device, nil
+}
+
+// UpdateDeviceTags 更新设备标签
+func (s *DeviceService) UpdateDeviceTags(appID uint, deviceToken string, tags []DeviceTagItem) error {
+	// 先删除设备的所有现有标签
+	tagService := NewTagService()
+	err := tagService.DeleteAllDeviceTags(appID, deviceToken)
+	if err != nil {
+		return fmt.Errorf("删除现有标签失败: %v", err)
+	}
+
+	// 如果没有新标签，直接返回
+	if len(tags) == 0 {
+		return nil
+	}
+
+	// 批量添加新标签
+	var deviceTags []models.DeviceTag
+	for _, tag := range tags {
+		deviceTags = append(deviceTags, models.DeviceTag{
+			AppID:       appID,
+			DeviceToken: deviceToken,
+			TagName:     tag.TagName,
+			TagValue:    tag.TagValue,
+		})
+	}
+
+	return tagService.BatchAddDeviceTags(appID, deviceTags)
+}
+
+// DeviceTagItem 设备标签项（与控制器中的结构保持一致）
+type DeviceTagItem struct {
+	TagName  string `json:"tag_name"`
+	TagValue string `json:"tag_value"`
 }
 
 // GetDevices 获取设备列表
