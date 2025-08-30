@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Check, ChevronsUpDown, FileText, Eye, Play } from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { Check, ChevronsUpDown, FileText, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,7 +17,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -27,6 +27,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from '@/components/ui/form'
 import { TemplateService } from '@/services/template-service'
 import { useAuthStore } from '@/stores/auth-store'
 import type { MessageTemplate } from '@/types/api'
@@ -133,42 +140,61 @@ export function TemplateSelector({
     setPreviewOpen(true)
   }
 
+  // 创建动态表单
+  const renderForm = useForm({
+    defaultValues: {} as Record<string, string>
+  })
+
   // 测试渲染
   const handleRender = (template: MessageTemplate) => {
     setSelectedTemplate(template)
-    
-    // 初始化渲染数据
+
+    // 检查是否有变量
     const variables = extractVariables(template.title + ' ' + template.content)
+
+    if (variables.length === 0) {
+      // 没有变量，直接应用模板
+      onTemplateApply?.({
+        title: template.title,
+        content: template.content,
+      })
+      return
+    }
+
+    // 有变量，初始化渲染数据并打开配置对话框
     const templateVars = getTemplateVariables(template)
     const initialData: Record<string, string> = {}
-    
+
     variables.forEach(varName => {
       initialData[varName] = templateVars[varName]?.default || ''
     })
-    
+
     setRenderData(initialData)
+    renderForm.reset(initialData)
     setRenderOpen(true)
   }
 
   // 应用模板
-  const handleApplyTemplate = async () => {
+  const handleApplyTemplate = async (formData?: Record<string, string>) => {
     if (!selectedTemplate || !currentApp) return
+
+    const data = formData || renderData
 
     try {
       const variables = extractVariables(selectedTemplate.title + ' ' + selectedTemplate.content)
-      
+
       if (variables.length > 0) {
         // 如果有变量，使用渲染接口
         const rendered = await TemplateService.renderTemplate(
           currentApp.id,
           selectedTemplate.id,
-          renderData
+          data
         )
-        
+
         onTemplateApply?.({
           title: rendered.title,
           content: rendered.content,
-          variables: renderData,
+          variables: data,
         })
       } else {
         // 如果没有变量，直接使用模板内容
@@ -177,13 +203,17 @@ export function TemplateSelector({
           content: selectedTemplate.content,
         })
       }
-      
+
       setRenderOpen(false)
-      toast.success('模板应用成功')
     } catch (error) {
       console.error('应用模板失败:', error)
       toast.error('应用模板失败')
     }
+  }
+
+  // 表单提交处理
+  const onSubmit = async (data: Record<string, string>) => {
+    await handleApplyTemplate(data)
   }
 
   return (
@@ -223,6 +253,9 @@ export function TemplateSelector({
                   onSelect={() => {
                     onValueChange?.(undefined)
                     setOpen(false)
+                    // 清除模板选择时关闭渲染对话框
+                    setRenderOpen(false)
+                    setSelectedTemplate(null)
                   }}
                 >
                   <Check
@@ -240,6 +273,8 @@ export function TemplateSelector({
                     onSelect={() => {
                       onValueChange?.(template.id)
                       setOpen(false)
+                      // 选中模板后自动进入渲染配置
+                      handleRender(template)
                     }}
                   >
                     <Check
@@ -279,19 +314,9 @@ export function TemplateSelector({
                           e.stopPropagation()
                           handlePreview(template)
                         }}
+                        title="预览模板"
                       >
                         <Eye className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRender(template)
-                        }}
-                      >
-                        <Play className="h-3 w-3" />
                       </Button>
                     </div>
                   </CommandItem>
@@ -373,95 +398,146 @@ export function TemplateSelector({
 
       {/* 模板渲染对话框 */}
       <Dialog open={renderOpen} onOpenChange={setRenderOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>应用模板</DialogTitle>
+            <DialogTitle>配置模板变量</DialogTitle>
             <DialogDescription>
-              配置模板变量并预览最终效果
+              {selectedTemplate && `正在配置模板"${selectedTemplate.name}"，填写变量值并预览最终效果`}
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedTemplate && (
-            <>
-              <div className="flex-1 overflow-auto -mx-6 px-6 space-y-4">
-                {(() => {
-                  const variables = extractVariables(selectedTemplate.title + ' ' + selectedTemplate.content)
-                  const templateVars = getTemplateVariables(selectedTemplate)
-                  
-                  return variables.length > 0 ? (
-                    <>
-                      <div>
-                        <Label className="text-sm font-medium">配置变量值</Label>
-                        <div className="grid gap-3 mt-2">
-                          {variables.map((varName) => (
-                            <div key={varName} className="grid gap-1.5">
-                              <Label className="text-xs text-muted-foreground">
-                                {varName}
-                                {templateVars[varName]?.description && (
-                                  <span className="ml-1">({templateVars[varName].description})</span>
-                                )}
-                              </Label>
-                              <Input
-                                placeholder={templateVars[varName]?.default || `请输入${varName}的值`}
-                                value={renderData[varName] || ''}
-                                onChange={(e) => setRenderData(prev => ({
-                                  ...prev,
-                                  [varName]: e.target.value
-                                }))}
-                              />
+            <div className="flex-1 overflow-auto -mx-6 px-6 space-y-6">
+              {(() => {
+                const variables = extractVariables(selectedTemplate.title + ' ' + selectedTemplate.content)
+                const templateVars = getTemplateVariables(selectedTemplate)
+
+                return variables.length > 0 ? (
+                  <>
+                    {/* 变量输入表单 */}
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">变量赋值</h3>
+
+                      <Form {...renderForm}>
+                        <form onSubmit={renderForm.handleSubmit(onSubmit)} className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {variables.map((varName) => {
+                              const definition = templateVars[varName]
+                              return (
+                                <FormField
+                                  key={varName}
+                                  control={renderForm.control}
+                                  name={varName}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="flex items-center gap-2">
+                                        <Badge variant="outline">{varName}</Badge>
+                                        {definition?.description && (
+                                          <span className="text-xs text-muted-foreground">
+                                            {definition.description}
+                                          </span>
+                                        )}
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder={definition?.default || `请输入 ${varName} 的值`}
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      {definition?.type && (
+                                        <p className="text-xs text-muted-foreground">
+                                          类型: {definition.type}
+                                        </p>
+                                      )}
+                                    </FormItem>
+                                  )}
+                                />
+                              )
+                            })}
+                          </div>
+
+
+                        </form>
+                      </Form>
+                    </div>
+
+                    {/* 预览效果 */}
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">预览效果</h3>
+
+                      {/* 手机样式预览 */}
+                      <div className="bg-muted p-4 rounded-lg">
+                        <div className="bg-background border rounded-lg p-4 max-w-sm mx-auto shadow-sm">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                              <span className="text-primary-foreground text-sm font-medium">📱</span>
                             </div>
-                          ))}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm leading-tight">
+                                {selectedTemplate.title.replace(/\{\{([^}]+)\}\}/g, (match, varName) =>
+                                  renderForm.watch(varName) || match
+                                )}
+                              </div>
+                              <div className="text-muted-foreground text-sm mt-1 leading-tight">
+                                {selectedTemplate.content.replace(/\{\{([^}]+)\}\}/g, (match, varName) =>
+                                  renderForm.watch(varName) || match
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-2">
+                                刚刚 • {selectedTemplate.platform === 'all' ? 'iOS/Android' : selectedTemplate.platform}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      
-                      <div>
-                        <Label className="text-sm font-medium">预览效果</Label>
-                        <Card className="mt-2 gap-1">
-                          <CardHeader>
-                            <CardTitle className="text-sm">
-                              {selectedTemplate.title.replace(/\{\{([^}]+)\}\}/g, (match, varName) => 
-                                renderData[varName] || match
-                              )}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                              {selectedTemplate.content.replace(/\{\{([^}]+)\}\}/g, (match, varName) => 
-                                renderData[varName] || match
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </>
-                  ) : (
-                    <div>
-                      <Label className="text-sm font-medium">预览效果</Label>
-                      <Card className="mt-2 gap-1">
-                        <CardHeader>
-                          <CardTitle className="text-sm">{selectedTemplate.title}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {selectedTemplate.content}
-                          </div>
-                        </CardContent>
-                      </Card>
                     </div>
-                  )
-                })()}
-              </div>
+                  </>
+                ) : (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">预览效果</h3>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setRenderOpen(false)}>
-                  取消
-                </Button>
-                <Button onClick={handleApplyTemplate}>
-                  应用模板
-                </Button>
-              </DialogFooter>
-            </>
+                    {/* 手机样式预览 */}
+                    <div className="bg-muted p-4 rounded-lg">
+                      <div className="bg-background border rounded-lg p-4 max-w-sm mx-auto shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                            <span className="text-primary-foreground text-sm font-medium">📱</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm leading-tight">
+                              {selectedTemplate.title}
+                            </div>
+                            <div className="text-muted-foreground text-sm mt-1 leading-tight">
+                              {selectedTemplate.content}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-2">
+                              刚刚 • {selectedTemplate.platform === 'all' ? 'iOS/Android' : selectedTemplate.platform}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
           )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRenderOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={renderForm.handleSubmit(onSubmit)}
+            >
+              确认应用
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

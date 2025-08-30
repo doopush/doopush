@@ -61,7 +61,7 @@ export function TemplatePreviewDialog({ template, open, onOpenChange }: Template
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5" />
@@ -69,7 +69,7 @@ export function TemplatePreviewDialog({ template, open, onOpenChange }: Template
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="flex-1 overflow-auto -mx-6 px-6 space-y-6">
           {/* 基本信息 */}
           <div>
             <h3 className="text-lg font-medium mb-4">基本信息</h3>
@@ -149,7 +149,7 @@ export function TemplatePreviewDialog({ template, open, onOpenChange }: Template
               </div>
             </div>
             
-            <div className="mt-4 p-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg text-muted-foreground">
               <strong>注意:</strong> 实际推送显示效果可能因设备型号和系统版本而异
             </div>
           </div>
