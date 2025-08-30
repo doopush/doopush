@@ -143,4 +143,116 @@ export class PushService {
   }> {
     return apiClient.get(`/apps/${appId}/push/logs/${logId}`)
   }
+
+  /**
+   * 获取推送分析数据
+   */
+  static async getPushAnalytics(appId: number, params?: {
+    days?: number
+  }): Promise<{
+    // 推送效果指标
+    effectMetrics: {
+      successRate: number
+      clickRate: number
+      openRate: number
+      avgDailyPushes: number
+    }
+    // 用户活跃度指标
+    userActivityMetrics: {
+      totalDevices: number
+      activeDevices: number
+      activityRate: number
+      avgResponseTime: number
+    }
+    // 设备分析指标
+    deviceMetrics: {
+      platformDistribution: Array<{
+        platform: string
+        count: number
+        percentage: number
+        successRate: number
+      }>
+      vendorDistribution: Array<{
+        vendor: string
+        count: number
+        successRate: number
+      }>
+    }
+    // 时间趋势数据
+    trends: {
+      dailySuccess: Array<{
+        date: string
+        success: number
+        total: number
+        rate: number
+      }>
+      dailyActivity: Array<{
+        date: string
+        clicks: number
+        opens: number
+        devices: number
+      }>
+    }
+  }> {
+    const stats = await this.getPushStatistics(appId, params)
+
+    // 计算推送效果指标
+    const successRate = stats.total_pushes > 0 ? (stats.success_pushes / stats.total_pushes) * 100 : 0
+    const clickRate = stats.total_pushes > 0 ? (stats.total_clicks / stats.total_pushes) * 100 : 0
+    const openRate = stats.total_pushes > 0 ? (stats.total_opens / stats.total_pushes) * 100 : 0
+    const avgDailyPushes = stats.daily_stats.length > 0
+      ? stats.daily_stats.reduce((sum, day) => sum + day.total_pushes, 0) / stats.daily_stats.length
+      : 0
+
+    // 计算用户活跃度指标
+    const activeDevices = stats.total_devices // 假设有推送记录的设备都算活跃
+    const activityRate = stats.total_devices > 0 ? (activeDevices / stats.total_devices) * 100 : 0
+
+    // 计算设备分析指标
+    const totalPlatformPushes = stats.platform_stats.reduce((sum, p) => sum + p.total_pushes, 0)
+    const platformDistribution = stats.platform_stats.map(platform => ({
+      platform: platform.platform,
+      count: platform.total_pushes,
+      percentage: totalPlatformPushes > 0 ? (platform.total_pushes / totalPlatformPushes) * 100 : 0,
+      successRate: platform.total_pushes > 0 ? (platform.success_pushes / platform.total_pushes) * 100 : 0
+    }))
+
+    // 时间趋势数据
+    const dailySuccess = stats.daily_stats.map(day => ({
+      date: day.date,
+      success: day.success_pushes,
+      total: day.total_pushes,
+      rate: day.total_pushes > 0 ? (day.success_pushes / day.total_pushes) * 100 : 0
+    }))
+
+    const dailyActivity = stats.daily_stats.map(day => ({
+      date: day.date,
+      clicks: day.click_count,
+      opens: day.open_count,
+      devices: day.total_pushes // 近似表示活跃设备数
+    }))
+
+    return {
+      effectMetrics: {
+        successRate,
+        clickRate,
+        openRate,
+        avgDailyPushes
+      },
+      userActivityMetrics: {
+        totalDevices: stats.total_devices,
+        activeDevices,
+        activityRate,
+        avgResponseTime: 0 // 暂时设为0，后续可以扩展
+      },
+      deviceMetrics: {
+        platformDistribution,
+        vendorDistribution: [] // 暂时为空，后续可以扩展厂商分析
+      },
+      trends: {
+        dailySuccess,
+        dailyActivity
+      }
+    }
+  }
 }

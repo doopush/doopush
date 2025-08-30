@@ -19,11 +19,14 @@ import { ThemeSwitch } from '@/components/theme-switch'
 
 import { useAuthStore } from '@/stores/auth-store'
 import { PushService } from '@/services/push-service'
-import { Send, Smartphone, CheckCircle, XCircle, LayoutDashboard, BarChart3, Activity, TrendingUp } from 'lucide-react'
+import { Send, Smartphone, CheckCircle, XCircle, LayoutDashboard } from 'lucide-react'
 import { NoAppSelected } from '@/components/no-app-selected'
 import { APP_SELECTION_DESCRIPTIONS } from '@/utils/app-utils'
 import { PushOverview } from './components/push-overview'
 import { RecentPushes } from './components/recent-pushes'
+import { PushEffectAnalysis } from './components/push-effect-analysis'
+import { UserActivityAnalysis } from './components/user-activity-analysis'
+import { DeviceAnalysis } from './components/device-analysis'
 
 export function Dashboard() {
   const { currentApp } = useAuthStore()
@@ -34,13 +37,55 @@ export function Dashboard() {
     failed_pushes: 0,
     total_devices: 0,
   })
+  const [analytics, setAnalytics] = useState<{
+    effectMetrics: {
+      successRate: number
+      clickRate: number
+      openRate: number
+      avgDailyPushes: number
+    }
+    userActivityMetrics: {
+      totalDevices: number
+      activeDevices: number
+      activityRate: number
+      avgResponseTime: number
+    }
+    deviceMetrics: {
+      platformDistribution: Array<{
+        platform: string
+        count: number
+        percentage: number
+        successRate: number
+      }>
+      vendorDistribution: Array<{
+        vendor: string
+        count: number
+        successRate: number
+      }>
+    }
+    trends: {
+      dailySuccess: Array<{
+        date: string
+        success: number
+        total: number
+        rate: number
+      }>
+      dailyActivity: Array<{
+        date: string
+        clicks: number
+        opens: number
+        devices: number
+      }>
+    }
+  } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [analyticsLoading, setAnalyticsLoading] = useState(true)
 
   // 加载推送统计数据
   useEffect(() => {
     const loadPushStatistics = async () => {
       if (!currentApp) return
-      
+
       try {
         setLoading(true)
         const data = await PushService.getPushStatistics(currentApp.id)
@@ -54,6 +99,27 @@ export function Dashboard() {
 
     if (currentApp) {
       loadPushStatistics()
+    }
+  }, [currentApp])
+
+  // 加载推送分析数据
+  useEffect(() => {
+    const loadPushAnalytics = async () => {
+      if (!currentApp) return
+
+      try {
+        setAnalyticsLoading(true)
+        const data = await PushService.getPushAnalytics(currentApp.id)
+        setAnalytics(data)
+      } catch (_error) {
+        // 忽略错误，使用默认值
+      } finally {
+        setAnalyticsLoading(false)
+      }
+    }
+
+    if (currentApp) {
+      loadPushAnalytics()
     }
   }, [currentApp])
 
@@ -219,60 +285,45 @@ export function Dashboard() {
             </TabsContent>
 
             <TabsContent value='analytics' className='space-y-4'>
-              <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <BarChart3 className="mr-2 h-5 w-5" />
-                      推送效果分析
-                    </CardTitle>
-                    <CardDescription>
-                      分析推送消息的点击率和转化效果
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Activity className="mx-auto h-12 w-12 mb-2" />
-                      <p>分析功能开发中...</p>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className='grid gap-4 lg:grid-cols-2'>
+                {/* 推送效果分析 */}
+                <div className='lg:col-span-1'>
+                  <PushEffectAnalysis
+                    className='h-full'
+                    metrics={analytics?.effectMetrics || {
+                      successRate: 0,
+                      clickRate: 0,
+                      openRate: 0,
+                      avgDailyPushes: 0
+                    }}
+                    loading={analyticsLoading}
+                  />
+                </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <TrendingUp className="mr-2 h-5 w-5" />
-                      用户活跃度
-                    </CardTitle>
-                    <CardDescription>
-                      用户对推送消息的响应和活跃度统计
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Activity className="mx-auto h-12 w-12 mb-2" />
-                      <p>功能开发中...</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* 用户活跃度分析 */}
+                <div className='lg:col-span-1'>
+                  <UserActivityAnalysis
+                    className='h-full'
+                    metrics={analytics?.userActivityMetrics || {
+                      totalDevices: 0,
+                      activeDevices: 0,
+                      activityRate: 0,
+                      avgResponseTime: 0
+                    }}
+                    loading={analyticsLoading}
+                  />
+                </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Smartphone className="mr-2 h-5 w-5" />
-                      设备分析
-                    </CardTitle>
-                    <CardDescription>
-                      按设备类型和平台分析推送效果
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Activity className="mx-auto h-12 w-12 mb-2" />
-                      <p>功能开发中...</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* 设备分析 */}
+                <div className='lg:col-span-2'>
+                  <DeviceAnalysis
+                    metrics={analytics?.deviceMetrics || {
+                      platformDistribution: [],
+                      vendorDistribution: []
+                    }}
+                    loading={analyticsLoading}
+                  />
+                </div>
               </div>
             </TabsContent>
 
