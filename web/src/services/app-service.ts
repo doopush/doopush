@@ -1,11 +1,11 @@
 import apiClient from './api-client'
-import type { App, AppAPIKey, AppConfig, PaginationParams } from '@/types/api'
+import type { App, AppAPIKey, AppConfig, PaginationRequest } from '@/types/api'
 
 export class AppService {
   /**
    * 获取应用列表
    */
-  static async getApps(params?: PaginationParams): Promise<App[]> {
+  static async getApps(params?: PaginationRequest): Promise<App[]> {
     return apiClient.get('/apps', { params })
   }
 

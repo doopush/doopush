@@ -19,7 +19,8 @@ import {
 } from '@/components/ui/select'
 import { DeviceService } from '@/services/device-service'
 import { toast } from 'sonner'
-import type { App, DeviceGroup, FilterRule } from '@/types/api'
+import type { App, DeviceGroup } from '@/types/api'
+import type { FilterRule } from '@/services/group-service'
 
 interface EditRulesDialogProps {
   app: App

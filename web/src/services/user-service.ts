@@ -1,5 +1,6 @@
 import { apiClient } from './api-client'
-import type { User, PaginationParams, App, APIResponse, PaginatedResponse } from '@/types/api'
+import type { User, PaginationRequest, App, APIResponse } from '@/types/api'
+import type { PaginatedResponse } from '@/services/api-client'
 
 export interface CreateUserRequest {
   username: string
@@ -26,7 +27,7 @@ export interface ChangePasswordRequest {
 }
 
 export class UserService {
-  static async getUsers(params?: PaginationParams & { 
+  static async getUsers(params?: PaginationRequest & { 
     search?: string
     role?: string
     status?: string 

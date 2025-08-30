@@ -24,7 +24,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { DeviceService } from '@/services/device-service'
 import { toast } from 'sonner'
-import type { App, FilterRule } from '@/types/api'
+import type { App } from '@/types/api'
+import type { FilterRule } from '@/services/group-service'
 
 // 表单验证规则
 const createGroupSchema = z.object({
