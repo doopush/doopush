@@ -2,80 +2,46 @@ import { useEffect, useState } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useAuthStore } from '@/stores/auth-store'
+import { PushService } from '@/services/push-service'
 import { Apple, Android } from '@/components/platform-icon'
+import type { PushLog } from '@/types/api'
 
-interface Push {
-  id: number
-  title: string
-  content: string
-  status: string
-  platform: string
-  created_at: string
-}
+
 
 export function RecentPushes() {
   const { currentApp } = useAuthStore()
-  const [recentPushes, setRecentPushes] = useState<Push[]>([])
+  const [recentPushes, setRecentPushes] = useState<PushLog[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadRecentPushes = async () => {
       if (!currentApp) return
-      
+
       try {
         setLoading(true)
-        // 获取最近的推送记录（这里暂时使用模拟数据）
-        const mockData: Push[] = [
-          {
-            id: 1,
-            title: '系统维护通知',
-            content: '系统将在今晚进行维护，请提前保存工作',
-            status: 'success',
-            platform: 'ios',
-            created_at: '2024-01-15T10:30:00Z'
-          },
-          {
-            id: 2,
-            title: '新功能上线',
-            content: '推送平台新增批量推送功能',
-            status: 'success',
-            platform: 'android',
-            created_at: '2024-01-15T09:15:00Z'
-          },
-          {
-            id: 3,
-            title: '促销活动',
-            content: '限时优惠活动已开始，快来参与吧！',
-            status: 'failed',
-            platform: 'ios',
-            created_at: '2024-01-15T08:00:00Z'
-          },
-          {
-            id: 4,
-            title: '安全提醒',
-            content: '检测到异常登录，请及时修改密码',
-            status: 'success',
-            platform: 'android',
-            created_at: '2024-01-14T16:45:00Z'
-          },
-          {
-            id: 5,
-            title: '版本更新',
-            content: '应用已更新到最新版本，请及时升级',
-            status: 'success',
-            platform: 'ios',
-            created_at: '2024-01-14T14:20:00Z'
+
+        // 调用真实的API获取最近的推送记录
+        const response = await PushService.getPushLogs(currentApp.id, {
+          page: 1,
+          page_size: 5,
+          filters: {
+            status: undefined, // 获取所有状态
+            platform: undefined  // 获取所有平台
           }
-        ]
-        setRecentPushes(mockData)
+        })
+
+        setRecentPushes(response.data.items)
       } catch (error) {
         console.error('Failed to load recent pushes:', error)
+        setRecentPushes([])
       } finally {
         setLoading(false)
       }
     }
 
-    loadRecentPushes()
+    if (currentApp) {
+      loadRecentPushes()
+    }
   }, [currentApp])
 
   const formatTime = (dateStr: string) => {
@@ -116,8 +82,13 @@ export function RecentPushes() {
     return { displayTime, fullTime }
   }
 
-  const getPlatformIcon = (platform: string) => {
-    return platform === 'ios' ? <Apple className='h-5 w-5' /> : <Android className='h-5 w-5' />
+  const getPlatformIcon = (pushLog: PushLog) => {
+    // 从设备信息中获取平台
+    if (pushLog.device_platform) {
+      return pushLog.device_platform === 'ios' ? <Apple className='h-5 w-5' /> : <Android className='h-5 w-5' />
+    }
+    // 默认返回Android图标
+    return <Android className='h-5 w-5' />
   }
 
   if (loading) {
@@ -137,19 +108,30 @@ export function RecentPushes() {
     )
   }
 
+  if (recentPushes.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-32 text-muted-foreground">
+        <div className="text-center">
+          <div className="text-sm mb-1">暂无推送记录</div>
+          <div className="text-xs">发送第一个推送后，记录将在这里显示</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {recentPushes.map((push) => (
         <div key={push.id} className="flex items-start">
           <Avatar className="h-9 w-9">
             <AvatarFallback>
-              {getPlatformIcon(push.platform)}
+              {getPlatformIcon(push)}
             </AvatarFallback>
           </Avatar>
           <div className="ml-4 space-y-1 flex-1">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium leading-none">
-                {push.status === 'failed' && (
+                {(push.status === 'failed' || push.failed_count > 0) && (
                   <Badge variant="outline" className="mr-1 text-xs text-red-600 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800">
                     失败
                   </Badge>

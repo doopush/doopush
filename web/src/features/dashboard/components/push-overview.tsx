@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
+import { PushService } from '@/services/push-service'
 
 import {
   Area,
@@ -9,36 +10,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-
-// 模拟数据 - 实际项目中应该从API获取
-const generateMockData = () => {
-  const data = []
-  const now = new Date()
-  
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(now)
-    date.setDate(date.getDate() - i)
-    
-    // 生成模拟的推送数据
-    const totalPushes = Math.floor(Math.random() * 500) + 100
-    const successRate = 0.85 + Math.random() * 0.1 // 85%-95%成功率
-    const successPushes = Math.floor(totalPushes * successRate)
-    const failedPushes = totalPushes - successPushes
-    
-    data.push({
-      date: date.toISOString().split('T')[0],
-      dateDisplay: date.toLocaleDateString('zh-CN', { 
-        month: 'short', 
-        day: 'numeric' 
-      }),
-      total: totalPushes,
-      success: successPushes,
-      failed: failedPushes,
-    })
-  }
-  
-  return data
-}
 
 interface ChartDataPoint {
   date: string
@@ -59,16 +30,37 @@ export function PushOverview() {
   }, [currentApp])
 
   const loadChartData = async () => {
+    if (!currentApp) return
+
     try {
       setLoading(true)
-      // TODO: 实际项目中应该调用API获取历史统计数据
-      // const chartData = await PushService.getPushTrendData(currentApp.id)
-      
-      // 目前使用模拟数据
-      const mockData = generateMockData()
-      setData(mockData)
+
+      // 调用真实的API获取推送统计数据
+      const stats = await PushService.getPushStatistics(currentApp.id, { days: 30 })
+
+      // 转换数据格式用于图表显示
+      const chartData = stats.daily_stats.map(stat => ({
+        date: stat.date,
+        dateDisplay: new Date(stat.date).toLocaleDateString('zh-CN', {
+          month: 'short',
+          day: 'numeric'
+        }),
+        total: stat.total_pushes,
+        success: stat.success_pushes,
+        failed: stat.failed_pushes,
+      }))
+
+      // 如果没有数据，显示空状态
+      if (chartData.length === 0) {
+        setData([])
+      } else {
+        // 按日期排序（最旧的在前）
+        chartData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        setData(chartData)
+      }
     } catch (error) {
       console.error('加载图表数据失败:', error)
+      setData([])
     } finally {
       setLoading(false)
     }
@@ -78,6 +70,17 @@ export function PushOverview() {
     return (
       <div className="h-[300px] flex items-center justify-center">
         <div className="text-muted-foreground">加载中...</div>
+      </div>
+    )
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="h-[300px] flex items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <div className="text-lg mb-2">暂无数据</div>
+          <div className="text-sm">开始发送推送后，趋势图将在这里显示</div>
+        </div>
       </div>
     )
   }
@@ -99,18 +102,18 @@ export function PushOverview() {
             <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
           </linearGradient>
         </defs>
-        <XAxis 
-          dataKey="dateDisplay" 
+        <XAxis
+          dataKey="dateDisplay"
           axisLine={false}
           tickLine={false}
           tick={{ fontSize: 12 }}
         />
-        <YAxis 
+        <YAxis
           axisLine={false}
           tickLine={false}
           tick={{ fontSize: 12 }}
         />
-        <Tooltip 
+        <Tooltip
           content={({ active, payload, label }) => {
             if (active && payload && payload.length) {
               return (

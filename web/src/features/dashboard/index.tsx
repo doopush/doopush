@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -26,6 +27,7 @@ import { RecentPushes } from './components/recent-pushes'
 
 export function Dashboard() {
   const { currentApp } = useAuthStore()
+  const navigate = useNavigate()
   const [stats, setStats] = useState({
     total_pushes: 0,
     success_pushes: 0,
@@ -99,7 +101,7 @@ export function Dashboard() {
               </p>
             </div>
             <div className='flex items-center space-x-2'>
-              <Button onClick={() => window.open('/push/send', '_self')}>
+              <Button onClick={() => navigate({ to: '/push/send' })}>
                 <Send className="mr-2 h-4 w-4" />
                 发送推送
               </Button>
@@ -283,10 +285,14 @@ export function Dashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12 text-muted-foreground">
-                    <BarChart3 className="mx-auto h-16 w-16 mb-4" />
-                    <h3 className="text-lg font-medium mb-2">报告功能开发中</h3>
-                    <p>即将支持推送数据的详细报告生成和导出功能</p>
+                  <div className="text-center py-8">
+                    <Button
+                      onClick={() => navigate({ to: '/push/statistics' })}
+                      size="lg"
+                    >
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      查看完整推送报告
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -302,8 +308,8 @@ export function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-center py-8">
-                    <Button 
-                      onClick={() => window.open('/push/logs', '_self')}
+                    <Button
+                      onClick={() => navigate({ to: '/push/logs' })}
                       size="lg"
                     >
                       <CheckCircle className="mr-2 h-5 w-5" />
