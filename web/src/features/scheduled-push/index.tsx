@@ -217,7 +217,7 @@ export function ScheduledPush() {
       </Header>
 
       <Main>
-        <div className='flex items-center justify-between mb-6'>
+        <div className='flex items-center justify-between mb-6 gap-4'>
           <div className='flex flex-col gap-1'>
             <h1 className='text-2xl font-bold tracking-tight'>定时推送</h1>
             <p className='text-muted-foreground'>
@@ -225,13 +225,13 @@ export function ScheduledPush() {
             </p>
           </div>
           <div className='flex items-center gap-2'>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              创建任务
-            </Button>
             <Button variant="outline" onClick={fetchScheduledPushes}>
               <RefreshCw className="mr-2 h-4 w-4" />
               刷新
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              创建任务
             </Button>
           </div>
         </div>

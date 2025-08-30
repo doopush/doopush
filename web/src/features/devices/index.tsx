@@ -218,7 +218,7 @@ export function Devices() {
         />
       ) : (
         <Main>
-            <div className='flex items-center justify-between'>
+            <div className='flex items-center justify-between gap-4'>
               <div className='flex flex-col gap-1'>
                 <h1 className='text-2xl font-bold tracking-tight'>设备管理</h1>
                 <p className='text-muted-foreground'>

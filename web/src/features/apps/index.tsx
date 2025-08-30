@@ -163,7 +163,7 @@ export function Apps() {
         <NoAuthUser icon={<Package className="h-16 w-16 text-muted-foreground" />} />
       ) : (
         <Main>
-        <div className='flex items-center justify-between'>
+        <div className='flex items-center justify-between gap-4'>
           <div className='flex flex-col gap-1'>
             <h1 className='text-2xl font-bold tracking-tight'>应用管理</h1>
             <p className='text-muted-foreground'>

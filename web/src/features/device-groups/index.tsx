@@ -199,7 +199,7 @@ export function DeviceGroups() {
         />
       ) : (
         <Main>
-          <div className='flex items-center justify-between mb-6'>
+          <div className='flex items-center justify-between gap-4 mb-6'>
             <div className='flex flex-col gap-1'>
               <h1 className='text-2xl font-bold tracking-tight'>设备分组管理</h1>
               <p className='text-muted-foreground'>
@@ -207,16 +207,16 @@ export function DeviceGroups() {
               </p>
             </div>
             <div className='flex items-center gap-2'>
+              <Button variant="outline" onClick={loadGroups}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                刷新
+              </Button>
               <Button
                 onClick={handleCreateGroup}
                 disabled={loading}
               >
                 <Plus className="mr-2 h-4 w-4" />
                 创建分组
-              </Button>
-              <Button variant="outline" onClick={loadGroups}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                刷新
               </Button>
             </div>
           </div>

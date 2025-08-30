@@ -196,7 +196,7 @@ export function Templates() {
         />
       ) : (
         <Main>
-            <div className='flex items-center justify-between mb-6'>
+            <div className='flex items-center justify-between mb-6 gap-4'>
               <div className='flex flex-col gap-1'>
                 <h1 className='text-2xl font-bold tracking-tight'>消息模板</h1>
                 <p className='text-muted-foreground'>
@@ -204,13 +204,13 @@ export function Templates() {
                 </p>
               </div>
               <div className='flex items-center gap-2'>
-                <Button onClick={() => setCreateDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  创建模板
-                </Button>
                 <Button variant="outline" onClick={loadTemplates}>
                   <RefreshCw className="mr-2 h-4 w-4" />
                   刷新
+                </Button>
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  创建模板
                 </Button>
               </div>
             </div>
