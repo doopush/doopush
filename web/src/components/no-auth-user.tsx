@@ -35,7 +35,13 @@ export function NoAuthUser({
   const router = useRouter()
 
   const handleLogin = () => {
-    router.navigate({ to: '/sign-in' })
+    const currentUrl = window.location.href
+    router.navigate({
+      to: '/sign-in',
+      search: {
+        redirect: encodeURIComponent(currentUrl)
+      }
+    })
   }
 
   return (

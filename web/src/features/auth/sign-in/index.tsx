@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Link, useSearch } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { AuthLayout } from '../auth-layout'
 import { UserAuthForm } from './components/user-auth-form'
 import { useEffect } from 'react'
@@ -14,14 +14,15 @@ import { useAuthStore } from '@/stores/auth-store'
 
 
 export function SignIn() {
-  const search = useSearch({ from: '/(auth)/sign-in' })
-  
   useEffect(() => {
-    const handle = (search as { handle?: string }).handle
-    if (handle === 'logout') {
-      useAuthStore.getState().logout()
+    const clearCacheTime = sessionStorage.getItem('shouldClearCache');
+    if (clearCacheTime) {
+      if (Date.now() - Number(clearCacheTime) < 300000) {
+        useAuthStore.getState().logout()
+      }
+      sessionStorage.removeItem('shouldClearCache');
     }
-  }, [search])
+  }, [])
 
   return (
     <AuthLayout>

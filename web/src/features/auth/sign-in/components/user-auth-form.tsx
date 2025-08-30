@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, useRouter } from '@tanstack/react-router'
+import { Link, useRouter, useSearch } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -34,6 +34,7 @@ export function UserAuthForm({
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { setAuth, setUserApps } = useAuthStore()
+  const search = useSearch({ from: '/(auth)/sign-in' })
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -51,13 +52,25 @@ export function UserAuthForm({
       // 先设置认证状态
       setAuth(response.user, response.token)
       
-      // 获取用户应用列表 - 手动传递token避免时序问题
+      // 获取用户应用列表 - 自动验证之前保存的应用是否仍然有效
       const apps = await AuthService.getUserApps(response.token)
       setUserApps(apps)
       
       toast.success('登录成功')
-      
-      // 跳转到主页面
+
+      // 处理重定向
+      const redirect = (search as { redirect?: string }).redirect
+      if (redirect && !/\/sign-/.test(redirect)) {
+        try {
+          const decodedUrl = decodeURIComponent(redirect)
+          window.location.href = decodedUrl
+          return
+        } catch (_error) {
+          console.warn('Invalid redirect URL:', redirect)
+        }
+      }
+
+      // 默认跳转到主页面
       router.navigate({ to: '/' })
     } catch (error) {
       toast.error((error as Error).message || '登录失败')

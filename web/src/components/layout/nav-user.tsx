@@ -35,7 +35,8 @@ export function NavUser() {
   }
 
   const handleLogout = () => {
-    window.location.href = '/sign-in?handle=logout'
+    sessionStorage.setItem('shouldClearCache', Date.now().toString())
+    window.location.href = '/sign-in'
   }
 
   const getUserInitials = (name: string) => {

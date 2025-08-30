@@ -79,7 +79,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
     logout: () =>
       set(() => {
         removeCookie(ACCESS_TOKEN)
-        removeCookie(CURRENT_APP)
         removeCookie(CACHED_USER)
         return {
           user: null,
@@ -102,7 +101,34 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       }),
       
     setUserApps: (apps: App[]) =>
-      set(() => ({ userApps: apps })),
+      set(() => {
+        // 检查之前保存的应用是否仍然有效
+        const savedAppData = getCookie(CURRENT_APP)
+        let validCurrentApp = null
+
+        if (savedAppData) {
+          try {
+            const savedApp = JSON.parse(savedAppData)
+            // 检查保存的应用是否在新的应用列表中
+            const appExists = apps.some(app => app.id === savedApp.id)
+            if (appExists) {
+              // 如果存在，设置为当前应用
+              validCurrentApp = savedApp
+            } else {
+              // 如果不存在，清除保存的应用
+              removeCookie(CURRENT_APP)
+            }
+          } catch (_error) {
+            // 解析失败，清除无效数据
+            removeCookie(CURRENT_APP)
+          }
+        }
+
+        return {
+          userApps: apps,
+          currentApp: validCurrentApp
+        }
+      }),
     
     // 权限检查
     hasAppPermission: (appId: number, _permission = 'viewer') => {

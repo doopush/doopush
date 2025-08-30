@@ -50,12 +50,12 @@ const queryClient = new QueryClient({
     onError: (error) => {
       if (error instanceof AxiosError) {
         if (error.response?.status === 401) {
+          sessionStorage.setItem('shouldClearCache', Date.now().toString())
           toast.error('Session expired!')
           router.navigate({
             to: '/sign-in',
             search: { 
-              redirect: router.history.location.href, 
-              handle: 'logout'
+              redirect: encodeURIComponent(window.location.href), 
             },
           })
         }
