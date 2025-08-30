@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
-import { 
-  Send, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Send,
+  CheckCircle,
+  XCircle,
   Clock,
 
   Copy,
   Download,
+  Loader2,
 
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,6 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { PushService } from '@/services/push-service'
+import { ExportService } from '@/services/export-service'
 import type { PushLog, PushResult } from '@/types/api'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
@@ -81,6 +83,7 @@ export function PushLogDetailsDialog({ log, open, onOpenChange }: PushLogDetails
   const { currentApp } = useAuthStore()
   const [results, setResults] = useState<PushResult[]>([])
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [logStats, setLogStats] = useState({
     total_devices: 0,
     success_count: 0,
@@ -158,6 +161,28 @@ export function PushLogDetailsDialog({ log, open, onOpenChange }: PushLogDetails
   const handleCopyPayload = () => {
     navigator.clipboard.writeText(log.payload)
     toast.success('推送载荷已复制到剪贴板')
+  }
+
+  const handleExportResults = async () => {
+    if (!currentApp || exporting) return
+
+    try {
+      setExporting(true)
+      toast.info('正在准备导出文件...')
+
+      // 调用导出API
+      const result = await ExportService.exportPushLogDetails(currentApp.id, log.id)
+
+      // 下载文件
+      await ExportService.downloadFromUrl(result.download_url, result.filename)
+
+      toast.success('导出成功！文件已开始下载')
+    } catch (error) {
+      console.error('导出失败:', error)
+      toast.error('导出失败，请稍后重试')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -303,9 +328,18 @@ export function PushLogDetailsDialog({ log, open, onOpenChange }: PushLogDetails
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>设备推送结果</span>
-                    <Button size="sm" variant="outline">
-                      <Download className="mr-2 h-4 w-4" />
-                      导出结果
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleExportResults}
+                      disabled={exporting}
+                    >
+                      {exporting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      {exporting ? '导出中...' : '导出结果'}
                     </Button>
                   </CardTitle>
                 </CardHeader>

@@ -188,6 +188,7 @@ func startServer() {
 
 			// 导出功能
 			authenticated.POST("/apps/:appId/export/push-logs", exportCtrl.ExportPushLogs)
+			authenticated.POST("/apps/:appId/export/push-logs/:logId/details", exportCtrl.ExportPushLogDetails)
 			authenticated.POST("/apps/:appId/export/push-statistics", exportCtrl.ExportPushStatistics)
 		}
 

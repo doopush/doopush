@@ -52,6 +52,72 @@ type StatisticsParams struct {
 	EndDate   *time.Time `json:"end_date"`
 }
 
+// ExportPushLogDetails 导出推送详情结果
+func (s *ExportService) ExportPushLogDetails(appID uint, logID uint, userID uint) (*ExportResult, error) {
+	// 检查用户权限
+	userService := NewUserService()
+	hasPermission, err := userService.CheckAppPermission(userID, appID, "viewer")
+	if err != nil {
+		return nil, fmt.Errorf("权限检查失败: %v", err)
+	}
+	if !hasPermission {
+		return nil, fmt.Errorf("无权限访问该应用")
+	}
+
+	// 获取推送日志详情
+	var pushLog models.PushLog
+	if err := database.DB.Where("id = ? AND app_id = ?", logID, appID).
+		Preload("Device").
+		Preload("PushResult").
+		First(&pushLog).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("推送日志不存在")
+		}
+		return nil, fmt.Errorf("查询推送日志失败: %v", err)
+	}
+
+	// 获取该推送任务的所有结果
+	var allResults []models.PushResult
+	database.DB.Where("push_log_id = ?", logID).Find(&allResults)
+
+	// 生成Excel文件
+	filename := fmt.Sprintf("push_details_%d_%s.xlsx", logID, time.Now().Format("20060102_150405"))
+	filePath, err := s.generatePushLogDetailsExcel(pushLog, allResults, filename)
+	if err != nil {
+		return nil, fmt.Errorf("生成Excel文件失败: %v", err)
+	}
+
+	// 生成下载令牌
+	token, err := s.generateSecureToken()
+	if err != nil {
+		return nil, fmt.Errorf("生成下载令牌失败: %v", err)
+	}
+
+	// 保存令牌信息
+	expiresAt := time.Now().Add(24 * time.Hour)
+	exportToken := models.ExportToken{
+		Token:       token,
+		AppID:       appID,
+		UserID:      userID,
+		FilePath:    filePath,
+		Filename:    filename,
+		ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		ExpiresAt:   expiresAt,
+	}
+
+	if err := database.DB.Create(&exportToken).Error; err != nil {
+		// 清理文件
+		os.Remove(filePath)
+		return nil, fmt.Errorf("保存下载令牌失败: %v", err)
+	}
+
+	return &ExportResult{
+		DownloadURL: fmt.Sprintf("/export/download/%s", token),
+		Filename:    filename,
+		ExpiresAt:   expiresAt,
+	}, nil
+}
+
 // ExportPushLogs 导出推送日志
 func (s *ExportService) ExportPushLogs(appID uint, userID uint, filters PushLogFilters) (*ExportResult, error) {
 	// 检查用户权限
@@ -681,6 +747,199 @@ func (s *ExportService) generatePlatformDistributionSheet(f *excelize.File, appI
 	}
 
 	// 调整列宽
+	for i := 0; i < len(headers); i++ {
+		col := fmt.Sprintf("%c", 'A'+i)
+		f.SetColWidth(sheetName, col, col, 15)
+	}
+
+	return nil
+}
+
+// generatePushLogDetailsExcel 生成推送详情Excel文件
+func (s *ExportService) generatePushLogDetailsExcel(pushLog models.PushLog, results []models.PushResult, filename string) (string, error) {
+	// 确保导出目录存在
+	exportDir, err := s.ensureExportDir()
+	if err != nil {
+		return "", err
+	}
+
+	filePath := filepath.Join(exportDir, filename)
+
+	// 创建Excel文件
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Printf("关闭Excel文件失败: %v\n", err)
+		}
+	}()
+
+	// 生成推送概览表
+	if err := s.generatePushOverviewSheet(f, pushLog, results); err != nil {
+		return "", fmt.Errorf("生成推送概览表失败: %v", err)
+	}
+
+	// 生成推送结果表
+	if err := s.generatePushResultsSheet(f, pushLog, results); err != nil {
+		return "", fmt.Errorf("生成推送结果表失败: %v", err)
+	}
+
+	// 保存文件
+	if err := f.SaveAs(filePath); err != nil {
+		return "", fmt.Errorf("保存Excel文件失败: %v", err)
+	}
+
+	return filePath, nil
+}
+
+// generatePushOverviewSheet 生成推送概览表
+func (s *ExportService) generatePushOverviewSheet(f *excelize.File, pushLog models.PushLog, results []models.PushResult) error {
+	sheetName := "推送概览"
+	f.SetSheetName("Sheet1", sheetName)
+
+	// 计算统计数据
+	totalDevices := len(results)
+	successCount := 0
+	failedCount := 0
+	for _, result := range results {
+		if result.Success {
+			successCount++
+		} else {
+			failedCount++
+		}
+	}
+
+	successRate := "0%"
+	if totalDevices > 0 {
+		successRate = fmt.Sprintf("%.2f%%", float64(successCount)/float64(totalDevices)*100)
+	}
+
+	// 设置表头和数据
+	data := [][]interface{}{
+		{"推送信息", ""},
+		{"推送ID", pushLog.ID},
+		{"推送标题", pushLog.Title},
+		{"推送内容", pushLog.Content},
+		{"推送状态", pushLog.Status},
+		{"", ""},
+		{"统计信息", ""},
+		{"目标设备数", totalDevices},
+		{"成功发送数", successCount},
+		{"失败发送数", failedCount},
+		{"成功率", successRate},
+		{"", ""},
+		{"时间信息", ""},
+		{"创建时间", pushLog.CreatedAt.Format("2006-01-02 15:04:05")},
+		{"发送时间", func() string {
+			if pushLog.SendAt != nil {
+				return pushLog.SendAt.Format("2006-01-02 15:04:05")
+			}
+			return "未发送"
+		}()},
+		{"更新时间", pushLog.UpdatedAt.Format("2006-01-02 15:04:05")},
+	}
+
+	// 写入数据
+	for i, row := range data {
+		for j, value := range row {
+			cell := fmt.Sprintf("%c%d", 'A'+j, i+1)
+			f.SetCellValue(sheetName, cell, value)
+		}
+	}
+
+	// 设置样式
+	headerStyle, err := f.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Bold: true},
+		Fill: excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{"#E6E6FA"},
+			Pattern: 1,
+		},
+	})
+	if err == nil {
+		f.SetCellStyle(sheetName, "A1", "B1", headerStyle)
+		f.SetCellStyle(sheetName, "A7", "B7", headerStyle)
+		f.SetCellStyle(sheetName, "A13", "B13", headerStyle)
+	}
+
+	// 调整列宽
+	f.SetColWidth(sheetName, "A", "A", 20)
+	f.SetColWidth(sheetName, "B", "B", 30)
+
+	return nil
+}
+
+// generatePushResultsSheet 生成推送结果表
+func (s *ExportService) generatePushResultsSheet(f *excelize.File, pushLog models.PushLog, results []models.PushResult) error {
+	sheetName := "发送结果"
+	f.NewSheet(sheetName)
+
+	// 设置表头
+	headers := []string{
+		"设备ID", "平台", "厂商", "状态", "响应码", "响应消息", "错误码", "错误信息", "发送时间",
+	}
+	for i, header := range headers {
+		cell := fmt.Sprintf("%c1", 'A'+i)
+		f.SetCellValue(sheetName, cell, header)
+	}
+
+	// 设置表头样式
+	headerStyle, err := f.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Bold: true},
+		Fill: excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{"#E6E6FA"},
+			Pattern: 1,
+		},
+	})
+	if err == nil {
+		f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%c1", 'A'+len(headers)-1), headerStyle)
+	}
+
+	// 写入数据
+	for i, result := range results {
+		row := i + 2
+
+		// 获取设备信息
+		platform := "未知"
+		vendor := "未知"
+		if pushLog.Device.ID > 0 {
+			platform = pushLog.Device.Platform
+			vendor = pushLog.Device.Platform
+			if pushLog.Device.Platform == "ios" {
+				vendor = "apple"
+			}
+		}
+
+		// 状态映射
+		status := "失败"
+		if result.Success {
+			status = "成功"
+		}
+
+		// 响应信息
+		responseCode := "400"
+		responseMsg := result.ErrorMessage
+		if result.Success {
+			responseCode = "200"
+			responseMsg = "Success"
+		}
+
+		// 发送时间
+		sendTime := result.CreatedAt.Format("2006-01-02 15:04:05")
+
+		// 写入行数据
+		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), result.PushLogID)
+		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), platform)
+		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), vendor)
+		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), status)
+		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), responseCode)
+		f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), responseMsg)
+		f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), result.ErrorCode)
+		f.SetCellValue(sheetName, fmt.Sprintf("H%d", row), result.ErrorMessage)
+		f.SetCellValue(sheetName, fmt.Sprintf("I%d", row), sendTime)
+	}
+
+	// 自动调整列宽
 	for i := 0; i < len(headers); i++ {
 		col := fmt.Sprintf("%c", 'A'+i)
 		f.SetColWidth(sheetName, col, col, 15)

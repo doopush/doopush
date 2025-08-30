@@ -36,6 +36,13 @@ export class ExportService {
   }
 
   /**
+   * 导出推送详情结果
+   */
+  static async exportPushLogDetails(appId: number, logId: number): Promise<ExportResult> {
+    return apiClient.post(`/apps/${appId}/export/push-logs/${logId}/details`)
+  }
+
+  /**
    * 下载文件
    */
   static downloadFile(downloadUrl: string, filename: string): void {

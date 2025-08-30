@@ -88,6 +88,61 @@ func (c *ExportController) ExportPushLogs(ctx *gin.Context) {
 	response.Success(ctx, result)
 }
 
+// ExportPushLogDetails 导出推送详情结果
+// @Summary 导出推送详情结果
+// @Description 导出单个推送的详细结果为Excel文件
+// @Tags 导出
+// @Accept json
+// @Produce json
+// @Param appId path int true "应用ID"
+// @Param logId path int true "推送日志ID"
+// @Success 200 {object} response.APIResponse{data=services.ExportResult}
+// @Failure 400 {object} response.APIResponse
+// @Failure 401 {object} response.APIResponse
+// @Failure 403 {object} response.APIResponse
+// @Failure 404 {object} response.APIResponse
+// @Failure 500 {object} response.APIResponse
+// @Router /apps/{appId}/export/push-logs/{logId}/details [post]
+func (c *ExportController) ExportPushLogDetails(ctx *gin.Context) {
+	// 获取应用ID
+	appIDStr := ctx.Param("appId")
+	appID, err := strconv.ParseUint(appIDStr, 10, 32)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "无效的应用ID")
+		return
+	}
+
+	// 获取日志ID
+	logIDStr := ctx.Param("logId")
+	logID, err := strconv.ParseUint(logIDStr, 10, 32)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "无效的日志ID")
+		return
+	}
+
+	// 获取用户ID
+	userID, exists := ctx.Get("user_id")
+	if !exists {
+		response.Error(ctx, http.StatusUnauthorized, "用户未认证")
+		return
+	}
+
+	// 调用服务导出
+	result, err := c.exportService.ExportPushLogDetails(uint(appID), uint(logID), userID.(uint))
+	if err != nil {
+		if err.Error() == "无权限访问该应用" {
+			response.Error(ctx, http.StatusForbidden, err.Error())
+		} else if err.Error() == "推送日志不存在" {
+			response.Error(ctx, http.StatusNotFound, err.Error())
+		} else {
+			response.Error(ctx, http.StatusInternalServerError, "导出失败: "+err.Error())
+		}
+		return
+	}
+
+	response.Success(ctx, result)
+}
+
 // ExportPushStatistics 导出推送统计
 // @Summary 导出推送统计
 // @Description 导出推送统计为Excel文件
