@@ -53,6 +53,7 @@ import { PushService } from '@/services/push-service'
 import { ScheduledPushService } from '@/services/scheduled-push-service'
 import { NoAppSelected } from '@/components/no-app-selected'
 import { TagSelector } from '@/components/tag-selector'
+import { TemplateSelector } from '@/components/template-selector'
 import { requireApp, APP_SELECTION_DESCRIPTIONS } from '@/utils/app-utils'
 import { toast } from 'sonner'
 import { useLocation } from '@tanstack/react-router'
@@ -96,6 +97,7 @@ export default function PushSend() {
   const location = useLocation()
   const [sending, setSending] = useState(false)
   const [activeTab, setActiveTab] = useState('single')
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | undefined>()
 
   const form = useForm<PushFormData>({
     resolver: zodResolver(pushFormSchema),
@@ -453,6 +455,26 @@ export default function PushSend() {
                       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         {/* 消息内容 */}
                         <div className='space-y-4'>
+                          {/* 模板选择器 */}
+                          <FormItem>
+                            <FormLabel>消息模板 (可选)</FormLabel>
+                            <FormControl>
+                              <TemplateSelector
+                              value={selectedTemplateId}
+                              onValueChange={setSelectedTemplateId}
+                              onTemplateApply={(template) => {
+                                form.setValue('title', template.title)
+                                form.setValue('content', template.content)
+                                toast.success('模板应用成功')
+                              }}
+                              platform={form.watch('platform') || 'all'}
+                            />
+                            </FormControl>
+                            <FormDescription>
+                              选择预设的消息模板快速填充标题和内容，支持变量替换
+                            </FormDescription>
+                          </FormItem>
+
                           <FormField
                             control={form.control}
                             name="title"

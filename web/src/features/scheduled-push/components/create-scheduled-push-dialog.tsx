@@ -37,6 +37,7 @@ import { ScheduledPushService } from '@/services/scheduled-push-service'
 import { requireApp } from '@/utils/app-utils'
 import { toast } from 'sonner'
 import { GroupSelector } from '../../push/components/group-selector'
+import { TemplateSelector } from '@/components/template-selector'
 
 // 表单验证规则
 const createScheduledPushSchema = z.object({
@@ -71,6 +72,7 @@ interface CreateScheduledPushDialogProps {
 export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: CreateScheduledPushDialogProps) {
   const { currentApp } = useAuthStore()
   const [loading, setLoading] = useState(false)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | undefined>()
 
   const form = useForm<CreateScheduledPushFormData>({
     resolver: zodResolver(createScheduledPushSchema),
@@ -226,6 +228,26 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* 模板选择器 */}
+                  <FormItem>
+                    <FormLabel>消息模板 (可选)</FormLabel>
+                    <FormControl>
+                      <TemplateSelector
+                        value={selectedTemplateId}
+                        onValueChange={setSelectedTemplateId}
+                        onTemplateApply={(template) => {
+                          form.setValue('title', template.title)
+                          form.setValue('content', template.content)
+                          toast.success('模板应用成功')
+                        }}
+                        platform="all"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      选择预设的消息模板快速填充标题和内容，支持变量替换
+                    </FormDescription>
+                  </FormItem>
+
                   <FormField
                     control={form.control}
                     name="title"
