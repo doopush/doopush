@@ -107,7 +107,7 @@ export function CreateApiKeyDialog({ open, onOpenChange, onSuccess }: CreateApiK
     <>
       {/* 创建API密钥对话框 */}
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="h-5 w-5" />
@@ -118,36 +118,38 @@ export function CreateApiKeyDialog({ open, onOpenChange, onSuccess }: CreateApiK
             </DialogDescription>
           </DialogHeader>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>密钥名称 *</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="例如：iOS生产环境密钥"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <div className="flex-1 overflow-auto -mx-6 px-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>密钥名称 *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="例如：iOS生产环境密钥"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </form>
+            </Form>
+          </div>
 
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
-                  取消
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  创建密钥
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
+              取消
+            </Button>
+            <Button onClick={form.handleSubmit(onSubmit)} disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              创建密钥
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -171,7 +171,7 @@ export function EditAppDialog({ app, open, onOpenChange, onSuccess }: EditAppDia
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>编辑应用</DialogTitle>
           <DialogDescription>
@@ -179,8 +179,9 @@ export function EditAppDialog({ app, open, onOpenChange, onSuccess }: EditAppDia
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="flex-1 overflow-auto -mx-6 px-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -335,23 +336,24 @@ export function EditAppDialog({ app, open, onOpenChange, onSuccess }: EditAppDia
                 </FormItem>
               )}
             />
+            </form>
+          </Form>
+        </div>
 
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handleClose}
-                disabled={loading}
-              >
-                取消
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                保存修改
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={loading}
+          >
+            取消
+          </Button>
+          <Button onClick={form.handleSubmit(onSubmit)} disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            保存修改
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

@@ -83,7 +83,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Key className="h-5 w-5" />
@@ -94,74 +94,76 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="old_password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>当前密码 *</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="输入当前密码" 
-                      type="password" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div className="flex-1 overflow-auto -mx-6 px-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="old_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>当前密码 *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="输入当前密码"
+                        type="password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="new_password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>新密码 *</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="输入新密码" 
-                      type="password" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="new_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>新密码 *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="输入新密码"
+                        type="password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="confirm_password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>确认新密码 *</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="再次输入新密码" 
-                      type="password" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </form>
-        </Form>
+              <FormField
+                control={form.control}
+                name="confirm_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>确认新密码 *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="再次输入新密码"
+                        type="password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
+        </div>
 
         <DialogFooter>
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={handleClose}
             disabled={loading}
           >
             取消
           </Button>
-          <Button 
+          <Button
             onClick={form.handleSubmit(onSubmit)}
             disabled={loading}
           >

@@ -105,86 +105,88 @@ export function EditGroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>编辑设备分组</DialogTitle>
           <DialogDescription>
             修改分组 "{group.name}" 的基本信息和状态
           </DialogDescription>
         </DialogHeader>
-        
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>分组名称 *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="例如：VIP用户组" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>分组描述</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="描述这个分组的用途和筛选条件"
-                      className="resize-none"
-                      rows={3}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div className="flex-1 overflow-auto -mx-6 px-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>分组名称 *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="例如：VIP用户组" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="is_active"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-1.5">
-                    <FormLabel>启用状态</FormLabel>
-                    <div className="text-sm text-muted-foreground">
-                      启用后分组才能用于推送
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>分组描述</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="描述这个分组的用途和筛选条件"
+                        className="resize-none"
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="is_active"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-1.5">
+                      <FormLabel>启用状态</FormLabel>
+                      <div className="text-sm text-muted-foreground">
+                        启用后分组才能用于推送
+                      </div>
                     </div>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
+        </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCancel}
-                disabled={editing}
-              >
-                取消
-              </Button>
-              <Button type="submit" disabled={editing}>
-                {editing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                保存修改
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={editing}
+          >
+            取消
+          </Button>
+          <Button onClick={form.handleSubmit(handleSubmit)} disabled={editing}>
+            {editing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            保存修改
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
