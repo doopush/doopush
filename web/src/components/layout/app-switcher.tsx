@@ -26,13 +26,25 @@ export function AppSwitcher() {
   const { currentApp, userApps, setCurrentApp, setUserApps, isAuthenticated } = useAuthStore()
   const router = useRouter()
 
-  // 加载所有应用列表（包括禁用的）
+  // 加载所有应用列表并智能设置当前应用
   useEffect(() => {
     const loadAllApps = async () => {
       if (isAuthenticated) {
         try {
           const allApps = await AppService.getApps()
+          
+          // 一次性设置应用列表，setUserApps 内部会处理 currentApp 的逻辑
           setUserApps(allApps)
+          
+          // 如果 setUserApps 后仍然没有选中应用，则手动选择第一个启用的应用
+          // 使用 setTimeout 确保在下一个事件循环中执行，避免状态冲突
+          setTimeout(() => {
+            const currentState = useAuthStore.getState()
+            if (!currentState.currentApp && allApps.length > 0) {
+              const targetApp = allApps.find(app => app.status === 1) || allApps[0]
+              setCurrentApp(targetApp)
+            }
+          }, 0)
         } catch (error) {
           console.error('加载应用列表失败:', error)
         }
@@ -40,14 +52,7 @@ export function AppSwitcher() {
     }
 
     loadAllApps()
-  }, [isAuthenticated, setUserApps])
-
-  // 当没有选中应用且应用列表存在时，自动选择第一个启用的应用
-  useEffect(() => {
-    if (!currentApp && userApps.length > 0) {
-      setCurrentApp(userApps.find(app => app.status === 1) || userApps[0])
-    }
-  }, [currentApp, userApps, setCurrentApp])
+  }, [isAuthenticated, setUserApps, setCurrentApp])
 
   const handleCreateApp = () => {
     // 跳转到应用管理页面

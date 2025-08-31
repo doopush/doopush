@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useAuthStore } from '@/stores/auth-store'
-import { PushService } from '@/services/push-service'
 
 import {
   Area,
@@ -18,28 +16,25 @@ interface ChartDataPoint {
   failed: number
 }
 
-export function PushOverview() {
-  const { currentApp } = useAuthStore()
+interface PushOverviewProps {
+  dailyStats?: Array<{
+    date: string
+    total_pushes: number
+    success_pushes: number
+    failed_pushes: number
+    click_count: number
+    open_count: number
+  }>
+  loading?: boolean
+}
+
+export function PushOverview({ dailyStats, loading = false }: PushOverviewProps) {
   const [data, setData] = useState<ChartDataPoint[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (currentApp) {
-      loadChartData()
-    }
-  }, [currentApp])
-
-  const loadChartData = async () => {
-    if (!currentApp) return
-
-    try {
-      setLoading(true)
-
-      // 调用真实的API获取推送统计数据
-      const stats = await PushService.getPushStatistics(currentApp.id, { days: 30 })
-
+    if (dailyStats) {
       // 转换数据格式用于图表显示
-      const chartData = stats.daily_stats.map(stat => ({
+      const chartData = dailyStats.map(stat => ({
         date: stat.date,
         dateDisplay: new Date(stat.date).toLocaleDateString('zh-CN', {
           month: 'short',
@@ -58,13 +53,10 @@ export function PushOverview() {
         chartData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         setData(chartData)
       }
-    } catch (error) {
-      console.error('加载图表数据失败:', error)
+    } else {
       setData([])
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [dailyStats])
 
   if (loading) {
     return (

@@ -126,7 +126,9 @@ export class PushService {
       failed_pushes: number
     }>
   }> {
-    return apiClient.get(`/apps/${appId}/push/statistics`, { params })
+    // 统一使用 days=30 作为默认参数
+    const defaultParams = { days: 30, ...params }
+    return apiClient.get(`/apps/${appId}/push/statistics`, { params: defaultParams })
   }
 
   /**
@@ -145,10 +147,11 @@ export class PushService {
   }
 
   /**
-   * 获取推送分析数据
+   * 获取推送分析数据 - 支持传入已有stats数据避免重复请求
    */
   static async getPushAnalytics(appId: number, params?: {
     days?: number
+    stats?: Awaited<ReturnType<typeof PushService.getPushStatistics>>
   }): Promise<{
     // 推送效果指标
     effectMetrics: {
@@ -194,14 +197,19 @@ export class PushService {
       }>
     }
   }> {
-    const stats = await this.getPushStatistics(appId, params)
+    // 如果传入了stats数据则直接使用，否则请求新数据
+    const stats = params?.stats || await this.getPushStatistics(appId, { days: params?.days })
+
+    // 先处理可能为 null 的数据
+    const platformStats = stats.platform_stats || []
+    const dailyStats = stats.daily_stats || []
 
     // 计算推送效果指标
     const successRate = stats.total_pushes > 0 ? (stats.success_pushes / stats.total_pushes) * 100 : 0
     const clickRate = stats.total_pushes > 0 ? (stats.total_clicks / stats.total_pushes) * 100 : 0
     const openRate = stats.total_pushes > 0 ? (stats.total_opens / stats.total_pushes) * 100 : 0
-    const avgDailyPushes = stats.daily_stats.length > 0
-      ? stats.daily_stats.reduce((sum, day) => sum + day.total_pushes, 0) / stats.daily_stats.length
+    const avgDailyPushes = dailyStats.length > 0
+      ? dailyStats.reduce((sum, day) => sum + day.total_pushes, 0) / dailyStats.length
       : 0
 
     // 计算用户活跃度指标
@@ -209,8 +217,9 @@ export class PushService {
     const activityRate = stats.total_devices > 0 ? (activeDevices / stats.total_devices) * 100 : 0
 
     // 计算设备分析指标
-    const totalPlatformPushes = stats.platform_stats.reduce((sum, p) => sum + p.total_pushes, 0)
-    const platformDistribution = stats.platform_stats.map(platform => ({
+    const totalPlatformPushes = platformStats.reduce((sum, p) => sum + p.total_pushes, 0)
+    
+    const platformDistribution = platformStats.map(platform => ({
       platform: platform.platform,
       count: platform.total_pushes,
       percentage: totalPlatformPushes > 0 ? (platform.total_pushes / totalPlatformPushes) * 100 : 0,
@@ -218,14 +227,14 @@ export class PushService {
     }))
 
     // 时间趋势数据
-    const dailySuccess = stats.daily_stats.map(day => ({
+    const dailySuccess = dailyStats.map(day => ({
       date: day.date,
       success: day.success_pushes,
       total: day.total_pushes,
       rate: day.total_pushes > 0 ? (day.success_pushes / day.total_pushes) * 100 : 0
     }))
 
-    const dailyActivity = stats.daily_stats.map(day => ({
+    const dailyActivity = dailyStats.map(day => ({
       date: day.date,
       clicks: day.click_count,
       opens: day.open_count,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,11 +19,11 @@ import { ThemeSwitch } from '@/components/theme-switch'
 
 import { useAuthStore } from '@/stores/auth-store'
 import { PushService } from '@/services/push-service'
-import { Send, Smartphone, CheckCircle, XCircle, LayoutDashboard } from 'lucide-react'
+import { Send, Smartphone, CheckCircle, XCircle, LayoutDashboard, RefreshCw } from 'lucide-react'
 import { NoAppSelected } from '@/components/no-app-selected'
 import { APP_SELECTION_DESCRIPTIONS } from '@/utils/app-utils'
 import { PushOverview } from './components/push-overview'
-import { RecentPushes } from './components/recent-pushes'
+import { RecentPushes, type RecentPushesRef } from './components/recent-pushes'
 import { PushEffectAnalysis } from './components/push-effect-analysis'
 import { UserActivityAnalysis } from './components/user-activity-analysis'
 import { DeviceAnalysis } from './components/device-analysis'
@@ -36,6 +36,22 @@ export function Dashboard() {
     success_pushes: 0,
     failed_pushes: 0,
     total_devices: 0,
+    total_clicks: 0,
+    total_opens: 0,
+    daily_stats: [] as Array<{
+      date: string
+      total_pushes: number
+      success_pushes: number
+      failed_pushes: number
+      click_count: number
+      open_count: number
+    }>,
+    platform_stats: [] as Array<{
+      platform: string
+      total_pushes: number
+      success_pushes: number
+      failed_pushes: number
+    }>
   })
   const [analytics, setAnalytics] = useState<{
     effectMetrics: {
@@ -80,48 +96,57 @@ export function Dashboard() {
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [analyticsLoading, setAnalyticsLoading] = useState(true)
+  
+  // 防重复调用的ref
+  const loadingRef = useRef(false)
+  // RecentPushes组件的ref
+  const recentPushesRef = useRef<RecentPushesRef>(null)
 
-  // 加载推送统计数据
-  useEffect(() => {
-    const loadPushStatistics = async () => {
-      if (!currentApp) return
-
-      try {
-        setLoading(true)
-        const data = await PushService.getPushStatistics(currentApp.id)
-        setStats(data)
-      } catch (_error) {
-        // 忽略错误，使用默认值
-      } finally {
-        setLoading(false)
-      }
+  // 加载推送数据的通用函数
+  const loadPushData = useCallback(async () => {
+    if (!currentApp) return
+    
+    // 防重复调用检查
+    if (loadingRef.current) {
+      return
     }
 
-    if (currentApp) {
-      loadPushStatistics()
-    }
-  }, [currentApp])
-
-  // 加载推送分析数据
-  useEffect(() => {
-    const loadPushAnalytics = async () => {
-      if (!currentApp) return
-
-      try {
-        setAnalyticsLoading(true)
-        const data = await PushService.getPushAnalytics(currentApp.id)
-        setAnalytics(data)
-      } catch (_error) {
-        // 忽略错误，使用默认值
-      } finally {
-        setAnalyticsLoading(false)
-      }
-    }
-
-    if (currentApp) {
-      loadPushAnalytics()
+    try {
+      loadingRef.current = true
+      setLoading(true)
+      setAnalyticsLoading(true)
+      
+      // 只调用一次统计API
+      const statsData = await PushService.getPushStatistics(currentApp.id)
+      setStats(statsData)
+      
+      // 使用已获取的统计数据计算分析数据，避免重复请求
+      const analyticsData = await PushService.getPushAnalytics(currentApp.id, { stats: statsData })
+      setAnalytics(analyticsData)
+    } catch (_error) {
+      // 忽略错误，使用默认值
+    } finally {
+      loadingRef.current = false
+      setLoading(false)
+      setAnalyticsLoading(false)
     }
   }, [currentApp])
+
+  // 初始化时加载推送数据
+  useEffect(() => {
+    if (currentApp) {
+      loadPushData()
+    }
+  }, [currentApp, loadPushData])
+
+  // 手动刷新数据
+  const handleRefresh = async () => {
+    // 并行刷新统计数据和最近推送数据
+    await Promise.all([
+      loadPushData(),
+      recentPushesRef.current?.refresh()
+    ])
+  }
 
   const successRate = stats.total_pushes > 0 
     ? ((stats.success_pushes / stats.total_pushes) * 100).toFixed(1)
@@ -166,7 +191,15 @@ export function Dashboard() {
                 {currentApp.name} ({currentApp.package_name})
               </p>
             </div>
-            <div className='flex items-center space-x-2'>
+            <div className='flex items-center gap-2'>
+              <Button 
+                variant="outline" 
+                onClick={handleRefresh}
+                disabled={loading || analyticsLoading}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${loading || analyticsLoading ? 'animate-spin' : ''}`} />
+                刷新
+              </Button>
               <Button onClick={() => navigate({ to: '/push/send' })}>
                 <Send className="mr-2 h-4 w-4" />
                 发送推送
@@ -266,7 +299,7 @@ export function Dashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className='ps-2'>
-                    <PushOverview />
+                    <PushOverview dailyStats={stats.daily_stats} loading={loading} />
                   </CardContent>
                 </Card>
                 
@@ -278,7 +311,7 @@ export function Dashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <RecentPushes />
+                    <RecentPushes ref={recentPushesRef} />
                   </CardContent>
                 </Card>
               </div>

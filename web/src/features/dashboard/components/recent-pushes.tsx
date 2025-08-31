@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useAuthStore } from '@/stores/auth-store'
@@ -6,43 +6,60 @@ import { PushService } from '@/services/push-service'
 import { Apple, Android } from '@/components/platform-icon'
 import type { PushLog } from '@/types/api'
 
+// 导出组件的ref类型
+export interface RecentPushesRef {
+  refresh: () => Promise<void>
+}
 
-
-export function RecentPushes() {
+export const RecentPushes = forwardRef<RecentPushesRef>((_, ref) => {
   const { currentApp } = useAuthStore()
   const [recentPushes, setRecentPushes] = useState<PushLog[]>([])
   const [loading, setLoading] = useState(true)
+  const loadingRef = useRef(false)
 
-  useEffect(() => {
-    const loadRecentPushes = async () => {
-      if (!currentApp) return
+  const loadRecentPushes = async () => {
+    if (!currentApp) return
 
-      try {
-        setLoading(true)
-
-        // 调用真实的API获取最近的推送记录
-        const response = await PushService.getPushLogs(currentApp.id, {
-          page: 1,
-          page_size: 5,
-          filters: {
-            status: undefined, // 获取所有状态
-            platform: undefined  // 获取所有平台
-          }
-        })
-
-        setRecentPushes(response.data.items)
-      } catch (error) {
-        console.error('Failed to load recent pushes:', error)
-        setRecentPushes([])
-      } finally {
-        setLoading(false)
-      }
+    // 防重复调用检查
+    if (loadingRef.current) {
+      return
     }
 
+    try {
+      loadingRef.current = true
+      setLoading(true)
+
+      // 调用真实的API获取最近的推送记录
+      const response = await PushService.getPushLogs(currentApp.id, {
+        page: 1,
+        page_size: 5,
+        filters: {
+          status: undefined, // 获取所有状态
+          platform: undefined  // 获取所有平台
+        }
+      })
+
+      setRecentPushes(response.data.items)
+    } catch (error) {
+      console.error('Failed to load recent pushes:', error)
+      setRecentPushes([])
+    } finally {
+      loadingRef.current = false
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     if (currentApp) {
       loadRecentPushes()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentApp])
+
+  // 暴露刷新方法给父组件
+  useImperativeHandle(ref, () => ({
+    refresh: loadRecentPushes
+  }))
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -150,4 +167,4 @@ export function RecentPushes() {
       ))}
     </div>
   )
-}
+})
