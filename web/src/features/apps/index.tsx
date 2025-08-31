@@ -39,7 +39,7 @@ import { APIKeysDialog } from './components/api-keys-dialog'
 import type { App } from '@/types/api'
 
 export function Apps() {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, userApps, appsLoading } = useAuthStore()
   const [apps, setApps] = useState<App[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -51,25 +51,19 @@ export function Apps() {
   const [apiKeysDialogOpen, setAPIKeysDialogOpen] = useState(false)
   const [selectedApp, setSelectedApp] = useState<App | null>(null)
 
-  // 加载应用列表
+  // 初始化：只复用store数据，不主动加载API
   useEffect(() => {
     if (isAuthenticated) {
-      loadApps()
+      if (userApps && userApps.length > 0) {
+        // 复用store中已有的应用数据
+        setApps(userApps)
+        setLoading(false)
+      } else {
+        // 等待应用选择器完成加载
+        setLoading(appsLoading)
+      }
     }
-  }, [isAuthenticated])
-
-  const loadApps = async () => {
-    try {
-      setLoading(true)
-      const apps = await AppService.getApps()
-      setApps(apps || [])
-    } catch (error) {
-      console.error('加载应用列表失败:', error)
-      setApps([]) // 确保apps始终是数组
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [isAuthenticated, userApps, appsLoading])
 
   // 筛选应用
   const filteredApps = apps.filter((app) =>
@@ -95,56 +89,74 @@ export function Apps() {
 
   const handleAppCreated = async () => {
     setCreateDialogOpen(false)
-    await loadApps()
     
-    // 同时更新sidebar的应用列表（包括禁用的应用）
+    // 只调用一次API，同时更新页面和store
     try {
+      setLoading(true)
+      const apps = await AppService.getApps()
+      setApps(apps || [])
+      
+      // 同步更新store和当前应用
       const { setUserApps, setCurrentApp } = useAuthStore.getState()
-      const allApps = await AppService.getApps()
-      setUserApps(allApps)
+      setUserApps(apps || [])
       
       // 自动选择新创建的应用（通常是最新的）
-      if (allApps.length > 0) {
-        const latestApp = allApps[allApps.length - 1]
+      if (apps && apps.length > 0) {
+        const latestApp = apps[apps.length - 1]
         setCurrentApp(latestApp)
       }
     } catch (error) {
-      console.error('更新sidebar应用列表失败:', error)
+      console.error('刷新应用列表失败:', error)
+      setApps([])
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleAppUpdated = async () => {
     setEditDialogOpen(false)
     setSelectedApp(null)
-    await loadApps()
     
-    // 同时更新sidebar的应用列表（包括禁用的应用）
+    // 只调用一次API，同时更新页面和store
     try {
+      setLoading(true)
+      const apps = await AppService.getApps()
+      setApps(apps || [])
+      
+      // 同步更新store
       const { setUserApps } = useAuthStore.getState()
-      const allApps = await AppService.getApps()
-      setUserApps(allApps)
+      setUserApps(apps || [])
     } catch (error) {
-      console.error('更新sidebar应用列表失败:', error)
+      console.error('刷新应用列表失败:', error)
+      setApps([])
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleAppDeleted = async () => {
     setDeleteDialogOpen(false)
     setSelectedApp(null)
-    await loadApps()
     
-    // 同时更新sidebar的应用列表（包括禁用的应用）
+    // 只调用一次API，同时更新页面和store
     try {
+      setLoading(true)
+      const apps = await AppService.getApps()
+      setApps(apps || [])
+      
+      // 同步更新store和当前应用
       const { setUserApps, setCurrentApp } = useAuthStore.getState()
-      const allApps = await AppService.getApps()
-      setUserApps(allApps)
+      setUserApps(apps || [])
       
       // 如果删除的是当前应用，清除当前应用
       if (selectedApp && useAuthStore.getState().currentApp?.id === selectedApp.id) {
         setCurrentApp(null)
       }
     } catch (error) {
-      console.error('更新sidebar应用列表失败:', error)
+      console.error('刷新应用列表失败:', error)
+      setApps([])
+    } finally {
+      setLoading(false)
     }
   }
 

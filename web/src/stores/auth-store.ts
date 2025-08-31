@@ -15,6 +15,7 @@ interface AuthState {
   // 应用上下文
   currentApp: App | null
   userApps: App[]
+  appsLoading: boolean
   
   // 认证操作
   setAuth: (user: User, token: string) => void
@@ -25,6 +26,7 @@ interface AuthState {
   // 应用操作
   setCurrentApp: (app: App | null) => void
   setUserApps: (apps: App[]) => void
+  setAppsLoading: (loading: boolean) => void
   
   // 权限检查
   hasAppPermission: (appId: number, permission?: 'owner' | 'developer' | 'viewer') => boolean
@@ -47,6 +49,7 @@ export const useAuthStore = create<AuthState>()((set, get) => {
     // 应用上下文
     currentApp: initApp,
     userApps: [],
+    appsLoading: false,
     
     // 认证操作
     setAuth: (user: User, token: string) =>
@@ -129,6 +132,9 @@ export const useAuthStore = create<AuthState>()((set, get) => {
           currentApp: validCurrentApp
         }
       }),
+    
+    setAppsLoading: (loading: boolean) =>
+      set(() => ({ appsLoading: loading })),
     
     // 权限检查
     hasAppPermission: (appId: number, _permission = 'viewer') => {
