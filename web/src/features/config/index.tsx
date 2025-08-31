@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { 
   Settings, 
   Plus, 
@@ -70,18 +70,20 @@ export function PushConfig() {
   const [testDialogOpen, setTestDialogOpen] = useState(false)
   const [selectedConfig, setSelectedConfig] = useState<AppConfig | null>(null)
 
-  // 加载配置列表
-  useEffect(() => {
-    if (currentApp) {
-      loadConfigs()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp])
+  // 防重复调用的ref
+  const loadingRef = useRef(false)
 
-  const loadConfigs = async (showSuccessToast = false) => {
+  // 加载配置列表
+  const loadConfigs = useCallback(async (showSuccessToast = false) => {
     if (!currentApp) return
     
+    // 防重复调用检查
+    if (loadingRef.current) {
+      return
+    }
+    
     try {
+      loadingRef.current = true
       const data = await ConfigService.getConfigs(currentApp.id)
       setConfigs(data)
       if (showSuccessToast) {
@@ -90,8 +92,16 @@ export function PushConfig() {
     } catch (error) {
       console.error('加载配置列表失败:', error)
       toast.error('加载配置列表失败')
+    } finally {
+      loadingRef.current = false
     }
-  }
+  }, [currentApp])
+
+  useEffect(() => {
+    if (currentApp) {
+      loadConfigs()
+    }
+  }, [currentApp, loadConfigs])
 
   // 操作处理
   const handleEditConfig = (config: AppConfig) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Search as SearchIcon, Plus, Clock, Play, Pause, Trash2, MoreHorizontal, Pencil, CheckCircle, XCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -72,10 +72,20 @@ export function ScheduledPush() {
     paused: 0,
   })
 
+  // 防重复调用的ref
+  const loadingRef = useRef(false)
+  const statsLoadingRef = useRef(false)
+
   const fetchScheduledPushes = useCallback(async () => {
     if (!currentApp) return
 
+    // 防重复调用检查
+    if (loadingRef.current) {
+      return
+    }
+
     try {
+      loadingRef.current = true
       setLoading(true)
       const response = await ScheduledPushService.getScheduledPushes(currentApp.id, {
         page: currentPage,
@@ -96,6 +106,7 @@ export function ScheduledPush() {
     } catch (error) {
       toast.error((error as Error).message || '获取定时推送列表失败')
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
   }, [currentApp, currentPage, pageSize, search, statusFilter, repeatFilter])
@@ -104,7 +115,13 @@ export function ScheduledPush() {
   const fetchStats = useCallback(async () => {
     if (!currentApp) return
 
+    // 防重复调用检查
+    if (statsLoadingRef.current) {
+      return
+    }
+
     try {
+      statsLoadingRef.current = true
       const statsData = await ScheduledPushService.getScheduledPushStats(currentApp.id)
       setStats({
         total: statsData.total || 0,
@@ -116,6 +133,8 @@ export function ScheduledPush() {
       })
     } catch (error) {
       console.error('获取统计数据失败:', error)
+    } finally {
+      statsLoadingRef.current = false
     }
   }, [currentApp])
 

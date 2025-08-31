@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { 
   BarChart3, 
   TrendingUp, 
@@ -142,23 +142,27 @@ export default function PushStatistics() {
     }
   })
 
-  // 加载统计数据
-  useEffect(() => {
-    if (currentApp) {
-      loadStatistics()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp, timeRange])
+  // 防重复调用的ref
+  const loadingRef = useRef(false)
 
-  const loadStatistics = async () => {
+  // 加载统计数据
+  const loadStatistics = useCallback(async () => {
+    if (!currentApp) return
+
+    // 防重复调用检查
+    if (loadingRef.current) {
+      return
+    }
+
     try {
+      loadingRef.current = true
       setLoading(true)
       
       // 根据时间范围确定查询天数
       const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90
       
       // 加载完整统计数据
-      const stats = await PushService.getPushStatistics(currentApp!.id, { days })
+      const stats = await PushService.getPushStatistics(currentApp.id, { days })
       
       // 设置总体统计
       setTotalStats({
@@ -192,9 +196,16 @@ export default function PushStatistics() {
       setDailyData([])
       setPlatformData([])
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
-  }
+  }, [currentApp, timeRange])
+
+  useEffect(() => {
+    if (currentApp) {
+      loadStatistics()
+    }
+  }, [currentApp, loadStatistics])
 
   const successRate = totalStats.total_pushes > 0 
     ? ((totalStats.success_pushes / totalStats.total_pushes) * 100).toFixed(1)

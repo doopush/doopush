@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { 
   Shield, 
   Plus, 
@@ -61,18 +61,20 @@ export function DeviceGroups() {
   const [totalItems, setTotalItems] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
 
-  // 加载设备分组
-  useEffect(() => {
-    if (currentApp) {
-      loadGroups()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp, currentPage, pageSize, searchTerm])
+  // 防重复调用的ref
+  const loadingRef = useRef(false)
 
-  const loadGroups = async () => {
+  // 加载设备分组
+  const loadGroups = useCallback(async () => {
     if (!currentApp) return
     
+    // 防重复调用检查
+    if (loadingRef.current) {
+      return
+    }
+    
     try {
+      loadingRef.current = true
       setLoading(true)
       const resp = await DeviceService.getDeviceGroups(currentApp.id, { page: currentPage, page_size: pageSize, filters: { name: searchTerm } })
       setGroups(resp.data.items)
@@ -84,9 +86,16 @@ export function DeviceGroups() {
       console.error('加载设备分组失败:', error)
       toast.error('加载设备分组失败')
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
-  }
+  }, [currentApp, currentPage, pageSize, searchTerm])
+
+  useEffect(() => {
+    if (currentApp) {
+      loadGroups()
+    }
+  }, [currentApp, loadGroups])
 
   // 弹窗操作处理
   const handleCreateGroup = () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { 
   Smartphone, 
   MoreHorizontal, 
@@ -83,18 +83,20 @@ export function Devices() {
   const [totalItems, setTotalItems] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
 
-  // 加载设备列表
-  useEffect(() => {
-    if (currentApp) {
-      loadDevices()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp, platformFilter, statusFilter, currentPage, pageSize])
+  // 防重复调用的ref
+  const loadingRef = useRef(false)
 
-  const loadDevices = async () => {
+  // 加载设备列表
+  const loadDevices = useCallback(async () => {
     if (!currentApp) return
     
+    // 防重复调用检查
+    if (loadingRef.current) {
+      return
+    }
+    
     try {
+      loadingRef.current = true
       setLoading(true)
       const params = {
         page: currentPage,
@@ -120,9 +122,16 @@ export function Devices() {
     } catch (error) {
       console.error('加载设备列表失败:', error)
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
-  }
+  }, [currentApp, platformFilter, statusFilter, currentPage, pageSize])
+
+  useEffect(() => {
+    if (currentApp) {
+      loadDevices()
+    }
+  }, [currentApp, loadDevices])
 
   // 筛选设备（前端再过滤一次，仅作用于当前页显示）
   const filteredDevices = devices.filter((device) =>

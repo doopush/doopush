@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { 
   FileText, 
   Plus, 
@@ -68,18 +68,20 @@ export function Templates() {
   const [renderDialogOpen, setRenderDialogOpen] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null)
 
-  // 加载模板列表
-  useEffect(() => {
-    if (currentApp) {
-      loadTemplates()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp, currentPage, pageSize])
+  // 防重复调用的ref
+  const loadingRef = useRef(false)
 
-  const loadTemplates = async () => {
+  // 加载模板列表
+  const loadTemplates = useCallback(async () => {
     if (!currentApp) return
     
+    // 防重复调用检查
+    if (loadingRef.current) {
+      return
+    }
+    
     try {
+      loadingRef.current = true
       setLoading(true)
       const resp = await TemplateService.getTemplates(currentApp.id, { page: currentPage, page_size: pageSize })
       setTemplates(resp.data.items)
@@ -90,9 +92,16 @@ export function Templates() {
     } catch (error) {
       console.error('加载模板列表失败:', error)
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
-  }
+  }, [currentApp, currentPage, pageSize])
+
+  useEffect(() => {
+    if (currentApp) {
+      loadTemplates()
+    }
+  }, [currentApp, loadTemplates])
 
   // 筛选模板
   const filteredTemplates = templates.filter((template) =>

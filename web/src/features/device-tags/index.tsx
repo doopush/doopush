@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -61,6 +61,72 @@ export function DeviceTags() {
   const [totalItems, setTotalItems] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
 
+  // 防重复调用的ref
+  const loadingRef = useRef(false)
+  const tagsLoadingRef = useRef(false)
+
+  // 加载标签统计数据
+  const loadTagStatistics = useCallback(async () => {
+    if (!currentApp?.id) return
+
+    // 防重复调用检查
+    if (loadingRef.current) {
+      return
+    }
+
+    try {
+      loadingRef.current = true
+      setIsLoading(true)
+      const resp = await TagService.getTagStatistics(currentApp.id, {
+        page: currentPage,
+        page_size: pageSize,
+        filters: { search: statsSearchQuery || undefined }
+      })
+      setTagStats(resp.data.items || [])
+      setTotalItems(resp.total_items)
+      setTotalPages(resp.total_pages)
+    } catch (error) {
+      console.error('加载标签统计失败:', error)
+      toast.error('加载标签统计失败')
+    } finally {
+      loadingRef.current = false
+      setIsLoading(false)
+    }
+  }, [currentApp?.id, currentPage, pageSize, statsSearchQuery])
+
+  // 加载设备标签数据
+  const loadDeviceTagsPaged = useCallback(async () => {
+    if (!currentApp?.id) return
+
+    // 防重复调用检查
+    if (tagsLoadingRef.current) {
+      return
+    }
+
+    try {
+      tagsLoadingRef.current = true
+      setIsTagsLoading(true)
+      const resp = await TagService.getDeviceTagsPaged(currentApp.id, {
+        page: mgmtCurrentPage,
+        page_size: mgmtPageSize,
+        filters: {
+          search: searchQuery || undefined,
+        },
+      })
+      setDeviceTags(resp.data.items || [])
+      setMgmtCurrentPage(resp.current_page)
+      setMgmtPageSize(resp.page_size)
+      setMgmtTotalItems(resp.total_items)
+      setMgmtTotalPages(resp.total_pages)
+    } catch (error) {
+      console.error('加载设备标签失败:', error)
+      toast.error('加载设备标签失败')
+    } finally {
+      tagsLoadingRef.current = false
+      setIsTagsLoading(false)
+    }
+  }, [currentApp?.id, mgmtCurrentPage, mgmtPageSize, searchQuery])
+
   useEffect(() => {
     if (currentApp?.id) {
       loadTagStatistics()
@@ -68,16 +134,14 @@ export function DeviceTags() {
         loadDeviceTagsPaged()
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp?.id, activeTab, currentPage, pageSize, statsSearchQuery])
+  }, [currentApp?.id, activeTab, loadTagStatistics, loadDeviceTagsPaged])
 
   // 管理页：当分页或搜索变更时，自动加载后端分页数据
   useEffect(() => {
     if (currentApp?.id && activeTab === 'management') {
       loadDeviceTagsPaged()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp?.id, activeTab, mgmtCurrentPage, mgmtPageSize, searchQuery])
+  }, [currentApp?.id, activeTab, loadDeviceTagsPaged])
 
   useEffect(() => {
     // 过滤标签
@@ -113,51 +177,7 @@ export function DeviceTags() {
     }
   }, [tagStats, statsSearchQuery])
 
-  const loadTagStatistics = async () => {
-    if (!currentApp?.id) return
 
-    try {
-      setIsLoading(true)
-      const resp = await TagService.getTagStatistics(currentApp.id, {
-        page: currentPage,
-        page_size: pageSize,
-        filters: { search: statsSearchQuery || undefined }
-      })
-      setTagStats(resp.data.items || [])
-      setTotalItems(resp.total_items)
-      setTotalPages(resp.total_pages)
-    } catch (error) {
-      console.error('加载标签统计失败:', error)
-      toast.error('加载标签统计失败')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const loadDeviceTagsPaged = async () => {
-    if (!currentApp?.id) return
-
-    try {
-      setIsTagsLoading(true)
-      const resp = await TagService.getDeviceTagsPaged(currentApp.id, {
-        page: mgmtCurrentPage,
-        page_size: mgmtPageSize,
-        filters: {
-          search: searchQuery || undefined,
-        },
-      })
-      setDeviceTags(resp.data.items || [])
-      setMgmtCurrentPage(resp.current_page)
-      setMgmtPageSize(resp.page_size)
-      setMgmtTotalItems(resp.total_items)
-      setMgmtTotalPages(resp.total_pages)
-    } catch (error) {
-      console.error('加载设备标签失败:', error)
-      toast.error('加载设备标签失败')
-    } finally {
-      setIsTagsLoading(false)
-    }
-  }
 
   const handleCreateTag = async () => {
     if (!currentApp?.id || !formData.device_token || !formData.tag_name) {

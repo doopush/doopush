@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { 
   History, 
   RefreshCw,
@@ -86,18 +86,20 @@ export default function PushLogs() {
     }
   })
 
-  // 加载推送日志
-  useEffect(() => {
-    if (currentApp) {
-      loadPushLogs()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp, statusFilter, platformFilter, currentPage, pageSize])
+  // 防重复调用的ref
+  const loadingRef = useRef(false)
 
-  const loadPushLogs = async () => {
+  // 加载推送日志
+  const loadPushLogs = useCallback(async () => {
     if (!currentApp) return
     
+    // 防重复调用检查
+    if (loadingRef.current) {
+      return
+    }
+    
     try {
+      loadingRef.current = true
       setLoading(true)
       const params = {
         page: currentPage,
@@ -114,9 +116,16 @@ export default function PushLogs() {
     } catch (error) {
       console.error('加载推送日志失败:', error)
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
-  }
+  }, [currentApp, statusFilter, platformFilter, currentPage, pageSize])
+
+  useEffect(() => {
+    if (currentApp) {
+      loadPushLogs()
+    }
+  }, [currentApp, loadPushLogs])
 
   // 筛选日志
   const filteredLogs = logs.filter((log) =>
@@ -158,8 +167,6 @@ export default function PushLogs() {
           reuse: encodeURIComponent(JSON.stringify(pushData))
         }
       })
-      
-      toast.success('已复用推送内容到单设备推送表单，请检查并修改后发送')
     } catch (error) {
       console.error('复用推送数据失败:', error)
       toast.error('复用推送数据失败，请重试')

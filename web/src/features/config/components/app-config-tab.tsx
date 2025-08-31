@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Settings,
   Plus,
@@ -50,18 +50,20 @@ export function AppConfigTab() {
   
 
 
-  // 加载API密钥列表
-  useEffect(() => {
-    if (currentApp) {
-      loadApiKeys()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentApp])
+  // 防重复调用的ref
+  const loadingRef = useRef(false)
 
-  const loadApiKeys = async () => {
+  // 加载API密钥列表
+  const loadApiKeys = useCallback(async () => {
     if (!currentApp) return
     
+    // 防重复调用检查
+    if (loadingRef.current) {
+      return
+    }
+    
     try {
+      loadingRef.current = true
       setLoading(true)
       const data = await AppService.getAPIKeys(currentApp.id)
       setApiKeys(data)
@@ -69,9 +71,16 @@ export function AppConfigTab() {
       console.error('加载API密钥列表失败:', error)
       toast.error('加载API密钥列表失败')
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
-  }
+  }, [currentApp])
+
+  useEffect(() => {
+    if (currentApp) {
+      loadApiKeys()
+    }
+  }, [currentApp, loadApiKeys])
 
   // 复制到剪贴板
   const copyToClipboard = async (text: string, label: string) => {
