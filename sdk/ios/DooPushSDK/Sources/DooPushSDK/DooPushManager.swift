@@ -11,7 +11,7 @@ import UserNotifications
     private var config: DooPushConfig?
     
     /// 代理
-    public weak var delegate: DooPushDelegate?
+    @objc public weak var delegate: DooPushDelegate?
     
     /// 网络管理器
     private lazy var networking = DooPushNetworking()
