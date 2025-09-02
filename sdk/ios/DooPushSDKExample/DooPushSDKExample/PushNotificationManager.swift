@@ -66,6 +66,7 @@ class PushNotificationManager: NSObject, DooPushDelegate, ObservableObject {
         let content: String?
         let payload: [String: Any]?
         let receivedAt: Date
+        let dedupKey: String?
         
         static func == (lhs: NotificationInfo, rhs: NotificationInfo) -> Bool {
             lhs.id == rhs.id
@@ -187,15 +188,24 @@ class PushNotificationManager: NSObject, DooPushDelegate, ObservableObject {
             Logger.info("📱 收到推送通知: \(userInfo)")
             
             let parser = DooPushNotificationParser.parse(userInfo)
-            let notification = NotificationInfo(
+            let incoming = NotificationInfo(
                 title: parser.title,
                 content: parser.content,
                 payload: parser.payload,
+                dedupKey: parser.dedupKey,
                 receivedAt: Date()
             )
             
-            // 插入到列表开头
-            self.notifications.insert(notification, at: 0)
+            // 使用 dedupKey 去重
+            if let key = incoming.dedupKey {
+                let exists = self.notifications.contains { $0.dedupKey == key }
+                if !exists {
+                    self.notifications.insert(incoming, at: 0)
+                }
+            } else {
+                // 无 dedupKey 时不做去重
+                self.notifications.insert(incoming, at: 0)
+            }
             
             // 限制通知历史数量
             if self.notifications.count > 50 {
