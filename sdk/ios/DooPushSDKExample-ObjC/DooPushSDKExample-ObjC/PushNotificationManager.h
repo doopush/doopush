@@ -11,6 +11,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+// 状态更新通知
+extern NSString * const DooPushStatusUpdateNotification;
+
 /**
  * SDK状态枚举
  */

@@ -18,9 +18,6 @@
 // UI Components - programmatically created
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
-@property (nonatomic, strong) UIImageView *appIconImageView;
-@property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UILabel *versionLabel;
 
 // SDK Status Section
 @property (nonatomic, strong) UIView *sdkStatusView;
@@ -63,6 +60,19 @@
 @property (nonatomic, strong) NSTimer *rotationTimer;
 @property (nonatomic, assign) CGFloat rotationAngle;
 
+// Dynamic constraints
+@property (nonatomic, strong) NSLayoutConstraint *sdkStatusBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *notificationsTopToSettingsConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *notificationsTopToCheckPermissionConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *notificationsBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *notificationsTableHeightConstraint;
+@property (nonatomic, assign) CGFloat sectionSpacing;
+@property (nonatomic, assign) CGFloat contentBottomPadding;
+
+// 状态跟踪（用于 toast 只在完成时提示一次）
+@property (nonatomic, assign) BOOL wasUpdatingDevice;
+@property (nonatomic, strong) NSString *lastDisplayedUpdateMessage;
+
 @end
 
 @implementation ViewController
@@ -76,6 +86,8 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    // 进入页面时记录当前是否处于更新中，用于后续判断完成态
+    self.wasUpdatingDevice = self.pushManager.isUpdatingDevice;
     [self updateUI];
 }
 
@@ -91,18 +103,12 @@
     
     // Create and setup UI programmatically
     [self createScrollView];
-    [self createHeaderSection];
     [self createSDKStatusSection];
     [self createDeviceInfoSection];
     [self createActionButtons];
     [self createNotificationsSection];
     [self createToastView];
     [self setupConstraints];
-    
-    // Configure refresh control
-    UIRefreshControl *refreshControl = [[UIRefreshControl alloc] init];
-    [refreshControl addTarget:self action:@selector(refreshData:) forControlEvents:UIControlEventValueChanged];
-    self.scrollView.refreshControl = refreshControl;
 }
 
 - (void)createScrollView {
@@ -116,33 +122,7 @@
     [self.scrollView addSubview:self.contentView];
 }
 
-- (void)createHeaderSection {
-    // App Icon
-    self.appIconImageView = [[UIImageView alloc] init];
-    self.appIconImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.appIconImageView.image = [UIImage imageNamed:@"icon"];
-    self.appIconImageView.layer.cornerRadius = 16;
-    self.appIconImageView.clipsToBounds = YES;
-    self.appIconImageView.contentMode = UIViewContentModeScaleAspectFit;
-    [self.contentView addSubview:self.appIconImageView];
-    
-    // Title
-    self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.text = @"DooPush SDK 示例";
-    self.titleLabel.font = [UIFont systemFontOfSize:20 weight:UIFontWeightSemibold];
-    self.titleLabel.textAlignment = NSTextAlignmentCenter;
-    [self.contentView addSubview:self.titleLabel];
-    
-    // Version
-    self.versionLabel = [[UILabel alloc] init];
-    self.versionLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.versionLabel.text = [NSString stringWithFormat:@"版本 %@", DooPushManager.sdkVersion];
-    self.versionLabel.font = [UIFont systemFontOfSize:14];
-    self.versionLabel.textColor = [UIColor secondaryLabelColor];
-    self.versionLabel.textAlignment = NSTextAlignmentCenter;
-    [self.contentView addSubview:self.versionLabel];
-}
+
 
 - (void)createSDKStatusSection {
     self.sdkStatusView = [self createGroupViewWithTitle:@"SDK 状态"];
@@ -277,6 +257,10 @@
     self.toastView.layer.cornerRadius = 12;
     self.toastView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.8];
     self.toastView.hidden = YES;
+
+    // 确保 toast 显示在最顶层，避免被其他 UI 元素覆盖
+    self.toastView.layer.zPosition = 999;
+
     [self.view addSubview:self.toastView];
     
     self.toastLabel = [[UILabel alloc] init];
@@ -354,7 +338,8 @@
 
 - (void)setupConstraints {
     CGFloat padding = 16;
-    CGFloat sectionSpacing = 20;
+    self.sectionSpacing = 20;
+    self.contentBottomPadding = 40; // 页面底部留白，方便下拉
     
     // Scroll View
     [NSLayoutConstraint activateConstraints:@[
@@ -373,27 +358,9 @@
         [self.contentView.widthAnchor constraintEqualToAnchor:self.scrollView.widthAnchor]
     ]];
     
-    // Header Section
-    [NSLayoutConstraint activateConstraints:@[
-        [self.appIconImageView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:sectionSpacing],
-        [self.appIconImageView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-        [self.appIconImageView.widthAnchor constraintEqualToConstant:64],
-        [self.appIconImageView.heightAnchor constraintEqualToConstant:64],
-        
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.appIconImageView.bottomAnchor constant:8],
-        [self.titleLabel.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-        [self.titleLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        
-        [self.versionLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4],
-        [self.versionLabel.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-        [self.versionLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [self.versionLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-padding]
-    ]];
-    
     // SDK Status Section
     [NSLayoutConstraint activateConstraints:@[
-        [self.sdkStatusView.topAnchor constraintEqualToAnchor:self.versionLabel.bottomAnchor constant:sectionSpacing],
+        [self.sdkStatusView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:self.sectionSpacing],
         [self.sdkStatusView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
         [self.sdkStatusView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding]
     ]];
@@ -403,7 +370,7 @@
     
     // Device Info Section
     [NSLayoutConstraint activateConstraints:@[
-        [self.deviceInfoView.topAnchor constraintEqualToAnchor:self.sdkStatusView.bottomAnchor constant:sectionSpacing],
+        [self.deviceInfoView.topAnchor constraintEqualToAnchor:self.sdkStatusView.bottomAnchor constant:self.sectionSpacing],
         [self.deviceInfoView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
         [self.deviceInfoView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding]
     ]];
@@ -413,7 +380,7 @@
     
     // Action Buttons
     [NSLayoutConstraint activateConstraints:@[
-        [self.registerButton.topAnchor constraintEqualToAnchor:self.deviceInfoView.bottomAnchor constant:sectionSpacing],
+        [self.registerButton.topAnchor constraintEqualToAnchor:self.deviceInfoView.bottomAnchor constant:self.sectionSpacing],
         [self.registerButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
         [self.registerButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
         [self.registerButton.heightAnchor constraintEqualToConstant:44],
@@ -440,12 +407,17 @@
         [self.registerActivityIndicator.centerYAnchor constraintEqualToAnchor:self.registerButton.centerYAnchor]
     ]];
     
-    // Notifications Section
+    // Notifications Section（顶部与上方按钮的动态约束）
+    self.notificationsTopToSettingsConstraint = [self.notificationsView.topAnchor constraintEqualToAnchor:self.openSettingsButton.bottomAnchor constant:self.sectionSpacing];
+    self.notificationsTopToCheckPermissionConstraint = [self.notificationsView.topAnchor constraintEqualToAnchor:self.checkPermissionButton.bottomAnchor constant:self.sectionSpacing];
+    // 初始根据 openSettingsButton 是否隐藏选择一条
+    self.notificationsTopToSettingsConstraint.active = !self.openSettingsButton.hidden;
+    self.notificationsTopToCheckPermissionConstraint.active = self.openSettingsButton.hidden;
+
     [NSLayoutConstraint activateConstraints:@[
-        [self.notificationsView.topAnchor constraintEqualToAnchor:self.openSettingsButton.bottomAnchor constant:sectionSpacing],
         [self.notificationsView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
         [self.notificationsView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [self.notificationsView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-sectionSpacing]
+        (self.notificationsBottomConstraint = [self.notificationsView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-self.contentBottomPadding])
     ]];
     
     // Setup Notifications internal constraints
@@ -454,8 +426,9 @@
     // Toast View
     self.toastBottomConstraint = [self.toastView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:50];
     [NSLayoutConstraint activateConstraints:@[
-        [self.toastView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20],
-        [self.toastView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20],
+        [self.toastView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [self.toastView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:20],
+        [self.toastView.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-20],
         self.toastBottomConstraint,
         
         [self.toastLabel.leadingAnchor constraintEqualToAnchor:self.toastView.leadingAnchor constant:16],
@@ -468,28 +441,33 @@
 - (void)setupSDKStatusConstraints {
     UIStackView *sdkStatusStack = (UIStackView *)self.sdkStatusView.subviews[0];
     UIStackView *permissionStack = (UIStackView *)self.sdkStatusView.subviews[1];
-    
+
+    // 存储动态约束，用于后续更新
+    self.sdkStatusBottomConstraint = [self.errorLabel.bottomAnchor constraintEqualToAnchor:self.sdkStatusView.bottomAnchor constant:-16];
+
     [NSLayoutConstraint activateConstraints:@[
         [sdkStatusStack.topAnchor constraintEqualToAnchor:self.sdkStatusView.topAnchor constant:16],
         [sdkStatusStack.leadingAnchor constraintEqualToAnchor:self.sdkStatusView.leadingAnchor constant:16],
         [sdkStatusStack.trailingAnchor constraintEqualToAnchor:self.sdkStatusView.trailingAnchor constant:-16],
-        
+
         [permissionStack.topAnchor constraintEqualToAnchor:sdkStatusStack.bottomAnchor constant:12],
         [permissionStack.leadingAnchor constraintEqualToAnchor:self.sdkStatusView.leadingAnchor constant:16],
         [permissionStack.trailingAnchor constraintEqualToAnchor:self.sdkStatusView.trailingAnchor constant:-16],
-        
+
         [self.errorLabel.topAnchor constraintEqualToAnchor:permissionStack.bottomAnchor constant:8],
         [self.errorLabel.leadingAnchor constraintEqualToAnchor:self.sdkStatusView.leadingAnchor constant:16],
         [self.errorLabel.trailingAnchor constraintEqualToAnchor:self.sdkStatusView.trailingAnchor constant:-16],
-        
+
         [self.updateLabel.topAnchor constraintEqualToAnchor:self.errorLabel.bottomAnchor constant:4],
         [self.updateLabel.leadingAnchor constraintEqualToAnchor:self.sdkStatusView.leadingAnchor constant:16],
         [self.updateLabel.trailingAnchor constraintEqualToAnchor:self.updateActivityIndicator.leadingAnchor constant:-8],
-        [self.updateLabel.bottomAnchor constraintEqualToAnchor:self.sdkStatusView.bottomAnchor constant:-16],
-        
+
         [self.updateActivityIndicator.centerYAnchor constraintEqualToAnchor:self.updateLabel.centerYAnchor],
         [self.updateActivityIndicator.trailingAnchor constraintEqualToAnchor:self.sdkStatusView.trailingAnchor constant:-16]
     ]];
+
+    // 初始时updateLabel隐藏，errorLabel作为底部
+    [NSLayoutConstraint activateConstraints:@[self.sdkStatusBottomConstraint]];
 }
 
 - (void)setupDeviceInfoConstraints {
@@ -522,7 +500,7 @@
         [self.notificationsTableView.topAnchor constraintEqualToAnchor:self.notificationsCountLabel.bottomAnchor constant:12],
         [self.notificationsTableView.leadingAnchor constraintEqualToAnchor:self.notificationsView.leadingAnchor constant:16],
         [self.notificationsTableView.trailingAnchor constraintEqualToAnchor:self.notificationsView.trailingAnchor constant:-16],
-        [self.notificationsTableView.heightAnchor constraintEqualToConstant:200],
+        (self.notificationsTableHeightConstraint = [self.notificationsTableView.heightAnchor constraintEqualToConstant:140]),
         
         [self.noNotificationsView.topAnchor constraintEqualToAnchor:self.notificationsCountLabel.bottomAnchor constant:12],
         [self.noNotificationsView.leadingAnchor constraintEqualToAnchor:self.notificationsView.leadingAnchor constant:16],
@@ -540,12 +518,37 @@
 - (void)setupPushManager {
     self.pushManager = [PushNotificationManager shared];
     
-    __weak typeof(self) weakSelf = self;
-    self.pushManager.statusUpdateCallback = ^{
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [weakSelf updateUI];
-        });
-    };
+    // 监听状态更新通知
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleStatusUpdateNotification:)
+                                                 name:DooPushStatusUpdateNotification
+                                               object:nil];
+}
+
+- (void)handleStatusUpdateNotification:(NSNotification *)notification {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // 若刚从“更新中”切换为“非更新中”，根据结果发 toast
+        BOOL wasUpdating = self.wasUpdatingDevice;
+        BOOL isUpdating = self.pushManager.isUpdatingDevice;
+        self.wasUpdatingDevice = isUpdating;
+
+        [self updateUI];
+
+        if (wasUpdating && !isUpdating) {
+            if (self.pushManager.updateMessage && [self.pushManager.updateMessage length] > 0) {
+                [self showToast:self.pushManager.updateMessage];
+            } else if (self.pushManager.lastError && [self.pushManager.lastError length] > 0) {
+                [self showToast:[NSString stringWithFormat:@"❌ 更新失败: %@", self.pushManager.lastError]];
+            } else {
+                [self showToast:@"✅ 设备信息更新完成"];    
+            }
+        }
+    });
+}
+
+- (void)dealloc {
+    // 清理通知监听
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 #pragma mark - UI Update Methods
@@ -561,11 +564,11 @@
     // SDK Status
     self.sdkStatusLabel.text = [self.pushManager displayTextForSDKStatus:self.pushManager.sdkStatus];
     self.sdkStatusIndicator.backgroundColor = [self colorForStatusName:[self.pushManager colorNameForSDKStatus:self.pushManager.sdkStatus]];
-    
+
     // Permission Status
     self.permissionStatusLabel.text = [self.pushManager displayTextForAuthorizationStatus:self.pushManager.pushPermissionStatus];
     self.permissionStatusIndicator.backgroundColor = [self colorForStatusName:[self.pushManager colorNameForAuthorizationStatus:self.pushManager.pushPermissionStatus]];
-    
+
     // Error
     if (self.pushManager.lastError) {
         self.errorLabel.text = self.pushManager.lastError;
@@ -573,21 +576,25 @@
     } else {
         self.errorLabel.hidden = YES;
     }
-    
-    // Update message
-    if (self.pushManager.updateMessage) {
-        self.updateLabel.text = self.pushManager.updateMessage;
-        self.updateLabel.hidden = NO;
-        
-        if (self.pushManager.isUpdatingDevice) {
-            [self.updateActivityIndicator startAnimating];
-        } else {
-            [self.updateActivityIndicator stopAnimating];
-        }
+
+    // 改为仅 toast 提示更新信息，不在卡片内显示更新行
+    self.updateLabel.hidden = YES;
+    [self.updateActivityIndicator stopAnimating];
+
+    // 更新约束：根据 errorLabel 是否显示来决定底部连接
+    [NSLayoutConstraint deactivateConstraints:@[self.sdkStatusBottomConstraint]];
+    if (!self.errorLabel.hidden) {
+        self.sdkStatusBottomConstraint = [self.errorLabel.bottomAnchor constraintEqualToAnchor:self.sdkStatusView.bottomAnchor constant:-16];
     } else {
-        self.updateLabel.hidden = YES;
-        [self.updateActivityIndicator stopAnimating];
+        UIStackView *permissionStack = (UIStackView *)self.sdkStatusView.subviews[1];
+        self.sdkStatusBottomConstraint = [permissionStack.bottomAnchor constraintEqualToAnchor:self.sdkStatusView.bottomAnchor constant:-16];
     }
+    [NSLayoutConstraint activateConstraints:@[self.sdkStatusBottomConstraint]];
+
+    // 强制重新布局
+    [UIView animateWithDuration:0.2 animations:^{
+        [self.sdkStatusView layoutIfNeeded];
+    }];
 }
 
 - (void)updateDeviceInfoSection {
@@ -605,17 +612,27 @@
         self.registerButton.enabled = YES;
     }
     
-    // Update device button
-    if (self.pushManager.isUpdatingDevice) {
-        [self.updateDeviceButton setTitle:@"更新中..." forState:UIControlStateNormal];
-        self.updateDeviceButton.enabled = NO;
-    } else {
+    // Update device button：不再在按钮标题或卡片中显示更新状态
+    self.updateDeviceButton.enabled = !self.pushManager.isUpdatingDevice;
+    if (!self.pushManager.isUpdatingDevice) {
         [self.updateDeviceButton setTitle:@"更新设备信息" forState:UIControlStateNormal];
-        self.updateDeviceButton.enabled = YES;
     }
     
     // Settings button (show only if permission denied)
-    self.openSettingsButton.hidden = (self.pushManager.pushPermissionStatus != UNAuthorizationStatusDenied);
+    BOOL shouldHideSettings = (self.pushManager.pushPermissionStatus != UNAuthorizationStatusDenied);
+    if (self.openSettingsButton.hidden != shouldHideSettings) {
+        self.openSettingsButton.hidden = shouldHideSettings;
+
+        // 切换通知卡片顶部约束，保证始终使用统一的 sectionSpacing
+        self.notificationsTopToSettingsConstraint.active = !self.openSettingsButton.hidden;
+        self.notificationsTopToCheckPermissionConstraint.active = self.openSettingsButton.hidden;
+
+        [UIView animateWithDuration:0.2 animations:^{
+            [self.contentView layoutIfNeeded];
+        }];
+    } else {
+        self.openSettingsButton.hidden = shouldHideSettings;
+    }
 }
 
 - (void)updateNotificationsSection {
@@ -626,12 +643,22 @@
         self.notificationsTableView.hidden = YES;
         self.noNotificationsView.hidden = NO;
         self.clearNotificationsButton.hidden = YES;
+        // 当没有通知时，表格高度可以略小，底部留白更明显
+        self.notificationsTableHeightConstraint.constant = 120;
     } else {
         self.notificationsTableView.hidden = NO;
         self.noNotificationsView.hidden = YES;
         self.clearNotificationsButton.hidden = NO;
+        // 有数据时使用较小的默认高度，避免卡片太高
+        self.notificationsTableHeightConstraint.constant = 160;
         [self.notificationsTableView reloadData];
     }
+
+    // 应用高度和底部留白调整
+    [UIView animateWithDuration:0.2 animations:^{
+        [self.notificationsView layoutIfNeeded];
+        [self.contentView layoutIfNeeded];
+    }];
 }
 
 #pragma mark - Helper Methods
@@ -655,6 +682,8 @@
 }
 
 - (IBAction)updateDeviceButtonTapped:(id)sender {
+    // 点击时立即用 toast 提示开始
+    [self showToast:@"正在更新设备信息..."];
     [self.pushManager updateDeviceInfo];
 }
 
@@ -707,13 +736,7 @@
     }
 }
 
-- (void)refreshData:(UIRefreshControl *)refreshControl {
-    [self.pushManager checkPermissionStatus];
-    
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [refreshControl endRefreshing];
-    });
-}
+
 
 #pragma mark - Toast Methods
 

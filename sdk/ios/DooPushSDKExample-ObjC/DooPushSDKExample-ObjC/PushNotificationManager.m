@@ -9,6 +9,9 @@
 #import "Logger.h"
 @import DooPushSDK;
 
+// 状态更新通知常量
+NSString * const DooPushStatusUpdateNotification = @"DooPushStatusUpdateNotification";
+
 #pragma mark - NotificationInfo Implementation
 
 @implementation NotificationInfo
@@ -104,7 +107,7 @@ static PushNotificationManager *_shared = nil;
 
 - (void)updateDeviceInfo {
     self.isUpdatingDevice = YES;
-    self.updateMessage = @"正在更新设备信息...";
+    self.updateMessage = @"⏳ 正在更新设备信息...";
     [self notifyStatusUpdate];
     
     [DooPushManager.shared updateDeviceInfo];
@@ -172,6 +175,12 @@ static PushNotificationManager *_shared = nil;
 }
 
 - (void)notifyStatusUpdate {
+    // 发送通知给所有监听者
+    [[NSNotificationCenter defaultCenter] postNotificationName:DooPushStatusUpdateNotification 
+                                                        object:self 
+                                                      userInfo:nil];
+    
+    // 保持向后兼容性
     if (self.statusUpdateCallback) {
         self.statusUpdateCallback();
     }
@@ -301,7 +310,7 @@ static PushNotificationManager *_shared = nil;
         self.updateTimeoutTimer = nil;
         
         self.isUpdatingDevice = NO;
-        self.updateMessage = @"设备信息更新成功";
+        self.updateMessage = @"✅ 设备信息更新成功";
         [self notifyStatusUpdate];
         
         // 3秒后清除更新消息

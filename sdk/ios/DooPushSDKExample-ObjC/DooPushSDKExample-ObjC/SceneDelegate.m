@@ -6,6 +6,7 @@
 //
 
 #import "SceneDelegate.h"
+#import "ViewController.h"
 
 @interface SceneDelegate ()
 
@@ -13,11 +14,38 @@
 
 @implementation SceneDelegate
 
-
 - (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions {
-    // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-    // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-    // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
+    // 创建窗口场景
+    UIWindowScene *windowScene = (UIWindowScene *)scene;
+    
+    // 创建窗口
+    self.window = [[UIWindow alloc] initWithWindowScene:windowScene];
+    
+    // 创建主视图控制器
+    ViewController *mainViewController = [[ViewController alloc] init];
+    
+    // 创建导航控制器并设置根视图控制器
+    UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:mainViewController];
+    
+    // 设置导航栏样式
+    navigationController.navigationBar.prefersLargeTitles = YES;
+    
+    // 配置导航栏外观
+    UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
+    [appearance configureWithOpaqueBackground];
+    appearance.backgroundColor = [UIColor systemBackgroundColor];
+    appearance.titleTextAttributes = @{NSForegroundColorAttributeName: [UIColor labelColor]};
+    appearance.largeTitleTextAttributes = @{NSForegroundColorAttributeName: [UIColor labelColor]};
+    
+    navigationController.navigationBar.standardAppearance = appearance;
+    navigationController.navigationBar.scrollEdgeAppearance = appearance;
+    navigationController.navigationBar.compactAppearance = appearance;
+    
+    // 设置窗口的根视图控制器
+    self.window.rootViewController = navigationController;
+    
+    // 显示窗口
+    [self.window makeKeyAndVisible];
 }
 
 
