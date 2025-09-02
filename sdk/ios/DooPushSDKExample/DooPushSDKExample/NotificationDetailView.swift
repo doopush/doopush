@@ -295,6 +295,7 @@ struct NotificationDetailView: View {
                 "page_id": "123",
                 "extra_data": ["key1": "value1", "key2": "value2"]
             ],
+            dedupKey: "123",
             receivedAt: Date()
         )
     )

@@ -65,8 +65,8 @@ class PushNotificationManager: NSObject, DooPushDelegate, ObservableObject {
         let title: String?
         let content: String?
         let payload: [String: Any]?
-        let receivedAt: Date
         let dedupKey: String?
+        let receivedAt: Date
         
         static func == (lhs: NotificationInfo, rhs: NotificationInfo) -> Bool {
             lhs.id == rhs.id
