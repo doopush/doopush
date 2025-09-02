@@ -53,6 +53,7 @@ import type { Device } from '@/types/api'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { Pagination } from '@/components/pagination'
+import { ANDROID_VENDOR_KEYS } from '@/lib/constants'
 
 export function Devices() {
   const { currentApp } = useAuthStore()
@@ -195,15 +196,12 @@ export function Devices() {
 
   const getBrandIcon = (platform: string, brand: string) => {
     if (platform === 'ios') return <Apple className="h-5 w-5" />
-    
+
     // Android 平台根据品牌返回相应图标
     const brandIcons: Record<string, React.ReactNode> = {
-      huawei: <Android className="h-5 w-5" />,
-      xiaomi: <Android className="h-5 w-5" />,
-      oppo: <Android className="h-5 w-5" />,
-      vivo: <Android className="h-5 w-5" />,
-      samsung: <Android className="h-5 w-5" />,
-      google: <Android className="h-5 w-5" />,
+      ...Object.fromEntries(
+        ANDROID_VENDOR_KEYS.map(key => [key, <Android className="h-5 w-5" />])
+      ),
       apple: <Apple className="h-5 w-5" />,
     }
     return brandIcons[brand.toLowerCase()] || <Android className="h-5 w-5" />

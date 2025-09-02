@@ -36,6 +36,7 @@ import { ExportService } from '@/services/export-service'
 import type { PushLog, PushResult } from '@/types/api'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { ANDROID_VENDOR_KEYS } from '@/lib/constants'
 
 interface PushLogDetailsDialogProps {
   log: PushLog
@@ -47,7 +48,7 @@ interface PushLogDetailsDialogProps {
 const generateMockResults = (logId: number): PushResult[] => {
   const results: PushResult[] = []
   const platforms = ['ios', 'android']
-  const vendors = ['apple', 'huawei', 'xiaomi', 'oppo', 'vivo', 'google']
+  const vendors = ['apple', ...ANDROID_VENDOR_KEYS]
   const statuses: Array<'sent' | 'failed' | 'pending'> = ['sent', 'sent', 'sent', 'failed', 'pending']
   
   for (let i = 0; i < Math.min(20, Math.floor(Math.random() * 50) + 10); i++) {

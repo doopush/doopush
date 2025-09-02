@@ -30,6 +30,7 @@ import { Apple } from '@/components/platform-icon'
 import { requireApp } from '@/utils/app-utils'
 import { toast } from 'sonner'
 import type { AppConfig } from '@/types/api'
+import { ANDROID_VENDORS, ANDROID_VENDOR_ICONS } from '@/lib/constants'
 
 // 通用编辑配置表单验证
 const editConfigSchema = z.object({
@@ -268,12 +269,12 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
     const channelMap: Record<string, { name: string; icon: React.ReactNode }> = {
       apns: { name: 'Apple Push', icon: <Apple className="h-6 w-6" /> },
       fcm: { name: 'Firebase Cloud Messaging', icon: '🔥' },
-      huawei: { name: '华为推送', icon: '📱' },
-      xiaomi: { name: '小米推送', icon: '📱' },
-      oppo: { name: 'OPPO推送', icon: '📱' },
-      vivo: { name: 'VIVO推送', icon: '📱' },
-      honor: { name: '荣耀推送', icon: '📱' },
-      samsung: { name: '三星推送', icon: '📱' },
+      ...Object.fromEntries(
+        Object.entries(ANDROID_VENDORS).map(([key, vendor]) => [
+          key,
+          { name: vendor.name, icon: ANDROID_VENDOR_ICONS[key as keyof typeof ANDROID_VENDOR_ICONS] }
+        ])
+      ),
     }
     return channelMap[channel] || { name: channel, icon: '📱' }
   }

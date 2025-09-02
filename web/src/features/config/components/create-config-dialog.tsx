@@ -35,6 +35,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { ConfigService } from '@/services/config-service'
 import { requireApp } from '@/utils/app-utils'
 import { toast } from 'sonner'
+import { ANDROID_VENDOR_CONFIG_OPTIONS } from '@/lib/constants'
 
 // 通用配置表单验证
 const createConfigSchema = z.object({
@@ -234,12 +235,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
     } else {
       return [
         { value: 'fcm', label: 'Firebase Cloud Messaging (FCM)' },
-        { value: 'huawei', label: '华为推送 (HMS Push)' },
-        { value: 'xiaomi', label: '小米推送 (Mi Push)' },
-        { value: 'oppo', label: 'OPPO推送 (OPPO Push)' },
-        { value: 'vivo', label: 'VIVO推送 (VIVO Push)' },
-        { value: 'honor', label: '荣耀推送 (Honor Push)' },
-        { value: 'samsung', label: '三星推送 (Samsung Push)' },
+        ...ANDROID_VENDOR_CONFIG_OPTIONS,
       ]
     }
   }

@@ -57,6 +57,7 @@ import { TemplateSelector } from '@/components/template-selector'
 import { requireApp, APP_SELECTION_DESCRIPTIONS } from '@/utils/app-utils'
 import { toast } from 'sonner'
 import { useLocation } from '@tanstack/react-router'
+import { ANDROID_VENDOR_OPTIONS } from '@/lib/constants'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 // 推送表单验证规则
@@ -688,13 +689,11 @@ export default function PushSend() {
                                         </SelectTrigger>
                                       </FormControl>
                                       <SelectContent>
-                                        <SelectItem value="all">全部厂商</SelectItem>
-                                        <SelectItem value="huawei">华为</SelectItem>
-                                        <SelectItem value="xiaomi">小米</SelectItem>
-                                        <SelectItem value="oppo">OPPO</SelectItem>
-                                        <SelectItem value="vivo">VIVO</SelectItem>
-                                        <SelectItem value="honor">荣耀</SelectItem>
-                                        <SelectItem value="samsung">三星</SelectItem>
+                                        {ANDROID_VENDOR_OPTIONS.map((option) => (
+                                          <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                          </SelectItem>
+                                        ))}
                                       </SelectContent>
                                     </Select>
                                   </FormItem>
@@ -762,13 +761,11 @@ export default function PushSend() {
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          <SelectItem value="all">全部厂商</SelectItem>
-                                          <SelectItem value="huawei">华为</SelectItem>
-                                          <SelectItem value="xiaomi">小米</SelectItem>
-                                          <SelectItem value="oppo">OPPO</SelectItem>
-                                          <SelectItem value="vivo">VIVO</SelectItem>
-                                          <SelectItem value="honor">荣耀</SelectItem>
-                                          <SelectItem value="samsung">三星</SelectItem>
+                                          {ANDROID_VENDOR_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                              {option.label}
+                                            </SelectItem>
+                                          ))}
                                         </SelectContent>
                                       </Select>
                                     </FormItem>
