@@ -282,7 +282,7 @@ export function Devices() {
 
               <Card>
                 <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                  <CardTitle className='text-sm font-medium'>在线设备</CardTitle>
+                  <CardTitle className='text-sm font-medium'>启用设备</CardTitle>
                   <Power className='text-muted-foreground h-4 w-4' />
                 </CardHeader>
                 <CardContent>
@@ -319,8 +319,8 @@ export function Devices() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="1">在线</SelectItem>
-                  <SelectItem value="0">离线</SelectItem>
+                  <SelectItem value="1">启用</SelectItem>
+                  <SelectItem value="0">禁用</SelectItem>
                 </SelectContent>
               </Select>
             </div>

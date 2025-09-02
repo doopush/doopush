@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { 
   Settings, 
   Plus, 
@@ -160,6 +160,27 @@ export function PushConfig() {
   const iosConfigs = configs.filter(c => c.platform === 'ios')
   const androidConfigs = configs.filter(c => c.platform === 'android')
 
+  // 检查应用是否支持某个平台
+  const supportsPlatform = useCallback((platform: 'ios' | 'android'): boolean => {
+    if (!currentApp) return false
+    return currentApp.platform === platform || currentApp.platform === 'both'
+  }, [currentApp])
+
+  // 获取可用的标签页
+  const availableTabs = useMemo(() => {
+    const tabs = ['app']
+    if (supportsPlatform('ios')) tabs.push('ios')
+    if (supportsPlatform('android')) tabs.push('android')
+    return tabs
+  }, [supportsPlatform])
+
+  // 确保当前选中的标签页可用，如果不可用则切换到应用配置
+  useEffect(() => {
+    if (!availableTabs.includes(activeTab)) {
+      setActiveTab('app')
+    }
+  }, [currentApp, activeTab, availableTabs])
+
   return (
     <>
       <Header>
@@ -200,22 +221,26 @@ export function PushConfig() {
               )}
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className='mb-4'>
                 <TabsTrigger value="app" className="flex items-center gap-2">
                   <Cog className="h-4 w-4" />
                   应用配置
                 </TabsTrigger>
-                <TabsTrigger value="ios" className="flex items-center gap-2">
-                  <Apple className="h-4 w-4" />
-                  iOS配置
-                  <Badge variant="secondary">{iosConfigs.length}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="android" className="flex items-center gap-2">
-                  <Android className="h-4 w-4" />
-                  Android配置
-                  <Badge variant="secondary">{androidConfigs.length}</Badge>
-                </TabsTrigger>
+                {supportsPlatform('ios') && (
+                  <TabsTrigger value="ios" className="flex items-center gap-2">
+                    <Apple className="h-4 w-4" />
+                    iOS配置
+                    <Badge variant="secondary">{iosConfigs.length}</Badge>
+                  </TabsTrigger>
+                )}
+                {supportsPlatform('android') && (
+                  <TabsTrigger value="android" className="flex items-center gap-2">
+                    <Android className="h-4 w-4" />
+                    Android配置
+                    <Badge variant="secondary">{androidConfigs.length}</Badge>
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               {/* 应用配置 */}
@@ -435,26 +460,30 @@ export function PushConfig() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-medium mb-3">iOS 推送配置</h4>
-                    <ul className="text-sm text-muted-foreground space-y-2">
-                      <li>• 需要提供 Apple Developer 证书文件</li>
-                      <li>• 支持生产环境和开发环境证书</li>
-                      <li>• 配置 Bundle ID 和 Team ID</li>
-                      <li>• 支持 P8 密钥和 P12 证书两种方式</li>
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium mb-3">Android 推送配置</h4>
-                    <ul className="text-sm text-muted-foreground space-y-2">
-                      <li>• FCM: 需要 google-services.json 或服务器密钥</li>
-                      <li>• 华为: HMS Core App ID 和 App Secret</li>
-                      <li>• 小米: AppID、AppKey 和 AppSecret</li>
-                      <li>• OPPO/VIVO: AppID、AppKey 和 MasterSecret</li>
-                    </ul>
-                  </div>
+                <div className={`grid gap-6 ${supportsPlatform('ios') && supportsPlatform('android') ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                  {supportsPlatform('ios') && (
+                    <div>
+                      <h4 className="font-medium mb-3">iOS 推送配置</h4>
+                      <ul className="text-sm text-muted-foreground space-y-2">
+                        <li>• 需要提供 Apple Developer 证书文件</li>
+                        <li>• 支持生产环境和开发环境证书</li>
+                        <li>• 配置 Bundle ID 和 Team ID</li>
+                        <li>• 支持 P8 密钥和 P12 证书两种方式</li>
+                      </ul>
+                    </div>
+                  )}
+
+                  {supportsPlatform('android') && (
+                    <div>
+                      <h4 className="font-medium mb-3">Android 推送配置</h4>
+                      <ul className="text-sm text-muted-foreground space-y-2">
+                        <li>• FCM: 需要 google-services.json 或服务器密钥</li>
+                        <li>• 华为: HMS Core App ID 和 App Secret</li>
+                        <li>• 小米: AppID、AppKey 和 AppSecret</li>
+                        <li>• OPPO/VIVO: AppID、AppKey 和 MasterSecret</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
