@@ -38,6 +38,9 @@ final class DooPushNotificationProxy: NSObject, UNUserNotificationCenterDelegate
     ) {
         let userInfo = response.notification.request.content.userInfo
 
+        // 将点击视为一次“接收”事件，确保代理与统计能记录到通知历史
+        _ = DooPushManager.shared.handleNotification(userInfo)
+
         switch response.actionIdentifier {
         case UNNotificationDefaultActionIdentifier:
             _ = DooPushManager.shared.handleNotificationClick(userInfo)

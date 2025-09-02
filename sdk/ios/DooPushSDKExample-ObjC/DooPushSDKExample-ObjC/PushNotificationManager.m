@@ -245,6 +245,9 @@ static PushNotificationManager *_shared = nil;
         result[@"payload"] = [customPayload copy];
     }
     
+    NSString *dedupKey = userInfo[@"dedup_key"];
+    if (dedupKey) { result[@"dedup_key"] = dedupKey; }
+
     return [result copy];
 }
 
@@ -268,9 +271,25 @@ static PushNotificationManager *_shared = nil;
         notification.title = parsedData[@"title"];
         notification.content = parsedData[@"content"];
         notification.payload = parsedData[@"payload"];
+        notification.dedupKey = parsedData[@"dedup_key"];
         
-        // 插入到列表开头
-        [self.notifications insertObject:notification atIndex:0];
+        // 使用 dedupKey 去重
+        NSString *dedupKey = notification.dedupKey;
+        if (dedupKey && dedupKey.length > 0) {
+            BOOL exists = NO;
+            for (NotificationInfo *info in self.notifications) {
+                if (info.dedupKey && [info.dedupKey isEqualToString:dedupKey]) {
+                    exists = YES;
+                    break;
+                }
+            }
+            if (!exists) {
+                [self.notifications insertObject:notification atIndex:0];
+            }
+        } else {
+            // 无 dedupKey 时不做去重
+            [self.notifications insertObject:notification atIndex:0];
+        }
         
         // 限制通知历史数量
         if (self.notifications.count > 50) {

@@ -292,12 +292,17 @@ typedef NS_ENUM(NSInteger, SettingsSection) {
     // 取消之前的自动隐藏计时器
     [self.hideToastTimer invalidate];
     self.hideToastTimer = nil;
-    
+
+    // 取消正在进行的隐藏动画，确保立刻转为显示状态
+    [self.toastView.layer removeAllAnimations];
+    [self.view.layer removeAllAnimations];
+
     self.toastLabel.text = message;
     self.toastView.hidden = NO;
+    self.toastView.alpha = 1.0;
     self.toastBottomConstraint.constant = -50;
     
-    [UIView animateWithDuration:0.4 delay:0 usingSpringWithDamping:0.8 initialSpringVelocity:0 options:0 animations:^{
+    [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
     } completion:nil];
     
@@ -313,12 +318,20 @@ typedef NS_ENUM(NSInteger, SettingsSection) {
     [self.hideToastTimer invalidate];
     self.hideToastTimer = nil;
     
+    // 在隐藏时允许中途被打断：BeginFromCurrentState，并同时做轻微淡出
     self.toastBottomConstraint.constant = 50;
-    
-    [UIView animateWithDuration:0.4 delay:0 usingSpringWithDamping:0.8 initialSpringVelocity:0 options:0 animations:^{
+    [UIView animateWithDuration:0.25 delay:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionAllowUserInteraction animations:^{
+        self.toastView.alpha = 0.0;
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
-        self.toastView.hidden = YES;
+        BOOL shouldStillHide = (self.hideToastTimer == nil) && (self.toastBottomConstraint.constant == 50);
+        if (shouldStillHide) {
+            self.toastView.hidden = YES;
+            self.toastView.alpha = 1.0;
+        } else {
+            self.toastView.hidden = NO;
+            self.toastView.alpha = 1.0;
+        }
     }];
 }
 

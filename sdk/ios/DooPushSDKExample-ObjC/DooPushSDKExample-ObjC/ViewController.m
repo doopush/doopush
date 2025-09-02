@@ -54,6 +54,7 @@
 @property (nonatomic, strong) UIView *toastView;
 @property (nonatomic, strong) UILabel *toastLabel;
 @property (nonatomic, strong) NSLayoutConstraint *toastBottomConstraint;
+@property (nonatomic, strong) NSTimer *hideToastTimer;
 
 // Other
 @property (nonatomic, strong) PushNotificationManager *pushManager;
@@ -225,6 +226,7 @@
     self.notificationsTableView.rowHeight = UITableViewAutomaticDimension;
     self.notificationsTableView.estimatedRowHeight = 60;
     self.notificationsTableView.backgroundColor = [UIColor clearColor];
+    self.notificationsTableView.scrollEnabled = NO;
     [self.notificationsView addSubview:self.notificationsTableView];
     
     // No Notifications View
@@ -339,7 +341,7 @@
 - (void)setupConstraints {
     CGFloat padding = 16;
     self.sectionSpacing = 20;
-    self.contentBottomPadding = 40; // 页面底部留白，方便下拉
+    self.contentBottomPadding = 200; // 页面底部留白，方便下拉
     
     // Scroll View
     [NSLayoutConstraint activateConstraints:@[
@@ -505,7 +507,7 @@
         [self.noNotificationsView.topAnchor constraintEqualToAnchor:self.notificationsCountLabel.bottomAnchor constant:12],
         [self.noNotificationsView.leadingAnchor constraintEqualToAnchor:self.notificationsView.leadingAnchor constant:16],
         [self.noNotificationsView.trailingAnchor constraintEqualToAnchor:self.notificationsView.trailingAnchor constant:-16],
-        [self.noNotificationsView.heightAnchor constraintEqualToConstant:100],
+        [self.noNotificationsView.heightAnchor constraintEqualToConstant:150],
         
         [self.clearNotificationsButton.topAnchor constraintEqualToAnchor:self.notificationsTableView.bottomAnchor constant:12],
         [self.clearNotificationsButton.leadingAnchor constraintEqualToAnchor:self.notificationsView.leadingAnchor constant:16],
@@ -549,6 +551,9 @@
 - (void)dealloc {
     // 清理通知监听
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    // 清理 toast 计时器
+    [self.hideToastTimer invalidate];
+    self.hideToastTimer = nil;
 }
 
 #pragma mark - UI Update Methods
@@ -649,9 +654,18 @@
         self.notificationsTableView.hidden = NO;
         self.noNotificationsView.hidden = YES;
         self.clearNotificationsButton.hidden = NO;
-        // 有数据时使用较小的默认高度，避免卡片太高
-        self.notificationsTableHeightConstraint.constant = 160;
+        // 高度随内容自适应：以内容高度为准，不设固定最小高度
         [self.notificationsTableView reloadData];
+        // 需在下一个 runloop 获取到正确的 contentSize
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.notificationsTableView layoutIfNeeded];
+            CGFloat contentHeight = self.notificationsTableView.contentSize.height;
+            self.notificationsTableHeightConstraint.constant = contentHeight;
+            [UIView animateWithDuration:0.2 animations:^{
+                [self.notificationsView layoutIfNeeded];
+                [self.contentView layoutIfNeeded];
+            }];
+        });
     }
 
     // 应用高度和底部留白调整
@@ -741,26 +755,49 @@
 #pragma mark - Toast Methods
 
 - (void)showToast:(NSString *)message {
+    // 重置旧的隐藏计时器，避免“还没隐藏就立刻被旧计时器隐藏”
+    [self.hideToastTimer invalidate];
+    self.hideToastTimer = nil;
+
+    // 取消正在进行的隐藏动画，确保立刻转为显示状态
+    [self.toastView.layer removeAllAnimations];
+    [self.view.layer removeAllAnimations];
+
     self.toastLabel.text = message;
     self.toastView.hidden = NO;
+    self.toastView.alpha = 1.0;
     self.toastBottomConstraint.constant = -50;
-    
-    [UIView animateWithDuration:0.4 delay:0 usingSpringWithDamping:0.8 initialSpringVelocity:0 options:0 animations:^{
+
+    [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
     } completion:nil];
-    
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [self hideToast];
-    });
+
+    __weak typeof(self) weakSelf = self;
+    self.hideToastTimer = [NSTimer scheduledTimerWithTimeInterval:2.5 repeats:NO block:^(NSTimer * _Nonnull timer) {
+        [weakSelf hideToast];
+    }];
 }
 
 - (void)hideToast {
+    // 清理计时器，避免重复触发
+    [self.hideToastTimer invalidate];
+    self.hideToastTimer = nil;
+
+    // 在隐藏时允许中途被打断：BeginFromCurrentState，并同时做轻微淡出
     self.toastBottomConstraint.constant = 50;
-    
-    [UIView animateWithDuration:0.4 delay:0 usingSpringWithDamping:0.8 initialSpringVelocity:0 options:0 animations:^{
+    [UIView animateWithDuration:0.25 delay:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionAllowUserInteraction animations:^{
+        self.toastView.alpha = 0.0;
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
-        self.toastView.hidden = YES;
+        // 若期间有新的 toast 重启（计时器已被重建或位置已恢复显示），则不隐藏
+        BOOL shouldStillHide = (self.hideToastTimer == nil) && (self.toastBottomConstraint.constant == 50);
+        if (shouldStillHide) {
+            self.toastView.hidden = YES;
+            self.toastView.alpha = 1.0; // 复位，供下次显示
+        } else {
+            self.toastView.hidden = NO;
+            self.toastView.alpha = 1.0;
+        }
     }];
 }
 

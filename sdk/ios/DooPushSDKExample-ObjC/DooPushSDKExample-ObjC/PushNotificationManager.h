@@ -34,6 +34,7 @@ typedef NS_ENUM(NSInteger, SDKStatus) {
 @property (nonatomic, strong, nullable) NSString *title;
 @property (nonatomic, strong, nullable) NSString *content;
 @property (nonatomic, strong, nullable) NSDictionary *payload;
+@property (nonatomic, strong, nullable) NSString *dedupKey;
 @property (nonatomic, strong) NSDate *receivedAt;
 
 @end

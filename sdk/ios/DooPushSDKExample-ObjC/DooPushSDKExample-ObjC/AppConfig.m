@@ -11,15 +11,15 @@
 @implementation AppConfig
 
 + (NSString *)appId {
-    return @"2";
+    return @"1";
 }
 
 + (NSString *)apiKey {
-    return @"dp_live_IA12s6WpOw7qhwkQ4UHTLiV4vkW85XBN";
+    return @"dp_live_XXpwyhNOxpsXWh3sRxxhZ0KK9Wo8ArwB";
 }
 
 + (NSString *)baseURL {
-    return @"https://push.frp.coss.im/api/v1";
+    return @"https://doopush.com/api/v1";
 }
 
 + (NSString *)displayBaseURL {
