@@ -2,4 +2,5 @@
 .kiro/
 .spec-workflow/
 .vscode/
+.env.local
 sdk/ios/**/DooPushLocalConfig.plist

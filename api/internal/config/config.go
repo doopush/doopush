@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"os"
 
 	"github.com/spf13/viper"
 )
@@ -16,6 +17,20 @@ func LoadConfig(envFile string) {
 	}
 
 	log.Printf("配置文件已加载: %s", envFile)
+
+	// 检查是否存在本地覆盖配置文件
+	localConfigFile := envFile + ".local"
+	if _, err := os.Stat(localConfigFile); err == nil {
+		// 本地配置文件存在，合并配置
+		viper.SetConfigFile(localConfigFile)
+		if err := viper.MergeInConfig(); err != nil {
+			log.Printf("本地配置文件合并失败: %v", err)
+		} else {
+			log.Printf("本地配置文件已合并: %s", localConfigFile)
+		}
+	} else if !os.IsNotExist(err) {
+		log.Printf("检查本地配置文件失败: %v", err)
+	}
 }
 
 // GetString 获取字符串配置
