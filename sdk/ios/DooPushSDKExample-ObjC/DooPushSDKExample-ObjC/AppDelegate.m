@@ -6,6 +6,9 @@
 //
 
 #import "AppDelegate.h"
+#import "AppConfig.h"
+#import "PushNotificationManager.h"
+@import DooPushSDK;
 
 @interface AppDelegate ()
 
@@ -13,10 +16,35 @@
 
 @implementation AppDelegate
 
-
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-    // Override point for customization after application launch.
+    // 配置推送SDK
+    [self configurePushSDK];
+    
     return YES;
+}
+
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+    [DooPushManager.shared didRegisterForRemoteNotificationsWith:deviceToken];
+}
+
+- (void)application:(UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(NSError *)error {
+    [DooPushManager.shared didFailToRegisterForRemoteNotificationsWith:error];
+}
+
+#pragma mark - Private Methods
+
+- (void)configurePushSDK {
+    [DooPushManager.shared configureWithAppId:AppConfig.appId
+                                       apiKey:AppConfig.apiKey
+                                      baseURL:AppConfig.baseURL];
+    
+    DooPushManager.shared.delegate = PushNotificationManager.shared;
+    
+    // 检查是否需要自动注册
+    [PushNotificationManager.shared checkAutoRegister];
+    
+    // 使用配置文件的方法输出配置信息
+    [AppConfig printConfiguration];
 }
 
 

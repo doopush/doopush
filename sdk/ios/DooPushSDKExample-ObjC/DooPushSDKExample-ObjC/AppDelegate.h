@@ -6,9 +6,9 @@
 //
 
 #import <UIKit/UIKit.h>
+@import DooPushSDK;
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate>
-
 
 @end
 

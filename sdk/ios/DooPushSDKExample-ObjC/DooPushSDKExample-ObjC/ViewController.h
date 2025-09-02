@@ -6,9 +6,9 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "PushNotificationManager.h"
 
 @interface ViewController : UIViewController
-
 
 @end
 
