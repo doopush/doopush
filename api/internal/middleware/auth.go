@@ -161,6 +161,82 @@ func RequireAuth() gin.HandlerFunc {
 	}
 }
 
+// DualAuth 双重认证中间件 (支持JWT和API Key认证)
+// 专为推送API设计，确保API Key认证时也能正确验证权限
+func DualAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 优先尝试JWT认证
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" {
+			tokenParts := strings.SplitN(authHeader, " ", 2)
+			if len(tokenParts) == 2 && tokenParts[0] == "Bearer" {
+				jwtService := auth.NewJWTService(
+					config.GetString("JWT_SECRET"),
+					config.GetString("JWT_ISSUER"),
+				)
+
+				if claims, err := jwtService.ValidateToken(tokenParts[1]); err == nil {
+					c.Set("user_id", claims.UserID)
+					c.Set("username", claims.Username)
+					c.Set("email", claims.Email)
+					c.Set("claims", claims)
+					c.Set("auth_type", "jwt")
+					c.Next()
+					return
+				}
+			}
+		}
+
+		// 尝试API Key认证
+		apiKey := c.GetHeader("X-API-Key")
+		if apiKey == "" {
+			apiKey = c.Query("api_key")
+		}
+
+		if apiKey != "" {
+			// 获取应用ID参数
+			appIDStr := c.Param("appId")
+			if appIDStr == "" {
+				response.Unauthorized(c, "缺少应用ID参数")
+				c.Abort()
+				return
+			}
+
+			appID, err := strconv.ParseUint(appIDStr, 10, 32)
+			if err != nil {
+				response.BadRequest(c, "无效的应用ID")
+				c.Abort()
+				return
+			}
+
+			// 验证API Key是否属于该应用
+			if validateAPIKeyForApp(apiKey, uint(appID)) {
+				// API Key认证成功，查询应用的owner用户ID
+				var permission models.UserAppPermission
+				if err := database.DB.Where("app_id = ? AND role = ?", appID, "owner").First(&permission).Error; err == nil {
+					// 为API Key认证设置虚拟用户信息，使用应用owner的ID
+					c.Set("user_id", permission.UserID)
+					c.Set("username", "api_key_user")
+					c.Set("email", "")
+					c.Set("api_key", apiKey)
+					c.Set("auth_type", "api_key")
+					c.Set("app_id", uint(appID))
+					c.Next()
+					return
+				}
+			}
+
+			response.Unauthorized(c, "无效的API密钥")
+			c.Abort()
+			return
+		}
+
+		// 无认证信息
+		response.Unauthorized(c, "需要认证：请提供Bearer Token或API密钥")
+		c.Abort()
+	}
+}
+
 // CORS 跨域中间件
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {

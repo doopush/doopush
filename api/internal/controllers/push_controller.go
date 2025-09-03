@@ -89,16 +89,16 @@ type PlatformStat struct {
 
 // SendPush 发送推送
 // @Summary 发送推送
-// @Description 向指定目标发送推送通知
+// @Description 向指定目标发送推送通知。支持JWT Token和API Key双重认证方式
 // @Tags 推送管理
 // @Accept json
 // @Produce json
-// @Security BearerAuth
+// @Security BearerAuth || ApiKeyAuth
 // @Param appId path int true "应用ID"
 // @Param request body SendPushRequest true "推送信息"
 // @Success 200 {object} response.APIResponse{data=[]models.PushLog}
 // @Failure 400 {object} response.APIResponse
-// @Failure 401 {object} response.APIResponse
+// @Failure 401 {object} response.APIResponse "未认证或API密钥无效"
 // @Failure 403 {object} response.APIResponse
 // @Failure 422 {object} response.APIResponse
 // @Router /apps/{appId}/push [post]
@@ -435,15 +435,16 @@ type SendBroadcastRequest struct {
 
 // SendSingle 单设备推送
 // @Summary 单设备推送
-// @Description 向指定设备发送推送通知
+// @Description 向指定设备发送推送通知。支持JWT Token和API Key双重认证方式
 // @Tags 推送管理
 // @Accept json
 // @Produce json
+// @Security BearerAuth || ApiKeyAuth
 // @Param appId path int true "应用ID"
 // @Param push body SendSingleRequest true "单推请求"
 // @Success 200 {object} response.APIResponse{data=object} "推送发送成功"
 // @Failure 400 {object} response.APIResponse "请求参数错误"
-// @Failure 401 {object} response.APIResponse "未认证"
+// @Failure 401 {object} response.APIResponse "未认证或API密钥无效"
 // @Failure 403 {object} response.APIResponse "无权限"
 // @Router /apps/{appId}/push/single [post]
 func (ctrl *PushController) SendSingle(ctx *gin.Context) {
@@ -507,15 +508,16 @@ func (ctrl *PushController) SendSingle(ctx *gin.Context) {
 
 // SendBatch 批量推送
 // @Summary 批量推送
-// @Description 向多个指定设备发送推送通知
+// @Description 向多个指定设备发送推送通知。支持JWT Token和API Key双重认证方式
 // @Tags 推送管理
 // @Accept json
 // @Produce json
+// @Security BearerAuth || ApiKeyAuth
 // @Param appId path int true "应用ID"
 // @Param push body SendBatchRequest true "批量推送请求"
 // @Success 200 {object} response.APIResponse{data=object} "推送发送成功"
 // @Failure 400 {object} response.APIResponse "请求参数错误"
-// @Failure 401 {object} response.APIResponse "未认证"
+// @Failure 401 {object} response.APIResponse "未认证或API密钥无效"
 // @Failure 403 {object} response.APIResponse "无权限"
 // @Router /apps/{appId}/push/batch [post]
 func (ctrl *PushController) SendBatch(ctx *gin.Context) {
@@ -590,15 +592,16 @@ func (ctrl *PushController) SendBatch(ctx *gin.Context) {
 
 // SendBroadcast 广播推送
 // @Summary 广播推送
-// @Description 向应用的所有设备发送推送通知
+// @Description 向应用的所有设备发送推送通知。支持JWT Token和API Key双重认证方式
 // @Tags 推送管理
 // @Accept json
 // @Produce json
+// @Security BearerAuth || ApiKeyAuth
 // @Param appId path int true "应用ID"
 // @Param push body SendBroadcastRequest true "广播推送请求"
 // @Success 200 {object} response.APIResponse{data=object} "推送发送成功"
 // @Failure 400 {object} response.APIResponse "请求参数错误"
-// @Failure 401 {object} response.APIResponse "未认证"
+// @Failure 401 {object} response.APIResponse "未认证或API密钥无效"
 // @Failure 403 {object} response.APIResponse "无权限"
 // @Router /apps/{appId}/push/broadcast [post]
 func (ctrl *PushController) SendBroadcast(ctx *gin.Context) {

@@ -191,7 +191,7 @@ export function AppConfigTab() {
             </Button>
           </CardTitle>
           <CardDescription>
-            管理应用的API密钥，用于SDK认证
+            管理应用的API密钥，用于SDK认证和服务端API调用
           </CardDescription>
         </CardHeader>
         <CardContent>

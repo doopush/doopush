@@ -130,11 +130,7 @@ func startServer() {
 			authenticated.PUT("/apps/:appId/devices/:deviceId/status", deviceCtrl.UpdateDeviceStatus)
 			authenticated.DELETE("/apps/:appId/devices/:deviceId", deviceCtrl.DeleteDevice)
 
-			// 推送管理
-			authenticated.POST("/apps/:appId/push", pushCtrl.SendPush)
-			authenticated.POST("/apps/:appId/push/single", pushCtrl.SendSingle)
-			authenticated.POST("/apps/:appId/push/batch", pushCtrl.SendBatch)
-			authenticated.POST("/apps/:appId/push/broadcast", pushCtrl.SendBroadcast)
+			// 推送管理 - 查询类接口（仅JWT认证）
 			authenticated.GET("/apps/:appId/push/logs", pushCtrl.GetPushLogs)
 			authenticated.GET("/apps/:appId/push/logs/:logId", pushCtrl.GetPushLogDetails)
 			authenticated.GET("/apps/:appId/push/statistics", pushCtrl.GetPushStatistics)
@@ -201,6 +197,17 @@ func startServer() {
 		{
 			apiKeyRoutes.POST("/apps/:appId/devices", deviceCtrl.RegisterDevice)
 			apiKeyRoutes.POST("/apps/:appId/push/statistics/report", pushCtrl.ReportPushStatistics)
+		}
+
+		// 双重认证的路由 (支持JWT和API Key认证)
+		dualAuthRoutes := api.Group("")
+		dualAuthRoutes.Use(middleware.DualAuth())
+		{
+			// 推送管理 - 发送类接口（支持JWT和API Key双重认证）
+			dualAuthRoutes.POST("/apps/:appId/push", pushCtrl.SendPush)
+			dualAuthRoutes.POST("/apps/:appId/push/single", pushCtrl.SendSingle)
+			dualAuthRoutes.POST("/apps/:appId/push/batch", pushCtrl.SendBatch)
+			dualAuthRoutes.POST("/apps/:appId/push/broadcast", pushCtrl.SendBroadcast)
 		}
 	}
 
