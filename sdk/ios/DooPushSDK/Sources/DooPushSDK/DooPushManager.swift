@@ -41,15 +41,20 @@ import UserNotifications
     ///   - appId: 应用ID
     ///   - apiKey: API密钥
     ///   - baseURL: 服务器基础URL，默认为 https://doopush.com/api/v1
+    ///
+    /// 注意：当 `baseURL` 为空字符串时，将自动回退到默认值，便于 Objective‑C 侧传入空字符串。
     @objc public func configure(
         appId: String,
         apiKey: String,
         baseURL: String = "https://doopush.com/api/v1"
     ) {
+        let cleanedBaseURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedBaseURL = cleanedBaseURL.isEmpty ? "https://doopush.com/api/v1" : cleanedBaseURL
+        
         self.config = DooPushConfig(
             appId: appId,
             apiKey: apiKey,
-            baseURL: baseURL
+            baseURL: resolvedBaseURL
         )
         
         // 保存配置到本地
@@ -67,7 +72,15 @@ import UserNotifications
         // 检查是否需要更新设备信息
         checkAndUpdateDeviceInfoIfNeeded()
         
-        DooPushLogger.info("DooPush SDK 配置完成 - AppID: \(appId), BaseURL: \(baseURL)")
+        DooPushLogger.info("DooPush SDK 配置完成 - AppID: \(appId), BaseURL: \(resolvedBaseURL)")
+    }
+
+    /// Objective‑C 便捷配置方法：允许省略 `baseURL` 参数（使用默认 https://doopush.com/api/v1）
+    /// - Parameters:
+    ///   - appId: 应用ID
+    ///   - apiKey: API密钥
+    @objc public func configure(appId: String, apiKey: String) {
+        self.configure(appId: appId, apiKey: apiKey, baseURL: "https://doopush.com/api/v1")
     }
     
     // MARK: - 推送注册
