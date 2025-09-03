@@ -34,6 +34,11 @@ type ExportPushStatisticsRequest struct {
 	EndDate   string `json:"end_date,omitempty"`
 }
 
+// ExportAuditLogsRequest 导出审计日志请求
+type ExportAuditLogsRequest struct {
+	Filters services.AuditLogFilters `json:"filters"`
+}
+
 // ExportPushLogs 导出推送日志
 // @Summary 导出推送日志
 // @Description 导出推送日志为Excel文件
@@ -252,4 +257,58 @@ func (c *ExportController) DownloadFile(ctx *gin.Context) {
 
 	// 返回文件内容
 	ctx.Data(http.StatusOK, file.ContentType, file.Data)
+}
+
+// ExportAppAuditLogs 导出应用审计日志
+// @Summary 导出应用审计日志
+// @Description 导出指定应用的审计日志为Excel文件，需要对应应用的查看权限
+// @Tags 导出
+// @Accept json
+// @Produce json
+// @Param appId path int true "应用ID"
+// @Param request body ExportAuditLogsRequest true "导出请求"
+// @Success 200 {object} response.APIResponse{data=services.ExportResult}
+// @Failure 400 {object} response.APIResponse
+// @Failure 401 {object} response.APIResponse
+// @Failure 403 {object} response.APIResponse
+// @Failure 404 {object} response.APIResponse
+// @Failure 500 {object} response.APIResponse
+// @Router /apps/{appId}/export/audit-logs [post]
+func (c *ExportController) ExportAppAuditLogs(ctx *gin.Context) {
+	// 获取应用ID
+	appIDStr := ctx.Param("appId")
+	appID, err := strconv.ParseUint(appIDStr, 10, 32)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "无效的应用ID")
+		return
+	}
+
+	// 获取用户ID
+	userID, exists := ctx.Get("user_id")
+	if !exists {
+		response.Error(ctx, http.StatusUnauthorized, "用户未认证")
+		return
+	}
+
+	// 解析请求参数
+	var req ExportAuditLogsRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.Error(ctx, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 调用服务导出
+	result, err := c.exportService.ExportAppAuditLogs(uint(appID), userID.(uint), req.Filters)
+	if err != nil {
+		if err.Error() == "无权限访问该应用的审计日志" {
+			response.Error(ctx, http.StatusForbidden, err.Error())
+		} else if err.Error() == "应用不存在" {
+			response.Error(ctx, http.StatusNotFound, err.Error())
+		} else {
+			response.Error(ctx, http.StatusInternalServerError, "导出失败: "+err.Error())
+		}
+		return
+	}
+
+	response.Success(ctx, result)
 }

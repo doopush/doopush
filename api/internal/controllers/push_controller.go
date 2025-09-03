@@ -15,13 +15,15 @@ import (
 
 // PushController 推送控制器
 type PushController struct {
-	pushService *services.PushService
+	pushService  *services.PushService
+	auditService *services.AuditService
 }
 
 // NewPushController 创建推送控制器
 func NewPushController() *PushController {
 	return &PushController{
-		pushService: services.NewPushService(),
+		pushService:  services.NewPushService(),
+		auditService: services.NewAuditService(),
 	}
 }
 
@@ -156,6 +158,47 @@ func (p *PushController) SendPush(c *gin.Context) {
 		}
 		return
 	}
+
+	// 记录审计日志
+	go func() {
+		ipAddress := c.ClientIP()
+		userAgent := c.GetHeader("User-Agent")
+		appIDUint := uint(appID)
+
+		// 准备推送详情数据（不包含敏感信息）
+		pushDetails := gin.H{
+			"title":        req.Title,
+			"content":      req.Content,
+			"target_type":  req.Target.Type,
+			"badge":        req.Badge,
+			"device_count": len(pushLogs),
+		}
+		if req.Schedule != nil {
+			pushDetails["scheduled"] = true
+			pushDetails["schedule_time"] = *req.Schedule
+		}
+
+		// 使用第一个推送日志的ID作为资源ID
+		var resourceID string
+		if len(pushLogs) > 0 {
+			resourceID = strconv.FormatUint(uint64(pushLogs[0].ID), 10)
+		}
+
+		err := p.auditService.LogActionWithBeforeAfter(
+			userID,
+			&appIDUint,
+			"push",
+			"push",
+			resourceID,
+			nil,         // 推送操作没有变更前数据
+			pushDetails, // 推送详情信息
+			ipAddress,
+			userAgent,
+		)
+		if err != nil {
+			// 审计记录失败不影响主流程
+		}
+	}()
 
 	message := "推送发送成功"
 	if req.Schedule != nil {

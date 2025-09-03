@@ -11,13 +11,15 @@ import (
 
 // AppController 应用控制器
 type AppController struct {
-	appService *services.AppService
+	appService   *services.AppService
+	auditService *services.AuditService
 }
 
 // NewAppController 创建应用控制器
 func NewAppController() *AppController {
 	return &AppController{
-		appService: services.NewAppService(),
+		appService:   services.NewAppService(),
+		auditService: services.NewAuditService(),
 	}
 }
 
@@ -88,6 +90,26 @@ func (a *AppController) CreateApp(c *gin.Context) {
 		response.Error(c, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
+
+	// 记录审计日志
+	go func() {
+		ipAddress := c.ClientIP()
+		userAgent := c.GetHeader("User-Agent")
+		err := a.auditService.LogActionWithBeforeAfter(
+			userID,
+			&app.ID,
+			"create",
+			"app",
+			strconv.FormatUint(uint64(app.ID), 10),
+			nil, // 创建操作没有变更前数据
+			req, // 创建请求作为变更后数据
+			ipAddress,
+			userAgent,
+		)
+		if err != nil {
+			// 审计记录失败不影响主流程，可以记录到错误日志
+		}
+	}()
 
 	c.JSON(http.StatusCreated, response.APIResponse{
 		Code:    201,
@@ -202,6 +224,10 @@ func (a *AppController) UpdateApp(c *gin.Context) {
 	}
 
 	userID := c.GetUint("user_id")
+
+	// 获取更新前的应用信息用于审计
+	oldApp, _ := a.appService.GetAppByID(uint(appID), userID)
+
 	app, err := a.appService.UpdateApp(uint(appID), userID, updates)
 	if err != nil {
 		if err.Error() == "无权限修改该应用" {
@@ -211,6 +237,26 @@ func (a *AppController) UpdateApp(c *gin.Context) {
 		}
 		return
 	}
+
+	// 记录审计日志
+	go func() {
+		ipAddress := c.ClientIP()
+		userAgent := c.GetHeader("User-Agent")
+		err := a.auditService.LogActionWithBeforeAfter(
+			userID,
+			&app.ID,
+			"update",
+			"app",
+			strconv.FormatUint(uint64(app.ID), 10),
+			oldApp, // 更新前的应用信息
+			req,    // 更新请求数据
+			ipAddress,
+			userAgent,
+		)
+		if err != nil {
+			// 审计记录失败不影响主流程
+		}
+	}()
 
 	response.Success(c, app)
 }
@@ -236,6 +282,10 @@ func (a *AppController) DeleteApp(c *gin.Context) {
 	}
 
 	userID := c.GetUint("user_id")
+
+	// 获取删除前的应用信息用于审计
+	deletedApp, _ := a.appService.GetAppByID(uint(appID), userID)
+
 	if err := a.appService.DeleteApp(uint(appID), userID); err != nil {
 		if err.Error() == "无权限删除该应用" {
 			response.Forbidden(c, err.Error())
@@ -244,6 +294,26 @@ func (a *AppController) DeleteApp(c *gin.Context) {
 		}
 		return
 	}
+
+	// 记录审计日志
+	go func() {
+		ipAddress := c.ClientIP()
+		userAgent := c.GetHeader("User-Agent")
+		err := a.auditService.LogActionWithBeforeAfter(
+			userID,
+			&deletedApp.ID,
+			"delete",
+			"app",
+			strconv.FormatUint(uint64(deletedApp.ID), 10),
+			deletedApp, // 删除前的应用信息
+			nil,        // 删除操作没有变更后数据
+			ipAddress,
+			userAgent,
+		)
+		if err != nil {
+			// 审计记录失败不影响主流程
+		}
+	}()
 
 	response.Success(c, gin.H{"message": "应用删除成功"})
 }
@@ -319,6 +389,32 @@ func (a *AppController) CreateAPIKey(c *gin.Context) {
 		return
 	}
 
+	// 记录审计日志
+	go func() {
+		ipAddress := c.ClientIP()
+		userAgent := c.GetHeader("User-Agent")
+		appIDUint := uint(appID)
+		err := a.auditService.LogActionWithBeforeAfter(
+			userID,
+			&appIDUint,
+			"create",
+			"api_key",
+			strconv.FormatUint(uint64(keyInfo.ID), 10),
+			nil, // 创建操作没有变更前数据
+			gin.H{
+				"name":            req.Name,
+				"key_prefix":      keyInfo.KeyPrefix,
+				"key_suffix":      keyInfo.KeySuffix,
+				"created_for_app": appID,
+			}, // API密钥创建信息（不包含完整密钥）
+			ipAddress,
+			userAgent,
+		)
+		if err != nil {
+			// 审计记录失败不影响主流程
+		}
+	}()
+
 	c.JSON(http.StatusCreated, response.APIResponse{
 		Code:    201,
 		Message: "API密钥创建成功",
@@ -359,6 +455,13 @@ func (a *AppController) DeleteAPIKey(c *gin.Context) {
 	}
 
 	userID := c.GetUint("user_id")
+
+	// 获取删除前的API密钥信息用于审计（不包含敏感信息）
+	deletedKeyInfo := gin.H{
+		"app_id": appID,
+		"key_id": keyID,
+	}
+
 	if err := a.appService.DeleteAPIKey(uint(appID), uint(keyID), userID); err != nil {
 		if err.Error() == "无权限删除API密钥" {
 			response.Forbidden(c, err.Error())
@@ -369,6 +472,27 @@ func (a *AppController) DeleteAPIKey(c *gin.Context) {
 		}
 		return
 	}
+
+	// 记录审计日志
+	go func() {
+		ipAddress := c.ClientIP()
+		userAgent := c.GetHeader("User-Agent")
+		appIDUint := uint(appID)
+		err := a.auditService.LogActionWithBeforeAfter(
+			userID,
+			&appIDUint,
+			"delete",
+			"api_key",
+			strconv.FormatUint(uint64(keyID), 10),
+			deletedKeyInfo, // 删除前的API密钥信息
+			nil,            // 删除操作没有变更后数据
+			ipAddress,
+			userAgent,
+		)
+		if err != nil {
+			// 审计记录失败不影响主流程
+		}
+	}()
 
 	response.Success(c, gin.H{"message": "API密钥删除成功"})
 }

@@ -234,13 +234,82 @@ export interface AuditLog {
   id: number
   app_id?: number
   user_id: number
+  user_name?: string        // 新增: 用户名冗余字段
   action: string
   resource: string
   resource_id: number
   details: string
+  before_data?: string | null      // 新增: 变更前数据JSON
+  after_data?: string | null       // 新增: 变更后数据JSON
   ip_address: string
   user_agent: string
   created_at: string
+  // 关联数据
+  app?: App
+  user?: User
+}
+
+// 审计日志DTO（包含友好标签）
+export interface AuditLogDTO extends AuditLog {
+  app_name?: string         // 应用名称
+  action_label?: string     // 操作类型友好标签
+  resource_label?: string   // 资源类型友好标签
+}
+
+// 审计日志筛选条件
+export interface AuditFilters {
+  user_id?: number
+  action?: string
+  resource?: string
+  start_time?: string       // ISO 8601 格式时间
+  end_time?: string
+  ip_address?: string
+  user_name?: string
+  app_id?: number
+}
+
+// 操作统计
+export interface OperationStat {
+  action: string
+  resource: string
+  count: number
+  action_label?: string     // 操作类型友好标签
+  resource_label?: string   // 资源类型友好标签
+}
+
+// 用户活动统计
+export interface UserActivityStat {
+  user_id: number
+  user_name: string
+  action_count: number
+  last_activity: string
+}
+
+// 统计接口响应封装
+export interface OperationStatisticsResponse {
+  statistics: OperationStat[]
+  period: {
+    days: number
+    app_id: number
+    app_name?: string | null
+  }
+}
+
+export interface UserActivityStatisticsResponse {
+  user_activity: UserActivityStat[]
+  period: {
+    days: number
+    limit: number
+    app_id: number
+  }
+}
+
+// 审计日志列表响应
+export interface AuditLogListResponse {
+  logs: AuditLogDTO[]
+  total: number
+  page: number
+  page_size: number
 }
 
 // ===== 推送统计 =====

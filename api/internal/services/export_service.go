@@ -52,6 +52,17 @@ type StatisticsParams struct {
 	EndDate   *time.Time `json:"end_date"`
 }
 
+// AuditLogFilters 审计日志过滤器
+type AuditLogFilters struct {
+	UserID    *uint      `json:"user_id,omitempty"`
+	Action    string     `json:"action,omitempty"`
+	Resource  string     `json:"resource,omitempty"`
+	UserName  string     `json:"user_name,omitempty"`
+	IPAddress string     `json:"ip_address,omitempty"`
+	StartTime *time.Time `json:"start_time,omitempty"`
+	EndTime   *time.Time `json:"end_time,omitempty"`
+}
+
 // ExportPushLogDetails 导出推送详情结果
 func (s *ExportService) ExportPushLogDetails(appID uint, logID uint, userID uint) (*ExportResult, error) {
 	// 检查用户权限
@@ -940,12 +951,196 @@ func (s *ExportService) generatePushResultsSheet(f *excelize.File, pushLog model
 	}
 
 	// 自动调整列宽
-	for i := 0; i < len(headers); i++ {
+	for i := range headers {
 		col := fmt.Sprintf("%c", 'A'+i)
 		f.SetColWidth(sheetName, col, col, 15)
 	}
 
 	return nil
+}
+
+// ExportAppAuditLogs 导出应用审计日志
+func (s *ExportService) ExportAppAuditLogs(appID uint, userID uint, filters AuditLogFilters) (*ExportResult, error) {
+	// 检查用户权限
+	userService := NewUserService()
+	hasPermission, err := userService.CheckAppPermission(userID, appID, "viewer")
+	if err != nil {
+		return nil, fmt.Errorf("权限检查失败: %v", err)
+	}
+	if !hasPermission {
+		return nil, fmt.Errorf("无权限访问该应用的审计日志")
+	}
+
+	// 获取应用信息
+	var app models.App
+	if err := database.DB.First(&app, appID).Error; err != nil {
+		return nil, fmt.Errorf("应用不存在")
+	}
+
+	// 构建服务层过滤器（强制过滤应用ID）
+	serviceFilters := AuditFilters{
+		AppID:     &appID,
+		UserID:    filters.UserID,
+		Action:    filters.Action,
+		Resource:  filters.Resource,
+		UserName:  filters.UserName,
+		IPAddress: filters.IPAddress,
+		StartTime: filters.StartTime,
+		EndTime:   filters.EndTime,
+	}
+
+	// 查询审计日志数据
+	auditService := NewAuditService()
+	logs, _, err := auditService.GetAuditLogsWithAdvancedFilters(serviceFilters, 1, 100000)
+	if err != nil {
+		return nil, fmt.Errorf("获取审计日志失败: %v", err)
+	}
+
+	// 创建Excel文件
+	filename := fmt.Sprintf("app_%d_%s_audit_logs_%s.xlsx", appID, app.Name, time.Now().Format("2006-01-02_15-04-05"))
+	filePath, err := s.createAuditLogExcel(logs, filename, fmt.Sprintf("应用[%s]审计日志", app.Name))
+	if err != nil {
+		return nil, fmt.Errorf("创建Excel文件失败: %v", err)
+	}
+
+	// 生成下载令牌
+	token, err := s.generateSecureToken()
+	if err != nil {
+		return nil, fmt.Errorf("生成下载令牌失败: %v", err)
+	}
+
+	// 保存导出记录
+	expiresAt := time.Now().Add(24 * time.Hour)
+	exportRecord := &models.ExportToken{
+		Token:       token,
+		AppID:       appID,
+		UserID:      userID,
+		FilePath:    filePath,
+		Filename:    filename,
+		ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		ExpiresAt:   expiresAt,
+	}
+
+	if err := database.DB.Create(exportRecord).Error; err != nil {
+		return nil, fmt.Errorf("保存导出记录失败: %v", err)
+	}
+
+	result := &ExportResult{
+		DownloadURL: fmt.Sprintf("/api/v1/export/download/%s", token),
+		Filename:    filename,
+		ExpiresAt:   expiresAt,
+	}
+
+	return result, nil
+}
+
+// createAuditLogExcel 创建审计日志Excel文件
+func (s *ExportService) createAuditLogExcel(logs []models.AuditLog, filename, sheetTitle string) (string, error) {
+	// 创建Excel文件
+	f := excelize.NewFile()
+	sheetName := "审计日志"
+
+	// 设置工作表名称
+	f.SetSheetName("Sheet1", sheetName)
+
+	// 定义表头
+	headers := []string{
+		"ID", "应用ID", "应用名称", "用户ID", "用户名",
+		"操作类型", "资源类型", "资源ID", "详情",
+		"变更前数据", "变更后数据", "IP地址", "用户代理", "创建时间",
+	}
+
+	// 写入表头
+	for i, header := range headers {
+		cell := fmt.Sprintf("%c1", 'A'+i)
+		f.SetCellValue(sheetName, cell, header)
+	}
+
+	// 设置表头样式
+	headerStyle, err := f.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Bold: true,
+		},
+		Fill: excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{"#E6E6FA"},
+			Pattern: 1,
+		},
+	})
+	if err == nil {
+		f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%c1", 'A'+len(headers)-1), headerStyle)
+	}
+
+	// 写入数据
+	for i, log := range logs {
+		row := i + 2
+
+		// 获取应用名称
+		appName := ""
+		if log.App.Name != "" {
+			appName = log.App.Name
+		}
+
+		// 截断长文本字段，避免Excel单元格限制
+		details := truncateText(log.Details, 1000)
+		beforeData := ""
+		if log.BeforeData != nil {
+			beforeData = truncateText(*log.BeforeData, 500)
+		}
+		afterData := ""
+		if log.AfterData != nil {
+			afterData = truncateText(*log.AfterData, 500)
+		}
+		userAgent := truncateText(log.UserAgent, 200)
+
+		// 写入行数据
+		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), log.ID)
+		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), log.AppID)
+		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), appName)
+		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), log.UserID)
+		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), log.UserName)
+		f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), log.Action)
+		f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), log.Resource)
+		f.SetCellValue(sheetName, fmt.Sprintf("H%d", row), log.ResourceID)
+		f.SetCellValue(sheetName, fmt.Sprintf("I%d", row), details)
+		f.SetCellValue(sheetName, fmt.Sprintf("J%d", row), beforeData)
+		f.SetCellValue(sheetName, fmt.Sprintf("K%d", row), afterData)
+		f.SetCellValue(sheetName, fmt.Sprintf("L%d", row), log.IPAddress)
+		f.SetCellValue(sheetName, fmt.Sprintf("M%d", row), userAgent)
+		f.SetCellValue(sheetName, fmt.Sprintf("N%d", row), log.CreatedAt.Format("2006-01-02 15:04:05"))
+	}
+
+	// 自动调整列宽
+	for i := 0; i < len(headers); i++ {
+		col := fmt.Sprintf("%c", 'A'+i)
+		f.SetColWidth(sheetName, col, col, 15)
+	}
+
+	// 特殊调整某些列的宽度
+	f.SetColWidth(sheetName, "I", "I", 30) // 详情列更宽
+	f.SetColWidth(sheetName, "J", "K", 25) // 变更数据列更宽
+	f.SetColWidth(sheetName, "M", "M", 20) // 用户代理列更宽
+
+	// 保存文件
+	exportDir := "./uploads/tmp/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		return "", fmt.Errorf("创建导出目录失败: %v", err)
+	}
+
+	filePath := filepath.Join(exportDir, filename)
+	if err := f.SaveAs(filePath); err != nil {
+		return "", fmt.Errorf("保存Excel文件失败: %v", err)
+	}
+
+	return filePath, nil
+}
+
+// truncateText 截断文本，避免Excel单元格限制
+func truncateText(text string, maxLen int) string {
+	if len(text) <= maxLen {
+		return text
+	}
+	return text[:maxLen] + "..."
 }
 
 // StartCleanupScheduler 启动清理调度器

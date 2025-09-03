@@ -100,6 +100,7 @@ func startServer() {
 		// 需要JWT认证的路由
 		authenticated := api.Group("")
 		authenticated.Use(middleware.JWTAuth())
+		authenticated.Use(middleware.AuditLogger())
 		{
 			// 用户信息
 			authenticated.GET("/auth/profile", authCtrl.Profile)
@@ -178,9 +179,10 @@ func startServer() {
 			authenticated.POST("/apps/:appId/scheduled-pushes/:id/execute", schedulerCtrl.ExecuteScheduledPush)
 
 			// 审计日志管理
-			authenticated.GET("/audit-logs", auditCtrl.GetGlobalAuditLogs)
-			authenticated.GET("/audit-logs/statistics", auditCtrl.GetActionStatistics)
 			authenticated.GET("/apps/:appId/audit-logs", auditCtrl.GetAppAuditLogs)
+			authenticated.POST("/apps/:appId/export/audit-logs", exportCtrl.ExportAppAuditLogs)
+			authenticated.GET("/apps/:appId/audit-logs/operation-statistics", auditCtrl.GetOperationStatistics)
+			authenticated.GET("/apps/:appId/audit-logs/user-activity-statistics", auditCtrl.GetUserActivityStatistics)
 
 			// 导出功能
 			authenticated.POST("/apps/:appId/export/push-logs", exportCtrl.ExportPushLogs)
@@ -202,6 +204,7 @@ func startServer() {
 		// 双重认证的路由 (支持JWT和API Key认证)
 		dualAuthRoutes := api.Group("")
 		dualAuthRoutes.Use(middleware.DualAuth())
+		dualAuthRoutes.Use(middleware.AuditLogger())
 		{
 			// 推送管理 - 发送类接口（支持JWT和API Key双重认证）
 			dualAuthRoutes.POST("/apps/:appId/push", pushCtrl.SendPush)

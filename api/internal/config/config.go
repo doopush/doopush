@@ -65,3 +65,41 @@ func GetBool(key string, defaultValue ...bool) bool {
 	}
 	return false
 }
+
+// AuditConfig 审计日志配置结构
+type AuditConfig struct {
+	RetentionDays   int  `json:"retention_days"`   // 审计日志保留天数
+	AutoCleanup     bool `json:"auto_cleanup"`     // 是否开启自动清理
+	CleanupInterval int  `json:"cleanup_interval"` // 清理任务执行间隔(小时)
+	BatchSize       int  `json:"batch_size"`       // 批量清理大小
+}
+
+// GetAuditConfig 获取审计日志配置
+func GetAuditConfig() AuditConfig {
+	return AuditConfig{
+		RetentionDays:   GetInt("AUDIT_RETENTION_DAYS", 365),      // 默认保留1年
+		AutoCleanup:     GetBool("AUDIT_AUTO_CLEANUP", true),      // 默认开启自动清理
+		CleanupInterval: GetInt("AUDIT_CLEANUP_INTERVAL", 24),     // 默认24小时执行一次
+		BatchSize:       GetInt("AUDIT_CLEANUP_BATCH_SIZE", 1000), // 默认每批清理1000条
+	}
+}
+
+// GetAuditRetentionDays 获取审计日志保留天数
+func GetAuditRetentionDays() int {
+	return GetInt("AUDIT_RETENTION_DAYS", 365)
+}
+
+// IsAuditAutoCleanupEnabled 检查是否开启审计日志自动清理
+func IsAuditAutoCleanupEnabled() bool {
+	return GetBool("AUDIT_AUTO_CLEANUP", true)
+}
+
+// GetAuditCleanupInterval 获取审计日志清理间隔(小时)
+func GetAuditCleanupInterval() int {
+	return GetInt("AUDIT_CLEANUP_INTERVAL", 24)
+}
+
+// GetAuditCleanupBatchSize 获取审计日志清理批次大小
+func GetAuditCleanupBatchSize() int {
+	return GetInt("AUDIT_CLEANUP_BATCH_SIZE", 1000)
+}
