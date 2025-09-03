@@ -1,116 +1,150 @@
-# DooPush SDK Objective-C Example
+# DooPush SDK Objective-C 示例应用
 
-这是 DooPush SDK 的 Objective-C 版本示例应用，对应 Swift 版本的 DooPushSDKExample。
+演示 DooPush SDK Objective-C 版本的完整功能，包含推送注册、状态监控、通知历史等核心特性。
 
-## 项目结构
+## 主要功能
 
-### 核心类文件
+- **SDK状态监控**：实时显示SDK配置状态、注册状态、推送权限
+- **设备管理**：自动获取设备Token、设备ID，实时更新设备信息
+- **推送注册**：一键注册推送通知，支持权限检查和状态反馈
+- **通知历史**：接收推送历史记录，支持去重和详情查看
+- **角标管理**：应用角标数字的设置、增减、清除操作
+- **设置页面**：详细的配置信息展示和调试工具
 
-- **AppConfig.h/m** - 配置管理类，统一管理 App ID、API Key、服务器地址等配置
-- **Logger.h/m** - 日志管理类，提供统一的日志输出功能
-- **PushNotificationManager.h/m** - 推送管理器，实现 DooPushDelegate 协议，管理推送状态和通知历史
-- **NotificationInfo** - 通知信息模型类，封装推送通知的详细信息
+## 快速开始
 
-### 界面控制器
-
-- **ViewController.h/m** - 主界面控制器，显示 SDK 状态、设备信息、操作按钮和通知历史
-- **SettingsViewController.h/m** - 设置页面，显示详细的配置信息、设备信息和角标管理
-- **NotificationDetailViewController.h/m** - 通知详情页面，显示推送通知的完整信息
-
-### 应用配置
-
-- **AppDelegate.h/m** - 应用代理，配置 DooPush SDK 并处理推送回调
-- **SceneDelegate.h/m** - 场景代理（保持原有配置）
-
-## 功能特性
-
-### 主界面功能
-- 显示 SDK 状态和推送权限状态
-- 显示设备信息（Token、设备 ID、型号、系统版本）
-- 推送注册和设备信息更新
-- 权限检查和设置跳转
-- 通知历史列表（最多显示 5 条）
-- 下拉刷新功能
-- Toast 提示消息
-
-### 设置页面功能
-- SDK 配置信息查看和复制
-- 详细设备信息展示
-- 调试信息查看
-- 角标管理（设置、增减、清除）
-- 操作功能（重新注册、更新设备、清空历史）
-- 关于信息
-
-### 通知详情功能
-- 显示推送通知的完整信息
-- 附加数据的格式化显示
-- 时间信息（绝对时间和相对时间）
-- 复制功能（完整信息、JSON 格式）
-
-## 与 Swift 版本的对应关系
-
-| Swift 版本 | Objective-C 版本 | 说明 |
-|-----------|------------------|------|
-| DooPushSDKExampleApp.swift | AppDelegate.m | 应用入口和 SDK 配置 |
-| ContentView.swift | ViewController.m | 主界面UI和交互 |
-| SettingsView.swift | SettingsViewController.m | 设置页面 |
-| NotificationDetailView.swift | NotificationDetailViewController.m | 通知详情页面 |
-| PushNotificationManager.swift | PushNotificationManager.m | 推送管理器 |
-| Config.swift | AppConfig.m | 配置管理 |
-| Logger.swift | Logger.m | 日志管理 |
-
-## 技术实现
-
-### UI架构
-- 使用 UIKit 和 Storyboard（需要手动创建界面约束）
-- TableView 用于设置页面和通知详情页面
-- 自定义 Toast 视图用于消息提示
-- 支持下拉刷新和自适应布局
-
-### 数据管理
-- 使用单例模式管理推送状态
-- 回调机制更新UI状态
-- 通知历史本地存储（最多50条）
-
-### 推送集成
-- 实现 DooPushDelegate 协议
-- 处理推送注册和接收回调
-- 错误处理和用户友好提示
-
-## 开发注意事项
-
-### 需要完成的工作
-
-1. **Storyboard 配置** - 需要在 Main.storyboard 中创建界面布局和 IBOutlet 连接
-2. **项目配置** - 确保 Swift Package Manager 正确导入 DooPushSDK
-3. **推送权限** - 配置推送权限和证书
-4. **测试** - 验证各功能模块的正常工作
-
-### 关键连接点
-
-ViewController.m 中定义了大量的 IBOutlet，需要在 Storyboard 中进行连接：
-
-```objc
-// 需要连接的 IBOutlet
-@property (weak, nonatomic) IBOutlet UIScrollView *scrollView;
-@property (weak, nonatomic) IBOutlet UIImageView *appIconImageView;
-@property (weak, nonatomic) IBOutlet UILabel *titleLabel;
-// ... 等等
+### 1. 运行应用
+```bash
+open DooPushSDKExample-ObjC.xcodeproj
 ```
 
-### 代码风格
+### 2. 配置参数
 
-- 遵循 Objective-C 命名规范
-- 使用 ARC 内存管理
-- 详细的错误处理和日志记录
-- 中文本地化支持
+#### DooPushLocalConfig.plist 配置
 
-## 运行要求
+在 `DooPushSDKExample-ObjC/` 目录下创建 `DooPushLocalConfig.plist` 文件：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>APP_ID</key>
+    <string>your_app_id_here</string>
+    <key>API_KEY</key>
+    <string>your_api_key_here</string>
+    <key>BASE_URL</key>
+    <string>https://your-server.com/api/v1</string>
+</dict>
+</plist>
+```
+
+**配置说明：**
+- `APP_ID`: DooPush 应用ID
+- `API_KEY`: DooPush API密钥
+- `BASE_URL`: 服务器基础URL（包含API版本路径）
+
+**注意：** 此文件已添加到 `.gitignore`，不会被版本控制。
+
+### 3. 基本流程
+1. 启动应用，SDK自动初始化
+2. 点击"注册推送通知"并授权权限
+3. 查看设备信息和推送状态
+4. 通过 DooPush 后台发送测试推送
+5. 在通知历史中查看接收的推送
+
+## 代码结构
+
+```
+DooPushSDKExample-ObjC/
+├── AppDelegate.h/m                         # 应用入口和SDK配置
+├── ViewController.h/m                      # 主界面 - 状态展示和操作
+├── SettingsViewController.h/m              # 设置页面 - 配置和调试信息
+├── NotificationDetailViewController.h/m    # 通知详情页面 - 推送内容查看
+├── PushNotificationManager.h/m             # 推送管理器 - SDK代理实现
+├── AppConfig.h/m                           # 配置管理 - 多级配置支持
+├── Logger.h/m                              # 日志管理
+└── NotificationInfo.h                      # 通知信息模型
+```
+
+## 核心实现
+
+**PushNotificationManager**: 实现 `DooPushDelegate` 协议，处理所有SDK回调：
+- 设备注册成功/失败
+- 推送通知接收
+- 权限状态变更
+- 设备信息更新
+
+## 测试推送
+
+1. 登录 DooPush 管理后台
+2. 选择应用 > 推送配置 > iOS配置
+3. 使用示例应用中的设备Token发送测试推送
+4. 在应用中查看推送接收状态和通知详情
+
+## SDK集成示例
+
+```objc
+#import "AppDelegate.h"
+@import DooPushSDK;
+
+// 1. 配置SDK
+- (void)configurePushSDK {
+    [DooPushManager.shared configureWithAppId:@"your_app_id" apiKey:@"your_api_key"];
+
+    // 2. 设置代理
+    DooPushManager.shared.delegate = self;
+
+    // 3. 注册推送通知
+    [DooPushManager.shared registerForPushNotificationsWithCompletion:^(NSString * _Nullable token, NSError * _Nullable error) {
+        if (token) {
+            NSLog(@"注册成功: %@", token);
+        } else {
+            NSLog(@"注册失败: %@", error.localizedDescription);
+        }
+    }];
+}
+```
+
+```objc
+// 4. 实现代理方法
+@interface YourViewController () <DooPushDelegate>
+@end
+
+@implementation YourViewController
+
+// 注册成功回调
+- (void)dooPush:(DooPushManager *)manager didRegisterWithToken:(NSString *)token {
+    NSLog(@"设备注册成功: %@", token);
+}
+
+// 接收推送通知
+- (void)dooPush:(DooPushManager *)manager didReceiveNotification:(NSDictionary *)userInfo {
+    // 处理推送通知
+    NSDictionary *aps = userInfo[@"aps"];
+    if (aps) {
+        NSDictionary *alert = aps[@"alert"];
+        NSString *title = alert[@"title"];
+        NSString *body = alert[@"body"];
+        NSLog(@"收到推送: %@ - %@", title, body);
+    }
+}
+
+// 注册失败回调
+- (void)dooPush:(DooPushManager *)manager didFailWithError:(NSError *)error {
+    NSLog(@"推送服务错误: %@", error.localizedDescription);
+}
+
+// 设备信息更新回调
+- (void)dooPushDidUpdateDeviceInfo:(DooPushManager *)manager {
+    NSLog(@"设备信息已更新");
+}
+
+@end
+```
+
+## 技术要求
 
 - iOS 12.0+
 - Xcode 12.0+
 - DooPush SDK（通过 Swift Package Manager 导入）
-
----
-
-**注意**: 此项目已完成所有 Objective-C 代码的转换工作，但仍需要手动配置 Storyboard 界面布局才能正常运行。
