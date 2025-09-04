@@ -1,0 +1,20 @@
+{
+  "token": "abc123def456ghi789...",
+  "platform": "ios",
+  "bundle_id": "com.yourcompany.yourapp",
+  "brand": "Apple",
+  "model": "iPhone 14 Pro",
+  "system_version": "17.0",
+  "app_version": "2.1.0",
+  "user_agent": "YourApp/2.1.0 (iPhone; iOS 17.0; Scale/3.00)",
+  "tags": [
+    {
+      "tag_name": "user_level",
+      "tag_value": "premium"
+    },
+    {
+      "tag_name": "city",
+      "tag_value": "beijing"
+    }
+  ]
+}

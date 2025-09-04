@@ -1,0 +1,17 @@
+{
+  "code": 200,
+  "message": "推送发送成功",
+  "data": [
+    {
+      "id": 12345,
+      "app_id": 123,
+      "title": "新功能上线",
+      "content": "我们推出了令人兴奋的新功能，快来体验吧！",
+      "status": "sent",
+      "target_count": 1000,
+      "success_count": 950,
+      "failed_count": 50,
+      "created_at": "2024-01-01T10:00:00Z"
+    }
+  ]
+}

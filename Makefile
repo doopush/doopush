@@ -51,6 +51,23 @@ web-lint: ## 前端代码检查
 web-format: ## 前端代码格式化
 	cd web && pnpm run format
 
+# 文档命令
+.PHONY: docs-install
+docs-install: ## 安装文档依赖
+	cd docs && npm install
+
+.PHONY: docs-dev
+docs-dev: ## 运行文档开发服务器
+	cd docs && npm run dev
+
+.PHONY: docs-build
+docs-build: ## 构建文档项目
+	cd docs && npm run build
+
+.PHONY: docs-preview
+docs-preview: ## 预览构建后的文档
+	cd docs && npm run preview
+
 # 全项目命令
 .PHONY: dev
 dev: ## 启动完整开发环境（数据库、后端、前端并行启动）

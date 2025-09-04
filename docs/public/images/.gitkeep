@@ -1,0 +1,20 @@
+# 图片资源目录
+
+此目录用于存放文档中使用的图片资源：
+
+## 目录结构
+- `/screenshots/` - 功能截图
+- `/diagrams/` - 架构图和流程图
+- `/icons/` - 图标文件
+- `/examples/` - 示例图片
+
+## 支持格式
+- PNG, JPG, JPEG - 静态图片
+- SVG - 矢量图标
+- GIF - 动图演示
+
+## 命名规范
+- 使用英文小写字母和连字符
+- 功能截图：`feature-name-screenshot.png`
+- 流程图：`process-name-diagram.svg`
+- 图标：`icon-name.svg`

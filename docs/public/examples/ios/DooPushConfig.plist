@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- DooPush 应用配置 -->
+    <key>APP_ID</key>
+    <string>your_app_id_here</string>
+    
+    <!-- DooPush API 密钥 -->
+    <key>API_KEY</key>
+    <string>your_api_key_here</string>
+    
+    <!-- 服务器基础 URL -->
+    <key>BASE_URL</key>
+    <string>https://doopush.com/api/v1</string>
+    
+    <!-- 调试模式（可选） -->
+    <key>DEBUG_MODE</key>
+    <true/>
+    
+    <!-- 自动注册推送（可选） -->
+    <key>AUTO_REGISTER</key>
+    <true/>
+</dict>
+</plist>

@@ -1,0 +1,14 @@
+{
+  "title": "新功能上线",
+  "content": "我们推出了令人兴奋的新功能，快来体验吧！",
+  "badge": 1,
+  "payload": {
+    "action": "open_page",
+    "url": "https://example.com/new-feature",
+    "data": "{\"feature_id\":\"new_feature_v2\",\"category\":\"update\"}"
+  },
+  "target": {
+    "type": "broadcast",
+    "platform": "ios"
+  }
+}

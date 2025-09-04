@@ -1,0 +1,22 @@
+# 代码示例目录
+
+此目录用于存放文档中引用的代码示例文件：
+
+## 目录结构
+- `/ios/` - iOS SDK 示例代码
+- `/android/` - Android SDK 示例代码
+- `/api/` - API 调用示例
+- `/configs/` - 配置文件示例
+
+## 文件类型
+- `.swift` - iOS Swift 代码
+- `.java` / `.kt` - Android 代码
+- `.json` - 配置文件和API响应示例
+- `.xml` - 配置文件示例
+- `.plist` - iOS 配置文件
+
+## 命名规范
+- 使用功能名称命名文件
+- iOS 示例：`push-manager-example.swift`
+- Android 示例：`PushManager.java`
+- API 示例：`send-push-request.json`
