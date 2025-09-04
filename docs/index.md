@@ -6,6 +6,9 @@ hero:
   name: "DooPush"
   text: "推送平台帮助文档"
   tagline: 简单易用的推送通知管理平台，支持 iOS 和 Android 多平台推送
+  image:
+    src: /logo.svg
+    alt: DooPush
   actions:
     - theme: brand
       text: 快速开始
@@ -62,4 +65,4 @@ features:
 
 ---
 
-*DooPush 是一个现代化的推送通知管理平台，致力于为开发者提供简单易用、功能强大的推送解决方案。*
+**DooPush 是一个现代化的推送通知管理平台，致力于为开发者提供简单易用、功能强大的推送解决方案。**

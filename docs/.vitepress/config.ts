@@ -11,12 +11,19 @@ export default withMermaid(
     // 主题配置
     themeConfig: {
       // https://vitepress.dev/reference/default-theme-config
+
+      logo: { 
+        src: '/logo.svg', 
+        width: 24, 
+        height: 24
+      },
+
       nav: [
         { text: '首页', link: '/' },
-        { text: '快速开始', link: '/guide/quick-start' },
-        { text: '功能使用', link: '/guide/console' },
-        { text: 'API 文档', link: '/api/authentication' },
-        { text: 'SDK 接入', link: '/sdk/ios-integration' }
+        { text: '快速开始', link: '/guide/quick-start', activeMatch: '^/guide/quick-start' },
+        { text: '功能使用', link: '/guide/console', activeMatch: '^/guide/(?!quick-start)' },
+        { text: 'API 文档', link: '/api/authentication', activeMatch: '^/api/' },
+        { text: 'SDK 接入', link: '/sdk/ios-integration', activeMatch: '^/sdk/' }
       ],
 
       sidebar: {
