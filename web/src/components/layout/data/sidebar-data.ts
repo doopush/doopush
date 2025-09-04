@@ -119,7 +119,7 @@ export const sidebarData: SidebarData = {
           ],
         },
         {
-          title: '帮助中心',
+          title: '帮助文档',
           url: 'https://doopush.com/docs',
           icon: HelpCircle,
           external: true,

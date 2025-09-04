@@ -45,7 +45,7 @@ type OperationStat struct {
 // AuditLogListResponse 审计日志列表响应
 // @Description 分页审计日志列表响应格式
 type AuditLogListResponse struct {
-	Logs     []AuditLogDTO `json:"logs" example:"[{}]"`    // 审计日志列表
+	Logs     []AuditLogDTO `json:"logs"`                   // 审计日志列表
 	Total    int64         `json:"total" example:"100"`    // 总记录数
 	Page     int           `json:"page" example:"1"`       // 当前页码
 	PageSize int           `json:"page_size" example:"20"` // 每页记录数
