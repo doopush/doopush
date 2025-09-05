@@ -337,6 +337,8 @@ func (d *DeviceController) getGatewayConfig() GatewayConfig {
 	port := config.GetInt("GATEWAY_PORT", 5003)
 	ssl := config.GetBool("GATEWAY_SSL", false)
 
+	// TODO: 如果留空，则根据请求Url来判断
+
 	return GatewayConfig{
 		Host: host,
 		Port: port,

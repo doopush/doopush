@@ -53,7 +53,7 @@ func init() {
 
 func startServer() {
 	// 设置Gin模式
-	if config.GetString("APP_ENV") == "production" {
+	if config.GetString("APP_ENV", "production") == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -218,13 +218,10 @@ func startServer() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// 启动服务器
-	port := config.GetString("API_PORT")
-	if port == "" {
-		port = "5002"
-	}
+	port := config.GetString("API_PORT", "5002")
 
 	// 开发环境启动时根据端口结束进程
-	if config.GetString("APP_ENV") == "development" {
+	if config.GetString("APP_ENV", "production") == "development" {
 		if portInt, err := strconv.Atoi(port); err == nil {
 			utils.KillProcessByPort(portInt)
 		}

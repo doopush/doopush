@@ -45,7 +45,7 @@ func startGateway() {
 	}
 
 	// 开发环境启动时根据端口结束进程
-	if config.GetString("APP_ENV") == "development" {
+	if config.GetString("APP_ENV", "production") == "development" {
 		utils.KillProcessByPort(server.GetPort())
 	}
 
