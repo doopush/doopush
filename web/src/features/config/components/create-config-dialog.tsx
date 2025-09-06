@@ -100,7 +100,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
       channel: defaultPlatform === 'ios' ? 'apns' : 'fcm',
       key_id: '',
       team_id: '',
-      bundle_id: '',
+      bundle_id: currentApp?.package_name || '',
       private_key: '',
       production: false,
       server_key: '',
@@ -121,7 +121,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
         channel: defaultPlatform === 'ios' ? 'apns' : 'fcm',
         key_id: '',
         team_id: '',
-        bundle_id: '',
+        bundle_id: currentApp?.package_name || '',
         private_key: '',
         production: false,
         server_key: '',
@@ -132,7 +132,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
         master_secret: '',
       })
     }
-  }, [open, defaultPlatform, form])
+  }, [open, defaultPlatform, form, currentApp?.package_name])
 
   // 获取当前表单值
   const currentPlatform = form.watch('platform')
@@ -363,7 +363,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       <FormItem>
                         <FormLabel>Bundle ID *</FormLabel>
                         <FormControl>
-                          <Input placeholder="com.example.app" {...field} />
+                          <Input placeholder={currentApp?.package_name || 'com.example.app'} {...field} />
                         </FormControl>
                         <FormDescription>
                           应用的Bundle Identifier

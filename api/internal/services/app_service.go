@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -168,6 +169,45 @@ func (s *AppService) UpdateApp(appID uint, userID uint, updates map[string]inter
 			if err := database.DB.Where("package_name = ? AND id != ?", packageNameStr, appID).First(&existingApp).Error; err == nil {
 				return nil, errors.New("包名已存在")
 			}
+
+			// 使用事务更新应用并同步 iOS APNs 配置的 bundle_id
+			tx := database.DB.Begin()
+			// 更新应用基本信息
+			if err := tx.Model(&app).Updates(updates).Error; err != nil {
+				tx.Rollback()
+				return nil, errors.New("应用更新失败")
+			}
+
+			// 同步所有 iOS APNs 配置中的 bundle_id
+			var configs []models.AppConfig
+			if err := tx.Where("app_id = ? AND platform = ? AND channel = ?", appID, "ios", "apns").Find(&configs).Error; err != nil {
+				tx.Rollback()
+				return nil, errors.New("推送配置同步失败")
+			}
+			for i := range configs {
+				var cfg map[string]interface{}
+				if err := json.Unmarshal([]byte(configs[i].Config), &cfg); err != nil {
+					// 配置JSON异常时跳过该条，避免整体失败
+					continue
+				}
+				cfg["bundle_id"] = packageNameStr
+				if b, err := json.Marshal(cfg); err == nil {
+					configs[i].Config = string(b)
+					if err := tx.Save(&configs[i]).Error; err != nil {
+						tx.Rollback()
+						return nil, errors.New("推送配置同步失败")
+					}
+				} else {
+					// 序列化异常时跳过该条
+					continue
+				}
+			}
+
+			if err := tx.Commit().Error; err != nil {
+				return nil, errors.New("应用更新失败")
+			}
+
+			return &app, nil
 		}
 	}
 

@@ -68,6 +68,29 @@ func (c *ConfigController) SetAppConfig(ctx *gin.Context) {
 		return
 	}
 
+	// iOS APNs：验证 bundle_id 必须存在且与应用包名一致
+	if req.Platform == "ios" && req.Channel == "apns" {
+		var cfg map[string]interface{}
+		if err := json.Unmarshal([]byte(req.Config), &cfg); err != nil {
+			response.BadRequest(ctx, "配置数据格式错误")
+			return
+		}
+		bundleID, _ := cfg["bundle_id"].(string)
+		if bundleID == "" {
+			response.BadRequest(ctx, "缺少 bundle_id")
+			return
+		}
+		var app models.App
+		if err := database.DB.Where("id = ?", appID).First(&app).Error; err != nil {
+			response.NotFound(ctx, "应用不存在")
+			return
+		}
+		if bundleID != app.PackageName {
+			response.BadRequest(ctx, "Bundle ID 与应用包名不一致")
+			return
+		}
+	}
+
 	// 更新或创建配置
 	var appConfig models.AppConfig
 	err = database.DB.Where("app_id = ? AND platform = ? AND channel = ?", appID, req.Platform, req.Channel).First(&appConfig).Error
@@ -348,6 +371,24 @@ func (c *ConfigController) UpdateAppConfig(ctx *gin.Context) {
 	if err := json.Unmarshal([]byte(req.Config), &newConfigMap); err != nil {
 		response.BadRequest(ctx, "配置数据格式错误")
 		return
+	}
+
+	// iOS APNs：验证 bundle_id 必须与应用包名一致
+	if appConfig.Platform == "ios" && appConfig.Channel == "apns" {
+		bundleID, _ := newConfigMap["bundle_id"].(string)
+		if bundleID == "" {
+			response.BadRequest(ctx, "缺少 bundle_id")
+			return
+		}
+		var app models.App
+		if err := database.DB.Where("id = ?", appID).First(&app).Error; err != nil {
+			response.NotFound(ctx, "应用不存在")
+			return
+		}
+		if bundleID != app.PackageName {
+			response.BadRequest(ctx, "Bundle ID 与应用包名不一致")
+			return
+		}
 	}
 
 	// 获取原始配置数据
