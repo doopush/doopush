@@ -23,13 +23,13 @@ import { getIconURL } from '@/utils/app-utils'
 
 export function AppSwitcher() {
   const { isMobile } = useSidebar()
-  const { currentApp, userApps, setCurrentApp, setUserApps, isAuthenticated, appsLoading, setAppsLoading } = useAuthStore()
+  const { currentApp, userApps, setCurrentApp, setUserApps, isAuthenticated, appsLoading, setAppsLoading, appsFetched, setAppsFetched } = useAuthStore()
   const router = useRouter()
 
   // 加载所有应用列表并智能设置当前应用
   useEffect(() => {
     const loadAllApps = async () => {
-      if (isAuthenticated && !appsLoading && userApps.length === 0) {
+      if (isAuthenticated && !appsLoading && !appsFetched) {
         try {
           setAppsLoading(true)
           const allApps = await AppService.getApps()
@@ -50,12 +50,13 @@ export function AppSwitcher() {
           console.error('加载应用列表失败:', error)
         } finally {
           setAppsLoading(false)
+          setAppsFetched(true)
         }
       }
     }
 
     loadAllApps()
-  }, [isAuthenticated, appsLoading, userApps.length, setUserApps, setCurrentApp, setAppsLoading])
+  }, [isAuthenticated, appsLoading, appsFetched, setUserApps, setCurrentApp, setAppsLoading, setAppsFetched])
 
   const handleCreateApp = () => {
     // 跳转到应用管理页面

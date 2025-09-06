@@ -16,6 +16,7 @@ interface AuthState {
   currentApp: App | null
   userApps: App[]
   appsLoading: boolean
+  appsFetched: boolean
   
   // 认证操作
   setAuth: (user: User, token: string) => void
@@ -27,6 +28,7 @@ interface AuthState {
   setCurrentApp: (app: App | null) => void
   setUserApps: (apps: App[]) => void
   setAppsLoading: (loading: boolean) => void
+  setAppsFetched: (fetched: boolean) => void
   
   // 权限检查
   hasAppPermission: (appId: number, permission?: 'owner' | 'developer' | 'viewer') => boolean
@@ -50,6 +52,7 @@ export const useAuthStore = create<AuthState>()((set, get) => {
     currentApp: initApp,
     userApps: [],
     appsLoading: false,
+    appsFetched: false,
     
     // 认证操作
     setAuth: (user: User, token: string) =>
@@ -60,6 +63,7 @@ export const useAuthStore = create<AuthState>()((set, get) => {
           user,
           token,
           isAuthenticated: true,
+          appsFetched: false,
         }
       }),
       
@@ -89,6 +93,8 @@ export const useAuthStore = create<AuthState>()((set, get) => {
           isAuthenticated: false,
           currentApp: null,
           userApps: [],
+          appsLoading: false,
+          appsFetched: false,
         }
       }),
     
@@ -135,6 +141,9 @@ export const useAuthStore = create<AuthState>()((set, get) => {
     
     setAppsLoading: (loading: boolean) =>
       set(() => ({ appsLoading: loading })),
+    
+    setAppsFetched: (fetched: boolean) =>
+      set(() => ({ appsFetched: fetched })),
     
     // 权限检查
     hasAppPermission: (appId: number, _permission = 'viewer') => {
