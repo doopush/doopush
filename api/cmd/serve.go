@@ -23,14 +23,11 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "启动API服务器",
 	Run: func(cmd *cobra.Command, args []string) {
-		// 获取环境文件路径
-		envFile, _ := cmd.Flags().GetString("env-file")
-		if envFile == "" {
-			log.Fatal("必须指定环境文件: --env-file .env")
-		}
-
 		// 加载配置文件
-		config.LoadConfig(envFile)
+		envFile, _ := cmd.Flags().GetString("env-file")
+		if envFile != "" {
+			config.LoadConfig(envFile)
+		}
 
 		// 连接数据库
 		database.Connect()
@@ -47,13 +44,12 @@ var serveCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-	serveCmd.Flags().StringP("env-file", "e", "", "环境变量文件路径 (必需)")
-	serveCmd.MarkFlagRequired("env-file")
+	serveCmd.Flags().StringP("env-file", "e", "", "环境变量文件路径 (可选)")
 }
 
 func startServer() {
 	// 设置Gin模式
-	if config.GetString("APP_ENV", "production") == "production" {
+	if config.GetString("APP_ENV", "development") == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -221,7 +217,7 @@ func startServer() {
 	port := config.GetString("API_PORT", "5002")
 
 	// 开发环境启动时根据端口结束进程
-	if config.GetString("APP_ENV", "production") == "development" {
+	if config.GetString("APP_ENV", "development") == "development" {
 		if portInt, err := strconv.Atoi(port); err == nil {
 			utils.KillProcessByPort(portInt)
 		}

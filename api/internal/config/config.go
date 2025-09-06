@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/spf13/viper"
 )
@@ -38,6 +39,9 @@ func GetString(key string, defaultValue ...string) string {
 	if viper.IsSet(key) {
 		return viper.GetString(key)
 	}
+	if envValue := os.Getenv(key); envValue != "" {
+		return envValue
+	}
 	if len(defaultValue) > 0 {
 		return defaultValue[0]
 	}
@@ -49,6 +53,11 @@ func GetInt(key string, defaultValue ...int) int {
 	if viper.IsSet(key) {
 		return viper.GetInt(key)
 	}
+	if envValue := os.Getenv(key); envValue != "" {
+		if intValue, err := strconv.Atoi(envValue); err == nil {
+			return intValue
+		}
+	}
 	if len(defaultValue) > 0 {
 		return defaultValue[0]
 	}
@@ -59,6 +68,11 @@ func GetInt(key string, defaultValue ...int) int {
 func GetBool(key string, defaultValue ...bool) bool {
 	if viper.IsSet(key) {
 		return viper.GetBool(key)
+	}
+	if envValue := os.Getenv(key); envValue != "" {
+		if boolValue, err := strconv.ParseBool(envValue); err == nil {
+			return boolValue
+		}
 	}
 	if len(defaultValue) > 0 {
 		return defaultValue[0]

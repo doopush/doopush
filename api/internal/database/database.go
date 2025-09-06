@@ -16,11 +16,11 @@ var DB *gorm.DB
 func Connect() {
 	// 构建数据库连接字符串
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		config.GetString("DB_USERNAME"),
-		config.GetString("DB_PASSWORD"),
-		config.GetString("DB_HOST"),
-		config.GetString("DB_PORT"),
-		config.GetString("DB_DATABASE"),
+		config.GetString("DB_USERNAME", "root"),
+		config.GetString("DB_PASSWORD", "password"),
+		config.GetString("DB_HOST", "mysql"),
+		config.GetString("DB_PORT", "3306"),
+		config.GetString("DB_DATABASE", "doopush"),
 	)
 
 	// 连接数据库

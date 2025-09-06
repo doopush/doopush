@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/doopush/doopush/api/internal/config"
 	"github.com/doopush/doopush/api/internal/services"
@@ -113,7 +114,7 @@ func (d *DeviceController) RegisterDevice(c *gin.Context) {
 	}
 
 	// 构建 Gateway 配置
-	gatewayConfig := d.getGatewayConfig()
+	gatewayConfig := d.getGatewayConfig(c)
 
 	// 构建包含 Gateway 配置的响应
 	registrationResponse := DeviceRegistrationResponse{
@@ -331,13 +332,19 @@ func (d *DeviceController) DeleteDevice(c *gin.Context) {
 }
 
 // getGatewayConfig 获取Gateway配置信息
-func (d *DeviceController) getGatewayConfig() GatewayConfig {
+func (d *DeviceController) getGatewayConfig(c *gin.Context) GatewayConfig {
 	// 从环境变量获取 Gateway 配置，如果没有配置则使用默认值
-	host := config.GetString("GATEWAY_HOST", "localhost")
+	host := config.GetString("GATEWAY_HOST", "")
 	port := config.GetInt("GATEWAY_PORT", 5003)
 	ssl := config.GetBool("GATEWAY_SSL", false)
 
-	// TODO: 如果留空，则根据请求Url来判断
+	// 如果host为空，则使用请求的host
+	if host == "" {
+		host = c.Request.Host
+		if strings.Contains(host, ":") {
+			host = strings.Split(host, ":")[0]
+		}
+	}
 
 	return GatewayConfig{
 		Host: host,

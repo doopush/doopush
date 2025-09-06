@@ -212,9 +212,9 @@ func loadGatewayConfig() (*GatewayConfig, error) {
 		MaxConnections: config.GetInt("GATEWAY_MAX_CONNECTIONS", 100000),       // 最大连接数
 		MetricsPort:    config.GetInt("GATEWAY_METRICS_PORT", 0),               // 监控端口
 
-		RedisAddr:     fmt.Sprintf("%s:%s", config.GetString("REDIS_HOST"), config.GetString("REDIS_PORT")), // Redis地址
-		RedisPassword: config.GetString("REDIS_PASSWORD"),                                                   // Redis密码
-		RedisDB:       config.GetInt("REDIS_DB"),                                                            // Redis数据库
+		RedisAddr:     fmt.Sprintf("%s:%s", config.GetString("REDIS_HOST", "redis"), config.GetString("REDIS_PORT", "6379")), // Redis地址
+		RedisPassword: config.GetString("REDIS_PASSWORD", ""),                                                                // Redis密码
+		RedisDB:       config.GetInt("REDIS_DB", 0),                                                                          // Redis数据库
 	}
 
 	return cfg, nil

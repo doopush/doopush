@@ -15,14 +15,11 @@ var gatewayCmd = &cobra.Command{
 	Short: "启动网关服务器",
 	Long:  "启动高性能长连接网关服务器，用于设备实时连接和状态管理",
 	Run: func(cmd *cobra.Command, args []string) {
-		// 获取环境文件路径
-		envFile, _ := cmd.Flags().GetString("env-file")
-		if envFile == "" {
-			log.Fatal("必须指定环境文件: --env-file .env")
-		}
-
 		// 加载配置文件
-		config.LoadConfig(envFile)
+		envFile, _ := cmd.Flags().GetString("env-file")
+		if envFile != "" {
+			config.LoadConfig(envFile)
+		}
 
 		// 启动网关服务器
 		startGateway()
@@ -31,8 +28,7 @@ var gatewayCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(gatewayCmd)
-	gatewayCmd.Flags().StringP("env-file", "e", "", "环境变量文件路径 (必需)")
-	gatewayCmd.MarkFlagRequired("env-file")
+	gatewayCmd.Flags().StringP("env-file", "e", "", "环境变量文件路径 (可选)")
 }
 
 func startGateway() {
@@ -45,7 +41,7 @@ func startGateway() {
 	}
 
 	// 开发环境启动时根据端口结束进程
-	if config.GetString("APP_ENV", "production") == "development" {
+	if config.GetString("APP_ENV", "development") == "development" {
 		utils.KillProcessByPort(server.GetPort())
 	}
 
