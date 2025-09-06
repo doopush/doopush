@@ -7,6 +7,7 @@ import (
 
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
+	"github.com/doopush/doopush/api/pkg/utils"
 )
 
 // PushProvider 推送服务提供者接口
@@ -292,7 +293,7 @@ func (m *PushManager) validateAndroidConfig(channel, configJSON string) error {
 }
 
 // TestConfigWithDevice 使用指定设备测试推送配置
-func (m *PushManager) TestConfigWithDevice(title, content, platform, channel, deviceToken, configJSON string) *models.PushResult {
+func (m *PushManager) TestConfigWithDevice(appID uint, title, content, platform, channel, deviceToken, configJSON string) *models.PushResult {
 	// 创建模拟设备
 	device := &models.Device{
 		Token:    deviceToken,
@@ -302,11 +303,13 @@ func (m *PushManager) TestConfigWithDevice(title, content, platform, channel, de
 	}
 
 	// 创建模拟推送日志
+	dedupKey := utils.HashString(fmt.Sprintf("%d_%s_%s_%s", appID, title, content, deviceToken))
 	pushLog := &models.PushLog{
-		Title:   title,
-		Content: content,
-		Channel: channel,
-		Status:  "testing",
+		Title:    title,
+		Content:  content,
+		Channel:  channel,
+		Status:   "testing",
+		DedupKey: dedupKey,
 	}
 
 	// 根据平台创建临时提供者

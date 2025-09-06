@@ -271,6 +271,7 @@ func (ctrl *ConfigController) TestAppConfig(ctx *gin.Context) {
 
 	// 执行真实推送测试
 	result := pushManager.TestConfigWithDevice(
+		uint(appID),
 		req.TestTitle,
 		req.TestContent,
 		req.Platform,
