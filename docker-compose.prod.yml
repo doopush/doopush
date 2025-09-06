@@ -1,0 +1,45 @@
+services:
+  # DooPush
+  doopush:
+    image: dootask/doopush:latest
+    ports:
+      - 5180:80
+      - 5190:5190 # 保持与环境变量GATEWAY_PORT一致
+    environment:
+      APP_ENV: production
+      DB_DATABASE: doopush
+      DB_USERNAME: root
+      DB_PASSWORD: password
+      GATEWAY_PORT: 5190
+    volumes:
+      - doopush_uploads:/doopush/uploads
+    depends_on:
+      - mysql
+      - redis
+
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: doopush
+    volumes:
+      - doopush_mysql:/var/lib/mysql
+    command: 
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+
+  # Redis 缓存和队列
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - doopush_redis:/data
+    command: redis-server
+    restart: unless-stopped
+
+volumes:
+  doopush_uploads:
+  doopush_mysql:
+  doopush_redis:
