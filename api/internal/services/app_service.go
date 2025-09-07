@@ -61,29 +61,6 @@ func (s *AppService) CreateApp(userID uint, name, packageName, description, plat
 		return nil, errors.New("权限分配失败")
 	}
 
-	// 生成默认API密钥
-	keyBody := utils.GenerateAPIKey()
-	apiKey := fmt.Sprintf("dp_live_%s", keyBody)
-
-	// 提取后缀 (取最后8个字符)
-	keySuffix := keyBody[len(keyBody)-8:]
-	if len(keyBody) < 8 {
-		keySuffix = keyBody
-	}
-
-	appAPIKey := &models.AppAPIKey{
-		AppID:     app.ID,
-		Name:      "默认密钥",
-		KeyHash:   utils.HashString(apiKey),
-		KeyPrefix: "dp_live_",
-		KeySuffix: keySuffix,
-		Status:    1,
-	}
-	if err := tx.Create(appAPIKey).Error; err != nil {
-		tx.Rollback()
-		return nil, errors.New("API密钥创建失败")
-	}
-
 	tx.Commit()
 	return app, nil
 }
