@@ -20,6 +20,7 @@
 ```bash
 ./scripts/build.sh
 ```
+或者前往 [DooPush iOS SDK 发布页](https://github.com/doopush/doopush-ios-sdk/releases) 下载最新版 `DooPushSDK.framework`
 
 2. 将 `DooPushSDK.framework` 拖拽到项目中，设置为 "Embed & Sign"
 

@@ -13,7 +13,7 @@ DooPush iOS SDK 为您的 iOS 应用提供简单易用的推送通知功能。�
 
 ### 方式一：Framework 集成（推荐）
 
-1. 下载 DooPushSDK.framework
+1. 前往 [DooPush iOS SDK 发布页](https://github.com/doopush/doopush-ios-sdk/releases) 下载最新版 `DooPushSDK.framework`
 2. 将 framework 拖拽到您的 Xcode 项目中
 3. 在 **"Frameworks, Libraries, and Embedded Content"** 中确保设置为 **"Embed & Sign"**
 
