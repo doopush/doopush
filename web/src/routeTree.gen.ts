@@ -19,6 +19,7 @@ import { Route as AuthenticatedPushRouteImport } from './routes/_authenticated/p
 import { Route as AuthenticatedDevicesRouteImport } from './routes/_authenticated/devices'
 import { Route as AuthenticatedDeviceTagsRouteImport } from './routes/_authenticated/device-tags'
 import { Route as AuthenticatedDeviceGroupsRouteImport } from './routes/_authenticated/device-groups'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedConfigRouteImport } from './routes/_authenticated/config'
 import { Route as AuthenticatedAuditLogsRouteImport } from './routes/_authenticated/audit-logs'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
@@ -92,6 +93,11 @@ const AuthenticatedDeviceGroupsRoute =
     path: '/device-groups',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedConfigRoute = AuthenticatedConfigRouteImport.update({
   id: '/config',
   path: '/config',
@@ -219,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503Route
   '/audit-logs': typeof AuthenticatedAuditLogsRoute
   '/config': typeof AuthenticatedConfigRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/device-groups': typeof AuthenticatedDeviceGroupsRoute
   '/device-tags': typeof AuthenticatedDeviceTagsRoute
   '/devices': typeof AuthenticatedDevicesRoute
@@ -250,6 +257,7 @@ export interface FileRoutesByTo {
   '/503': typeof errors503Route
   '/audit-logs': typeof AuthenticatedAuditLogsRoute
   '/config': typeof AuthenticatedConfigRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/device-groups': typeof AuthenticatedDeviceGroupsRoute
   '/device-tags': typeof AuthenticatedDeviceTagsRoute
   '/devices': typeof AuthenticatedDevicesRoute
@@ -283,6 +291,7 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503Route
   '/_authenticated/audit-logs': typeof AuthenticatedAuditLogsRoute
   '/_authenticated/config': typeof AuthenticatedConfigRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/device-groups': typeof AuthenticatedDeviceGroupsRoute
   '/_authenticated/device-tags': typeof AuthenticatedDeviceTagsRoute
   '/_authenticated/devices': typeof AuthenticatedDevicesRoute
@@ -317,6 +326,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/audit-logs'
     | '/config'
+    | '/dashboard'
     | '/device-groups'
     | '/device-tags'
     | '/devices'
@@ -348,6 +358,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/audit-logs'
     | '/config'
+    | '/dashboard'
     | '/device-groups'
     | '/device-tags'
     | '/devices'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/_authenticated/audit-logs'
     | '/_authenticated/config'
+    | '/_authenticated/dashboard'
     | '/_authenticated/device-groups'
     | '/_authenticated/device-tags'
     | '/_authenticated/devices'
@@ -483,6 +495,13 @@ declare module '@tanstack/react-router' {
       path: '/device-groups'
       fullPath: '/device-groups'
       preLoaderRoute: typeof AuthenticatedDeviceGroupsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/config': {
@@ -676,6 +695,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedAuditLogsRoute: typeof AuthenticatedAuditLogsRoute
   AuthenticatedConfigRoute: typeof AuthenticatedConfigRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDeviceGroupsRoute: typeof AuthenticatedDeviceGroupsRoute
   AuthenticatedDeviceTagsRoute: typeof AuthenticatedDeviceTagsRoute
   AuthenticatedDevicesRoute: typeof AuthenticatedDevicesRoute
@@ -691,6 +711,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedAuditLogsRoute: AuthenticatedAuditLogsRoute,
   AuthenticatedConfigRoute: AuthenticatedConfigRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDeviceGroupsRoute: AuthenticatedDeviceGroupsRoute,
   AuthenticatedDeviceTagsRoute: AuthenticatedDeviceTagsRoute,
   AuthenticatedDevicesRoute: AuthenticatedDevicesRoute,
