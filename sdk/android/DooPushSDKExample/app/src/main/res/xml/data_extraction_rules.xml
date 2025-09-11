@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- 排除敏感配置文件 -->
+        <exclude domain="file" path="doopush_config.properties" />
+        <exclude domain="sharedpref" path="doopush_prefs.xml" />
+        
+        <!-- 排除缓存目录 -->
+        <exclude domain="cache" />
+    </cloud-backup>
+    
+    <device-transfer>
+        <!-- 排除敏感配置文件 -->
+        <exclude domain="file" path="doopush_config.properties" />
+        <exclude domain="sharedpref" path="doopush_prefs.xml" />
+    </device-transfer>
+</data-extraction-rules>

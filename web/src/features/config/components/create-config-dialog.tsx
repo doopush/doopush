@@ -47,9 +47,9 @@ const createConfigSchema = z.object({
   bundle_id: z.string().optional(),
   private_key: z.string().optional(),
   production: z.boolean().optional(),
-  // Android 通用字段
-  server_key: z.string().optional(), // FCM
-  sender_id: z.string().optional(),   // FCM
+  // Android FCM v1 字段
+  service_account_key: z.string().optional(), // FCM 服务账号密钥 JSON（包含项目ID）
+  // Android 其他厂商字段
   app_id: z.string().optional(),      // 华为/小米/OPPO/VIVO/荣耀/三星
   app_key: z.string().optional(),     // 小米/OPPO/VIVO/荣耀/三星
   app_secret: z.string().optional(),  // 华为/小米/VIVO/荣耀/三星
@@ -62,7 +62,7 @@ const createConfigSchema = z.object({
   if (data.platform === 'android') {
     switch (data.channel) {
       case 'fcm':
-        return data.server_key && data.sender_id
+        return data.service_account_key
       case 'huawei':
         return data.app_id && data.app_secret
       case 'xiaomi':
@@ -103,8 +103,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
       bundle_id: currentApp?.package_name || '',
       private_key: '',
       production: false,
-      server_key: '',
-      sender_id: '',
+      service_account_key: '',
       app_id: '',
       app_key: '',
       app_secret: '',
@@ -124,8 +123,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
         bundle_id: currentApp?.package_name || '',
         private_key: '',
         production: false,
-        server_key: '',
-        sender_id: '',
+        service_account_key: '',
         app_id: '',
         app_key: '',
         app_secret: '',
@@ -163,8 +161,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
         switch (data.channel) {
           case 'fcm':
             configData = {
-              server_key: data.server_key,
-              sender_id: data.sender_id
+              service_account_key: data.service_account_key
             }
             break
           case 'huawei':
@@ -422,32 +419,19 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                 <>
                   <FormField
                     control={form.control}
-                    name="server_key"
+                    name="service_account_key"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Server Key *</FormLabel>
+                        <FormLabel>服务账号密钥 *</FormLabel>
                         <FormControl>
-                          <Input placeholder="输入 FCM Server Key" {...field} />
+                          <Textarea 
+                            placeholder="粘贴完整的 Firebase 服务账号密钥 JSON 文件内容" 
+                            className="min-h-[120px] font-mono text-sm"
+                            {...field} 
+                          />
                         </FormControl>
                         <FormDescription>
-                          从Firebase控制台获取的服务器密钥
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="sender_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sender ID *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="输入 FCM Sender ID" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Firebase项目的发送者ID
+                          从 Firebase 控制台 → 项目设置 → 服务账号 → 生成新的私钥获取的完整 JSON 文件内容（包含项目 ID）
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

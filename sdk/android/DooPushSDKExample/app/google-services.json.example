@@ -1,0 +1,43 @@
+{
+  "project_info": {
+    "project_number": "123456789012",
+    "project_id": "your-firebase-project",
+    "storage_bucket": "your-firebase-project.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:123456789012:android:your_app_id_here",
+        "android_client_info": {
+          "package_name": "com.doopush.DooPushSDKExample"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "your-oauth-client-id.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.doopush.DooPushSDKExample",
+            "certificate_hash": "your_sha1_certificate_hash"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "your_api_key_here"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "your-oauth-client-id.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

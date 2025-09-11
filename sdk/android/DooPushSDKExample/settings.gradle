@@ -1,0 +1,25 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+        maven {url 'https://developer.huawei.com/repo/'}
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+        maven { url 'https://developer.huawei.com/repo/' }
+    }
+}
+
+rootProject.name = "DooPushSDKExample"
+include ':app'
+
+// 引用 DooPushSDK 模块
+include ':doopush-sdk'
+project(':doopush-sdk').projectDir = new File('../DooPushSDK')

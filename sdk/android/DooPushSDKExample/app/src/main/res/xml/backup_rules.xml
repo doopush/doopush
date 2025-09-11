@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- 排除敏感配置文件 -->
+    <exclude domain="file" path="doopush_config.properties" />
+    <exclude domain="sharedpref" path="doopush_prefs.xml" />
+    
+    <!-- 排除缓存目录 -->
+    <exclude domain="cache" />
+    
+    <!-- 排除临时文件 -->
+    <exclude domain="file" path="tmp/" />
+</full-backup-content>

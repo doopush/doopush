@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary colors -->
+    <color name="colorPrimary">#2196F3</color>
+    <color name="colorPrimaryVariant">#1976D2</color>
+    <color name="colorOnPrimary">#FFFFFF</color>
+    
+    <!-- Secondary colors -->
+    <color name="colorSecondary">#03DAC6</color>
+    <color name="colorSecondaryVariant">#018786</color>
+    <color name="colorOnSecondary">#000000</color>
+    
+    <!-- Background colors -->
+    <color name="colorBackground">#FAFAFA</color>
+    <color name="colorOnBackground">#212121</color>
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorOnSurface">#212121</color>
+    
+    <!-- Status colors -->
+    <color name="colorSuccess">#4CAF50</color>
+    <color name="colorWarning">#FF9800</color>
+    <color name="colorError">#F44336</color>
+    <color name="colorInfo">#2196F3</color>
+    
+    <!-- Text colors -->
+    <color name="textColorPrimary">#212121</color>
+    <color name="textColorSecondary">#757575</color>
+    <color name="textColorHint">#BDBDBD</color>
+    
+    <!-- Divider and border colors -->
+    <color name="colorDivider">#E0E0E0</color>
+    <color name="colorBorder">#E0E0E0</color>
+    
+    <!-- Card colors -->
+    <color name="cardBackground">#FFFFFF</color>
+    <color name="cardShadow">#E0E0E0</color>
+    
+    <!-- Status indicator colors -->
+    <color name="statusConfigured">#4CAF50</color>
+    <color name="statusNotConfigured">#757575</color>
+    <color name="statusRegistering">#FF9800</color>
+    <color name="statusFailed">#F44336</color>
+</resources>

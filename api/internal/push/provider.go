@@ -102,24 +102,57 @@ func (m *PushManager) createAndroidProvider(app *models.App, channel string) (Pu
 	var config models.AppConfig
 	err := database.DB.Where("app_id = ? AND platform = ? AND channel = ?", app.ID, "android", channel).First(&config).Error
 	if err != nil {
-		// 使用默认配置
-		fmt.Printf("警告: 应用 %s 未配置 %s，使用模拟推送\n", app.Name, channel)
-		return &MockAndroidProvider{channel: channel}, nil
+		// 配置不存在，返回错误而非模拟推送
+		return nil, fmt.Errorf("应用 %s 未配置 %s 推送服务，请先配置推送参数", app.Name, channel)
 	}
 
 	// 解析配置
-	var androidConfig struct {
-		ServerKey string `json:"server_key"`
-		AppID     string `json:"app_id"`
-		AppKey    string `json:"app_key"`
-		AppSecret string `json:"app_secret"`
-	}
-
+	var androidConfig AndroidConfig
 	if err := json.Unmarshal([]byte(config.Config), &androidConfig); err != nil {
-		return nil, fmt.Errorf("Android %s 配置格式错误", channel)
+		return nil, fmt.Errorf("Android %s 配置格式错误: %v", channel, err)
 	}
 
-	return NewAndroidProvider(channel, androidConfig.ServerKey), nil
+	// 根据通道类型验证和创建提供者
+	switch channel {
+	case "fcm":
+		return m.createFCMProvider(androidConfig)
+	case "huawei":
+		return m.createHuaweiProvider(androidConfig)
+	default:
+		return nil, fmt.Errorf("暂不支持的 Android 推送通道: %s", channel)
+	}
+}
+
+// createFCMProvider 创建FCM推送提供者
+func (m *PushManager) createFCMProvider(config AndroidConfig) (PushProvider, error) {
+	// 检查新格式配置（FCM v1 API）
+	if config.ServiceAccountKey != "" {
+		// 验证服务账号密钥格式并检查是否包含project_id
+		var serviceAccountKey map[string]interface{}
+		if err := json.Unmarshal([]byte(config.ServiceAccountKey), &serviceAccountKey); err != nil {
+			return nil, fmt.Errorf("FCM 服务账号密钥格式错误: %v", err)
+		}
+
+		// 检查是否包含必要的项目ID
+		if projectID, exists := serviceAccountKey["project_id"]; !exists || projectID == "" {
+			return nil, fmt.Errorf("FCM 服务账号密钥中缺少 project_id 字段")
+		}
+
+		return NewAndroidProviderWithConfig("fcm", config), nil
+	}
+
+	return nil, fmt.Errorf("FCM 配置缺少必要参数，需要 service_account_key（JSON格式，包含项目ID）")
+}
+
+// createHuaweiProvider 创建华为推送提供者
+func (m *PushManager) createHuaweiProvider(config AndroidConfig) (PushProvider, error) {
+	if config.AppID == "" {
+		return nil, fmt.Errorf("华为推送配置缺少 app_id")
+	}
+	if config.AppSecret == "" {
+		return nil, fmt.Errorf("华为推送配置缺少 app_secret")
+	}
+	return NewAndroidProviderWithConfig("huawei", config), nil
 }
 
 // SendPush 统一推送接口
@@ -258,38 +291,43 @@ func (m *PushManager) validateAPNsConfig(configJSON string) error {
 
 // validateAndroidConfig 验证Android配置
 func (m *PushManager) validateAndroidConfig(channel, configJSON string) error {
-	var androidConfig struct {
-		ServerKey string `json:"server_key"`
-		AppID     string `json:"app_id"`
-		AppKey    string `json:"app_key"`
-		AppSecret string `json:"app_secret"`
-	}
-
+	var androidConfig AndroidConfig
 	if err := json.Unmarshal([]byte(configJSON), &androidConfig); err != nil {
 		return fmt.Errorf("配置格式错误: %v", err)
 	}
 
 	switch channel {
 	case "fcm":
-		if androidConfig.ServerKey == "" {
-			return fmt.Errorf("FCM配置缺少server_key")
+		// 检查新格式配置（FCM v1 API）
+		if androidConfig.ServiceAccountKey != "" {
+			// 验证服务账号密钥格式并检查是否包含project_id
+			var serviceAccountKey map[string]interface{}
+			if err := json.Unmarshal([]byte(androidConfig.ServiceAccountKey), &serviceAccountKey); err != nil {
+				return fmt.Errorf("FCM 服务账号密钥格式错误: %v", err)
+			}
+
+			// 检查是否包含必要的项目ID
+			if projectID, exists := serviceAccountKey["project_id"]; !exists || projectID == "" {
+				return fmt.Errorf("FCM 服务账号密钥中缺少 project_id 字段")
+			}
+
+			return nil // 新格式配置有效
 		}
-	case "huawei", "xiaomi", "oppo", "vivo":
+
+		return fmt.Errorf("FCM 配置缺少必要参数，需要 service_account_key（JSON格式，包含项目ID）")
+
+	case "huawei":
 		if androidConfig.AppID == "" {
-			return fmt.Errorf("%s配置缺少app_id", channel)
-		}
-		if androidConfig.AppKey == "" {
-			return fmt.Errorf("%s配置缺少app_key", channel)
+			return fmt.Errorf("华为推送配置缺少 app_id")
 		}
 		if androidConfig.AppSecret == "" {
-			return fmt.Errorf("%s配置缺少app_secret", channel)
+			return fmt.Errorf("华为推送配置缺少 app_secret")
 		}
-	default:
-		return fmt.Errorf("不支持的Android推送通道: %s", channel)
-	}
+		return nil
 
-	// TODO: 可以添加实际的连接测试
-	return nil
+	default:
+		return fmt.Errorf("暂不支持的 Android 推送通道: %s", channel)
+	}
 }
 
 // TestConfigWithDevice 使用指定设备测试推送配置
@@ -331,7 +369,7 @@ func (m *PushManager) TestConfigWithDevice(appID uint, title, content, platform,
 		normalizeConfig(&apnsConfig)
 		provider, err = NewAPNsProviderWithConfig(apnsConfig)
 	case "android":
-		provider = NewAndroidProvider(channel, "")
+		provider = NewAndroidProvider(channel)
 		// TODO: 实现真实的Android推送提供者创建
 	default:
 		return &models.PushResult{

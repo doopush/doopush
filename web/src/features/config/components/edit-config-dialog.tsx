@@ -40,9 +40,9 @@ const editConfigSchema = z.object({
   bundle_id: z.string().optional(),
   private_key: z.string().optional(),
   production: z.boolean().optional(),
-  // Android 通用字段
-  server_key: z.string().optional(), // FCM
-  sender_id: z.string().optional(),   // FCM
+  // Android FCM v1 字段
+  service_account_key: z.string().optional(), // FCM 服务账号密钥 JSON（包含项目ID）
+  // Android 其他厂商字段
   app_id: z.string().optional(),      // 华为/小米/OPPO/VIVO/荣耀/三星
   app_key: z.string().optional(),     // 小米/OPPO/VIVO/荣耀/三星
   app_secret: z.string().optional(),  // 华为/小米/VIVO/荣耀/三星
@@ -72,8 +72,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
       bundle_id: '',
       private_key: '',
       production: false,
-      server_key: '',
-      sender_id: '',
+      service_account_key: '',
       app_id: '',
       app_key: '',
       app_secret: '',
@@ -95,8 +94,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
           bundle_id: '',
           private_key: '',
           production: false,
-          server_key: '',
-          sender_id: '',
+          service_account_key: '',
           app_id: '',
           app_key: '',
           app_secret: '',
@@ -189,8 +187,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
         switch (config.channel) {
           case 'fcm':
             configData = {
-              server_key: buildFieldValue('server_key', data.server_key || ''),
-              sender_id: buildFieldValue('sender_id', data.sender_id || '')
+              service_account_key: buildFieldValue('service_account_key', data.service_account_key || '')
             }
             break
           case 'huawei':
@@ -415,37 +412,25 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                 <>
                   <FormField
                     control={form.control}
-                    name="server_key"
+                    name="service_account_key"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Server Key *</FormLabel>
+                        <FormLabel>服务账号密钥 *</FormLabel>
                         <FormControl>
-                          <Input placeholder={getFieldPlaceholder('server_key', '输入FCM Server Key')} {...field} />
+                          <Textarea 
+                            placeholder="粘贴完整的 Firebase 服务账号密钥 JSON 文件内容" 
+                            className="min-h-[120px] font-mono text-sm"
+                            {...field} 
+                          />
                         </FormControl>
                         <FormDescription>
-                          {getFieldDescription('server_key', '从Firebase控制台获取的服务器密钥')}
+                          从 Firebase 控制台 → 项目设置 → 服务账号 → 生成新的私钥获取的完整 JSON 文件内容（包含项目 ID）
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="sender_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sender ID *</FormLabel>
-                        <FormControl>
-                          <Input placeholder={getFieldPlaceholder('sender_id', '输入 FCM Sender ID')} {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          {getFieldDescription('sender_id', 'Firebase项目的发送者ID')}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </>
               )}
 

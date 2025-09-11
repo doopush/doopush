@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Clock, Target, MessageCircle, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -28,11 +28,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { DateTimePicker } from '@/components/date-time-picker'
 
 import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuthStore } from '@/stores/auth-store'
 import { ScheduledPushService } from '@/services/scheduled-push-service'
 import { toast } from 'sonner'
@@ -43,7 +51,16 @@ import { GroupSelector } from '../../push/components/group-selector'
 const editScheduledPushSchema = z.object({
   title: z.string().min(1, '请输入推送标题').max(200, '标题不超过200个字符'),
   content: z.string().min(1, '请输入推送内容').max(1000, '内容不超过1000个字符'),
-  payload: z.string().optional(),
+  payload: z.object({
+    action: z.string().optional(),
+    url: z.string().url('请输入有效的URL').optional().or(z.literal('')),
+    data: z.string().optional(),
+    // 华为推送特有参数
+    huawei: z.object({
+      importance: z.enum(['NORMAL', 'LOW']).optional(),
+      category: z.string().optional(),
+    }).optional(),
+  }).optional(),
   badge: z.number().int('角标必须是整数').min(1, '角标数量必须大于等于1').optional(),
   scheduled_at: z.string().min(1, '请选择执行时间').refine((val) => {
     const scheduledTime = new Date(val);
@@ -79,7 +96,15 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
     defaultValues: {
       title: '',
       content: '',
-      payload: '',
+      payload: {
+        action: '',
+        url: '',
+        data: '',
+        huawei: {
+          importance: 'NORMAL',
+          category: 'IM',
+        },
+      },
       badge: 1,
       scheduled_at: '',
       push_type: 'broadcast',
@@ -126,10 +151,38 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
         }
       }
 
+      // 解析现有的payload
+      let parsedPayload = {
+        action: '',
+        url: '',
+        data: '',
+        huawei: {
+          importance: 'NORMAL' as const,
+          category: 'IM',
+        },
+      }
+      
+      if (push.payload) {
+        try {
+          const payloadData = JSON.parse(push.payload)
+          parsedPayload = {
+            action: payloadData.action || '',
+            url: payloadData.url || '',
+            data: payloadData.data || '',
+            huawei: {
+              importance: payloadData.huawei?.importance || 'NORMAL',
+              category: payloadData.huawei?.category || 'IM',
+            },
+          }
+        } catch (error) {
+          console.warn('Failed to parse payload, using defaults:', error)
+        }
+      }
+
       form.reset({
         title: push.title || '',
         content: push.content || '',
-        payload: push.payload || '',
+        payload: parsedPayload,
         badge: push.badge || 1,
         scheduled_at: getFormattedScheduledAt(),
         push_type: push.push_type || 'broadcast',
@@ -313,9 +366,16 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
         formattedTargetConfig = JSON.stringify(data.group_ids)
       }
 
+      // 转换payload格式
+      let finalPayload = ''
+      if (data.payload && (data.payload.action || data.payload.url || data.payload.data || data.payload.huawei)) {
+        finalPayload = JSON.stringify(data.payload)
+      }
+
       // 创建请求数据
       const requestData = {
         ...data,
+        payload: finalPayload,
         target_config: formattedTargetConfig
       }
 
@@ -382,7 +442,14 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* 推送内容 */}
-              <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    推送内容
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
                   name="title"
@@ -415,56 +482,203 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                     </FormItem>
                   )}
                 />
+                </CardContent>
+              </Card>
 
-                <FormField
-                  control={form.control}
-                  name="badge"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>角标数量</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number"
-                          min="1"
-                          step="1"
-                          placeholder="输入角标数量"
-                          {...field}
-                          onChange={(e) => {
-                            const value = parseInt(e.target.value) || 1
-                            field.onChange(value >= 1 ? value : 1)
-                          }}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        设置推送消息的角标数量，iOS平台原生支持，Android平台支持情况因厂商而异，必须为大于等于1的整数
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              {/* 推送载荷 (可选) */}
+              <Card>
+                <CardContent className="space-y-4 pt-6">
+                  <h4 className='font-medium'>推送载荷 (可选)</h4>
+                  <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
+                    <FormField
+                      control={form.control}
+                      name="badge"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className='flex items-center gap-1'>
+                            角标数量
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                设置推送消息的角标数量，iOS平台原生支持，Android平台支持情况因厂商而异，必须为大于等于1的整数
+                              </TooltipContent>
+                            </Tooltip>
+                          </FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number"
+                              min="1"
+                              step="1"
+                              placeholder="输入角标数量"
+                              {...field}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value) || 1
+                                field.onChange(value >= 1 ? value : 1)
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="payload"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>附加数据</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="JSON格式的附加数据"
-                          className="resize-none font-mono text-sm"
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                    <FormField
+                      control={form.control}
+                      name="payload.action"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>动作类型</FormLabel>
+                          <FormControl>
+                            <Input placeholder="open_page" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="payload.url"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>跳转链接</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://example.com" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="payload.data"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>额外数据</FormLabel>
+                          <FormControl>
+                            <Input placeholder='{"key":"value"}' {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  {/* 高级参数 (厂商特殊参数) */}
+                  <Accordion type="single" collapsible className='border rounded-lg'>
+                    <AccordionItem value="advanced-settings" className='border-none'>
+                      <AccordionTrigger className='px-4 py-3 hover:no-underline'>
+                        <div className='flex items-center gap-2'>
+                          <span className='text-slate-600'>⚙️</span>
+                          <span className='font-medium'>高级参数</span>
+                          <span className='text-xs text-muted-foreground ml-2'>厂商特殊配置</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className='p-4 space-y-6'>
+                        {/* 华为推送优化 */}
+                        <div className='space-y-4'>
+                          <div className='flex items-center gap-2 pb-2 border-b'>
+                            <span className='text-orange-600'>📱</span>
+                            <h6 className='font-medium'>华为推送优化</h6>
+                          </div>
+                          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                            <FormField
+                              control={form.control}
+                              name="payload.huawei.importance"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className='flex items-center gap-1'>
+                                    消息分类 (importance)
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        <div className='space-y-1 text-sm'>
+                                          <p><strong>NORMAL</strong>: 服务与通讯类消息，不受频控限制</p>
+                                          <p><strong>LOW</strong>: 资讯营销类消息，受频控限制</p>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </FormLabel>
+                                  <Select value={field.value} onValueChange={field.onChange}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="NORMAL">NORMAL (推荐)</SelectItem>
+                                      <SelectItem value="LOW">LOW</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormDescription>
+                                    NORMAL级消息不受频控限制，推荐使用
+                                  </FormDescription>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="payload.huawei.category"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className='flex items-center gap-1'>
+                                    自定义分类 (category)
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        <div className='space-y-1 text-sm'>
+                                          <p><strong>IM</strong>: 即时通讯</p>
+                                          <p><strong>VOIP</strong>: 语音通话</p>
+                                          <p><strong>TRAVEL</strong>: 旅游服务</p>
+                                          <p><strong>NEWS</strong>: 新闻资讯</p>
+                                          <p>需要先在华为开发者后台申请对应权益</p>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </FormLabel>
+                                  <Select value={field.value} onValueChange={field.onChange}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="IM">IM</SelectItem>
+                                      <SelectItem value="VOIP">VOIP</SelectItem>
+                                      <SelectItem value="TRAVEL">TRAVEL</SelectItem>
+                                      <SelectItem value="NEWS">NEWS</SelectItem>
+                                      <SelectItem value="FINANCE">FINANCE</SelectItem>
+                                      <SelectItem value="SOCIAL">SOCIAL</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormDescription>
+                                    选择对应的业务分类，需要先在华为后台申请权益
+                                  </FormDescription>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </CardContent>
+              </Card>
 
               {/* 时间设置 */}
-              <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    时间设置
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -556,10 +770,18 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                     )}
                   />
                 )}
-              </div>
+                </CardContent>
+              </Card>
 
               {/* 推送目标 */}
-              <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    推送目标
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
                   name="push_type"
@@ -625,7 +847,6 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                     )}
                   />
                 )}
-              </div>
 
               {/* 状态控制 */}
               <FormField
@@ -654,6 +875,8 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                   </FormItem>
                 )}
               />
+                </CardContent>
+              </Card>
             </form>
           </Form>
         </div>

@@ -1,0 +1,149 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.kapt'
+    id 'com.google.gms.google-services'
+    id 'com.huawei.agconnect'
+}
+
+android {
+    namespace 'com.doopush.DooPushSDKExample'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.doopush.DooPushSDKExample"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        // 构建配置字段
+        buildConfigField "String", "APP_VERSION", "\"${versionName}\""
+        buildConfigField "long", "BUILD_TIME", "${System.currentTimeMillis()}L"
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            versionNameSuffix "-debug"
+            minifyEnabled false
+            
+            // 调试配置
+            buildConfigField "boolean", "DEBUG_MODE", "true"
+        }
+        
+        release {
+            debuggable false
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // 发布配置
+            buildConfigField "boolean", "DEBUG_MODE", "false"
+        }
+    }
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    buildFeatures {
+        buildConfig true
+        viewBinding true
+    }
+    
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+}
+
+// 自动复制配置文件任务
+task copyConfigFile {
+    def sourceFile = file('dootask-services.json')
+    def targetFile = file('src/main/assets/dootask-services.json')
+    
+    // 只有当源文件存在时才执行
+    onlyIf {
+        sourceFile.exists()
+    }
+    
+    doLast {
+        // 确保目标目录存在
+        targetFile.parentFile.mkdirs()
+        
+        // 复制文件
+        copy {
+            from sourceFile
+            into targetFile.parent
+            include '*.json'
+        }
+    }
+}
+
+// 在编译前自动执行复制任务（使用新的API）
+android.applicationVariants.all { variant ->
+    variant.preBuildProvider.configure {
+        dependsOn copyConfigFile
+    }
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+dependencies {
+    // DooPush SDK 本地依赖
+    implementation project(':doopush-sdk')
+    
+    // Android 核心库
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    
+    // Activity 和 Fragment
+    implementation 'androidx.activity:activity-ktx:1.8.2'
+    implementation 'androidx.fragment:fragment-ktx:1.6.2'
+    
+    // RecyclerView
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    
+    // SwipeRefreshLayout
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    
+    // Firebase
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation 'com.google.firebase:firebase-messaging-ktx'
+    
+    // Huawei HMS
+    implementation 'com.huawei.hms:push:6.11.0.300'
+    implementation 'com.huawei.hms:base:6.11.0.300'
+    
+    // 权限请求
+    implementation 'com.github.permissions-dispatcher:permissionsdispatcher:4.9.2'
+    kapt 'com.github.permissions-dispatcher:permissionsdispatcher-processor:4.9.2'
+    
+    // JSON 处理
+    implementation 'com.google.code.gson:gson:2.10.1'
+    
+    // 日期时间处理
+    implementation 'org.jetbrains.kotlinx:kotlinx-datetime:0.5.0'
+    
+    // 测试依赖
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:5.8.0'
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:5.2.1'
+    
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test:rules:1.5.0'
+}

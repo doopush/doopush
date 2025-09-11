@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DooPush SDK Example</string>
+    
+    <!-- 通知相关 -->
+    <string name="default_notification_channel_id">doopush_example_channel</string>
+    <string name="default_notification_channel_name">DooPush 示例通知</string>
+    <string name="default_notification_channel_description">DooPush SDK 示例应用的推送通知</string>
+    
+    <!-- 主界面 -->
+    <string name="main_title">DooPush SDK 示例</string>
+    <string name="sdk_status">SDK 状态</string>
+    <string name="device_info">设备信息</string>
+    <string name="push_registration">推送注册</string>
+    <string name="push_history">推送历史</string>
+    <string name="settings">设置</string>
+    
+    <!-- 状态文本 -->
+    <string name="status_not_configured">未配置</string>
+    <string name="status_configured">已配置</string>
+    <string name="status_registering">注册中...</string>
+    <string name="status_registered">已注册</string>
+    <string name="status_failed">失败</string>
+    
+    <!-- 按钮文本 -->
+    <string name="btn_configure_sdk">配置 SDK</string>
+    <string name="btn_register_push">注册推送</string>
+    <string name="btn_get_token">获取 Token</string>
+    <string name="btn_test_connection">测试连接</string>
+    <string name="btn_clear_cache">清除缓存</string>
+    <string name="btn_view_history">查看历史</string>
+    <string name="btn_copy">复制</string>
+    <string name="btn_refresh">刷新</string>
+    
+    <!-- 消息文本 -->
+    <string name="msg_sdk_configured">SDK 配置成功</string>
+    <string name="msg_registration_success">推送注册成功</string>
+    <string name="msg_registration_failed">推送注册失败：%s</string>
+    <string name="msg_token_copied">Token 已复制到剪贴板</string>
+    <string name="msg_cache_cleared">缓存已清除</string>
+    <string name="msg_connection_success">网络连接正常</string>
+    <string name="msg_connection_failed">网络连接失败</string>
+    <string name="msg_no_push_history">暂无推送历史</string>
+    
+    <!-- 设置界面 -->
+    <string name="settings_title">设置</string>
+    <string name="settings_sdk_config">SDK 配置</string>
+    <string name="settings_app_id">应用 ID</string>
+    <string name="settings_api_key">API 密钥</string>
+    <string name="settings_base_url">服务器地址</string>
+    <string name="settings_debug_info">调试信息</string>
+    <string name="settings_device_info">设备信息</string>
+    <string name="settings_fcm_token">FCM Token</string>
+    <string name="settings_sdk_status">SDK 状态</string>
+    
+    <!-- 推送历史界面 -->
+    <string name="history_title">推送历史</string>
+    <string name="history_item_title">标题：%s</string>
+    <string name="history_item_body">内容：%s</string>
+    <string name="history_item_time">时间：%s</string>
+    <string name="history_item_id">推送ID：%s</string>
+    <string name="history_detail_title">推送详情</string>
+    
+    <!-- 权限相关 -->
+    <string name="permission_notification_title">通知权限</string>
+    <string name="permission_notification_message">应用需要通知权限来接收推送消息，请在设置中开启</string>
+    <string name="permission_goto_settings">前往设置</string>
+    <string name="permission_cancel">取消</string>
+    
+    <!-- 错误消息 -->
+    <string name="error_config_required">请先配置 SDK</string>
+    <string name="error_invalid_config">配置参数无效</string>
+    <string name="error_network_unavailable">网络不可用</string>
+    <string name="error_firebase_unavailable">Firebase 服务不可用</string>
+    <string name="error_unknown">未知错误</string>
+</resources>

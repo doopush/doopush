@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DooPush SDK</string>
+    <string name="default_notification_channel_id">doopush_default_channel</string>
+    <string name="default_notification_channel_name">DooPush 通知</string>
+    <string name="default_notification_channel_description">DooPush 推送通知</string>
+</resources>

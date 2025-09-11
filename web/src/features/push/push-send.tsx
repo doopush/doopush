@@ -35,6 +35,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { DateTimePicker } from '@/components/date-time-picker'
@@ -69,6 +75,11 @@ const pushFormSchema = z.object({
     action: z.string().optional(),
     url: z.string().url('请输入有效的URL').optional().or(z.literal('')),
     data: z.string().optional(),
+    // 华为推送特有参数
+    huawei: z.object({
+      importance: z.enum(['NORMAL', 'LOW']).optional(),
+      category: z.string().optional(),
+    }).optional(),
   }).optional(),
   target_type: z.enum(['single', 'batch', 'tags', 'broadcast', 'groups']).refine(val => val, {
     message: '请选择推送类型',
@@ -110,6 +121,10 @@ export default function PushSend() {
         action: '',
         url: '',
         data: '',
+        huawei: {
+          importance: 'NORMAL',
+          category: 'IM',
+        },
       },
       target_type: 'single',
       device_ids: '',
@@ -146,6 +161,12 @@ export default function PushSend() {
           form.setValue('payload.action', payload.action || '')
           form.setValue('payload.url', payload.url || '')
           form.setValue('payload.data', payload.data || '')
+          
+          // 处理华为特有参数
+          if (payload.huawei) {
+            form.setValue('payload.huawei.importance', payload.huawei.importance || 'NORMAL')
+            form.setValue('payload.huawei.category', payload.huawei.category || 'IM')
+          }
         }
         
         // 设置为单设备推送
@@ -177,7 +198,7 @@ export default function PushSend() {
       if (data.schedule_time) {
         // 转换payload格式
         let payloadString = ''
-        if (data.payload && (data.payload.action || data.payload.url || data.payload.data)) {
+        if (data.payload && (data.payload.action || data.payload.url || data.payload.data || data.payload.huawei)) {
           payloadString = JSON.stringify(data.payload)
         }
         
@@ -592,6 +613,121 @@ export default function PushSend() {
                               )}
                             />
                           </div>
+                          
+                          {/* 高级参数 (厂商特殊参数) */}
+                          <Accordion type="single" collapsible className='border rounded-lg'>
+                            <AccordionItem value="advanced-settings" className='border-none'>
+                              <AccordionTrigger className='px-4 py-3 hover:no-underline'>
+                                <div className='flex items-center gap-2'>
+                                  <span className='text-slate-600'>⚙️</span>
+                                  <span className='font-medium'>高级参数</span>
+                                  <span className='text-xs text-muted-foreground ml-2'>厂商特殊配置</span>
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className='p-4 space-y-6'>
+                                {/* 华为推送优化 */}
+                                <div className='space-y-4'>
+                                  <div className='flex items-center gap-2 pb-2 border-b'>
+                                    <span className='text-orange-600'>📱</span>
+                                    <h6 className='font-medium'>华为推送优化</h6>
+                                  </div>
+                                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                    <FormField
+                                      control={form.control}
+                                      name="payload.huawei.importance"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className='flex items-center gap-1'>
+                                            消息分类 (importance)
+                                            <Tooltip>
+                                              <TooltipTrigger>
+                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top">
+                                                <div className='space-y-1 text-sm'>
+                                                  <p><strong>NORMAL</strong>: 服务与通讯类消息，不受频控限制</p>
+                                                  <p><strong>LOW</strong>: 资讯营销类消息，受频控限制</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </FormLabel>
+                                          <Select value={field.value} onValueChange={field.onChange}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              <SelectItem value="NORMAL">NORMAL (推荐)</SelectItem>
+                                              <SelectItem value="LOW">LOW</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                          <FormDescription>
+                                            NORMAL级消息不受频控限制，推荐使用
+                                          </FormDescription>
+                                        </FormItem>
+                                      )}
+                                    />
+
+                                    <FormField
+                                      control={form.control}
+                                      name="payload.huawei.category"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className='flex items-center gap-1'>
+                                            自定义分类 (category)
+                                            <Tooltip>
+                                              <TooltipTrigger>
+                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top">
+                                                <div className='space-y-1 text-sm'>
+                                                  <p><strong>IM</strong>: 即时通讯</p>
+                                                  <p><strong>VOIP</strong>: 语音通话</p>
+                                                  <p><strong>TRAVEL</strong>: 旅游服务</p>
+                                                  <p><strong>NEWS</strong>: 新闻资讯</p>
+                                                  <p>需要先在华为开发者后台申请对应权益</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </FormLabel>
+                                          <Select value={field.value} onValueChange={field.onChange}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              <SelectItem value="IM">IM</SelectItem>
+                                              <SelectItem value="VOIP">VOIP</SelectItem>
+                                              <SelectItem value="TRAVEL">TRAVEL</SelectItem>
+                                              <SelectItem value="NEWS">NEWS</SelectItem>
+                                              <SelectItem value="FINANCE">FINANCE</SelectItem>
+                                              <SelectItem value="SOCIAL">SOCIAL</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                          <FormDescription>
+                                            选择对应的业务分类，需要先在华为后台申请权益
+                                          </FormDescription>
+                                        </FormItem>
+                                      )}
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* 未来可以在这里添加其他厂商的配置 */}
+                                {/* 
+                                <div className='space-y-4'>
+                                  <div className='flex items-center gap-2 pb-2 border-b'>
+                                    <span className='text-blue-600'>📱</span>
+                                    <h6 className='font-medium'>小米推送优化</h6>
+                                  </div>
+                                  // 小米特有参数...
+                                </div>
+                                */}
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
                         </div>
 
                         {/* 目标设备配置 */}
