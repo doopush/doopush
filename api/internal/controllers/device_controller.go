@@ -183,27 +183,45 @@ func (d *DeviceController) GetDevices(c *gin.Context) {
 
 // GetDevice 获取设备详情
 // @Summary 获取设备详情
-// @Description 根据设备ID获取设备详细信息
+// @Description 根据设备ID或设备Token获取设备详细信息
 // @Tags 设备管理
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param appId path int true "应用ID"
-// @Param deviceId path int true "设备ID"
+// @Param deviceId path string true "设备ID或设备Token"
 // @Success 200 {object} response.APIResponse{data=models.Device}
 // @Failure 401 {object} response.APIResponse
 // @Failure 403 {object} response.APIResponse
 // @Failure 404 {object} response.APIResponse
 // @Router /apps/{appId}/devices/{deviceId} [get]
 func (d *DeviceController) GetDevice(c *gin.Context) {
-	deviceID, err := strconv.ParseUint(c.Param("deviceId"), 10, 32)
+	appID, err := strconv.ParseUint(c.Param("appId"), 10, 32)
 	if err != nil {
-		response.BadRequest(c, "无效的设备ID")
+		response.BadRequest(c, "无效的应用ID")
 		return
 	}
 
+	deviceParam := c.Param("deviceId")
 	userID := c.GetUint("user_id")
-	device, err := d.deviceService.GetDeviceByID(uint(deviceID), userID)
+
+	// 尝试解析为数字ID
+	if deviceID, err := strconv.ParseUint(deviceParam, 10, 32); err == nil {
+		device, err := d.deviceService.GetDeviceByID(uint(deviceID), userID)
+		if err != nil {
+			if err.Error() == "无权限访问该设备" {
+				response.Forbidden(c, err.Error())
+			} else {
+				response.NotFound(c, err.Error())
+			}
+			return
+		}
+		response.Success(c, device)
+		return
+	}
+
+	// 当作token处理
+	device, err := d.deviceService.GetDeviceByToken(uint(appID), deviceParam, userID)
 	if err != nil {
 		if err.Error() == "无权限访问该设备" {
 			response.Forbidden(c, err.Error())
@@ -212,7 +230,6 @@ func (d *DeviceController) GetDevice(c *gin.Context) {
 		}
 		return
 	}
-
 	response.Success(c, device)
 }
 

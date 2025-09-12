@@ -55,6 +55,8 @@ func startServer() {
 
 	// 创建Gin引擎
 	r := gin.Default()
+	r.UseRawPath = true
+	r.UnescapePathValues = true
 
 	// 全局中间件
 	r.Use(middleware.CORS())

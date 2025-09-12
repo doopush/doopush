@@ -14,21 +14,24 @@ export class DeviceService {
    * 获取设备详情
    */
   static async getDevice(appId: number, deviceToken: string): Promise<Device> {
-    return apiClient.get(`/apps/${appId}/devices/${deviceToken}`)
+    const encoded = encodeURIComponent(deviceToken)
+    return apiClient.get(`/apps/${appId}/devices/${encoded}`)
   }
 
   /**
    * 更新设备状态
    */
   static async updateDeviceStatus(appId: number, deviceToken: string, status: number): Promise<Device> {
-    return apiClient.put(`/apps/${appId}/devices/${deviceToken}/status`, { status })
+    const encoded = encodeURIComponent(deviceToken)
+    return apiClient.put(`/apps/${appId}/devices/${encoded}/status`, { status })
   }
 
   /**
    * 删除设备
    */
   static async deleteDevice(appId: number, deviceToken: string): Promise<void> {
-    return apiClient.delete(`/apps/${appId}/devices/${deviceToken}`)
+    const encoded = encodeURIComponent(deviceToken)
+    return apiClient.delete(`/apps/${appId}/devices/${encoded}`)
   }
 
   /**
