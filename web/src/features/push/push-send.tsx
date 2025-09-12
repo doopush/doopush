@@ -80,6 +80,11 @@ const pushFormSchema = z.object({
       importance: z.enum(['NORMAL', 'LOW']).optional(),
       category: z.string().optional(),
     }).optional(),
+    // 小米推送特有参数
+    xiaomi: z.object({
+      channel_id: z.string().optional(),
+      pass_through: z.number().int().min(0).max(1).optional(),
+    }).optional(),
   }).optional(),
   target_type: z.enum(['single', 'batch', 'tags', 'broadcast', 'groups']).refine(val => val, {
     message: '请选择推送类型',
@@ -124,6 +129,10 @@ export default function PushSend() {
         huawei: {
           importance: 'NORMAL',
           category: 'IM',
+        },
+        xiaomi: {
+          channel_id: '',
+          pass_through: 0,
         },
       },
       target_type: 'single',
@@ -631,7 +640,7 @@ export default function PushSend() {
                                     <span className='text-orange-600'>📱</span>
                                     <h6 className='font-medium'>华为推送优化</h6>
                                   </div>
-                                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                  <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
                                     <FormField
                                       control={form.control}
                                       name="payload.huawei.importance"
@@ -715,16 +724,85 @@ export default function PushSend() {
                                   </div>
                                 </div>
 
-                                {/* 未来可以在这里添加其他厂商的配置 */}
-                                {/* 
+                                {/* 小米推送优化 */}
                                 <div className='space-y-4'>
                                   <div className='flex items-center gap-2 pb-2 border-b'>
                                     <span className='text-blue-600'>📱</span>
                                     <h6 className='font-medium'>小米推送优化</h6>
                                   </div>
-                                  // 小米特有参数...
+                                  <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                                    <FormField
+                                      control={form.control}
+                                      name="payload.xiaomi.channel_id"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className='flex items-center gap-1'>
+                                            推送通道 (channel_id)
+                                            <Tooltip>
+                                              <TooltipTrigger>
+                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top">
+                                                <div className='space-y-1 text-sm'>
+                                                  <p><strong>默认通道</strong>: 单设备单日1条限制</p>
+                                                  <p><strong>公信消息</strong>: 单设备单日5-8条限制（需申请）</p>
+                                                  <p><strong>私信消息</strong>: 不限量（需申请）</p>
+                                                  <p>不填写则使用默认通道</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </FormLabel>
+                                          <FormControl>
+                                            <Input 
+                                              placeholder="例如：private_msg_channel"
+                                              {...field} 
+                                            />
+                                          </FormControl>
+                                          <FormDescription>
+                                            指定推送通道ID，用于突破默认通道的数量限制
+                                          </FormDescription>
+                                        </FormItem>
+                                      )}
+                                    />
+
+                                    <FormField
+                                      control={form.control}
+                                      name="payload.xiaomi.pass_through"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className='flex items-center gap-1'>
+                                            消息类型 (pass_through)
+                                            <Tooltip>
+                                              <TooltipTrigger>
+                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top">
+                                                <div className='space-y-1 text-sm'>
+                                                  <p><strong>0</strong>: 通知消息（显示在通知栏）</p>
+                                                  <p><strong>1</strong>: 透传消息（直接传递给应用）</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </FormLabel>
+                                          <Select value={field.value?.toString() || '0'} onValueChange={(value) => field.onChange(parseInt(value))}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              <SelectItem value="0">通知消息 (推荐)</SelectItem>
+                                              <SelectItem value="1">透传消息</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                          <FormDescription>
+                                            选择消息传递方式
+                                          </FormDescription>
+                                        </FormItem>
+                                      )}
+                                    />
+                                  </div>
                                 </div>
-                                */}
                               </AccordionContent>
                             </AccordionItem>
                           </Accordion>

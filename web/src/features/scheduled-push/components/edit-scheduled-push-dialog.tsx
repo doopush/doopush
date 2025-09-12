@@ -60,6 +60,11 @@ const editScheduledPushSchema = z.object({
       importance: z.enum(['NORMAL', 'LOW']).optional(),
       category: z.string().optional(),
     }).optional(),
+    // 小米推送特有参数
+    xiaomi: z.object({
+      channel_id: z.string().optional(),
+      pass_through: z.number().int().min(0).max(1).optional(),
+    }).optional(),
   }).optional(),
   badge: z.number().int('角标必须是整数').min(1, '角标数量必须大于等于1').optional(),
   scheduled_at: z.string().min(1, '请选择执行时间').refine((val) => {
@@ -103,6 +108,10 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
         huawei: {
           importance: 'NORMAL',
           category: 'IM',
+        },
+        xiaomi: {
+          channel_id: '',
+          pass_through: 0,
         },
       },
       badge: 1,
@@ -160,6 +169,10 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
           importance: 'NORMAL' as const,
           category: 'IM',
         },
+        xiaomi: {
+          channel_id: '',
+          pass_through: 0,
+        },
       }
       
       if (push.payload) {
@@ -172,6 +185,10 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
             huawei: {
               importance: payloadData.huawei?.importance || 'NORMAL',
               category: payloadData.huawei?.category || 'IM',
+            },
+            xiaomi: {
+              channel_id: payloadData.xiaomi?.channel_id || '',
+              pass_through: payloadData.xiaomi?.pass_through || 0,
             },
           }
         } catch (error) {
@@ -368,7 +385,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
 
       // 转换payload格式
       let finalPayload = ''
-      if (data.payload && (data.payload.action || data.payload.url || data.payload.data || data.payload.huawei)) {
+      if (data.payload && (data.payload.action || data.payload.url || data.payload.data || data.payload.huawei || data.payload.xiaomi)) {
         finalPayload = JSON.stringify(data.payload)
       }
 
@@ -401,7 +418,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="md:max-w-[700px] lg:max-w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>编辑定时推送</DialogTitle>
           <DialogDescription>
@@ -581,7 +598,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                             <span className='text-orange-600'>📱</span>
                             <h6 className='font-medium'>华为推送优化</h6>
                           </div>
-                          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                          <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
                             <FormField
                               control={form.control}
                               name="payload.huawei.importance"
@@ -658,6 +675,86 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                   </Select>
                                   <FormDescription>
                                     选择对应的业务分类，需要先在华为后台申请权益
+                                  </FormDescription>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        {/* 小米推送优化 */}
+                        <div className='space-y-4'>
+                          <div className='flex items-center gap-2 pb-2 border-b'>
+                            <span className='text-blue-600'>📱</span>
+                            <h6 className='font-medium'>小米推送优化</h6>
+                          </div>
+                          <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                            <FormField
+                              control={form.control}
+                              name="payload.xiaomi.channel_id"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className='flex items-center gap-1'>
+                                    推送通道 (channel_id)
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        <div className='space-y-1 text-sm'>
+                                          <p><strong>默认通道</strong>: 单设备单日1条限制</p>
+                                          <p><strong>公信消息</strong>: 单设备单日5-8条限制（需申请）</p>
+                                          <p><strong>私信消息</strong>: 不限量（需申请）</p>
+                                          <p>不填写则使用默认通道</p>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="例如：private_msg_channel"
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    指定推送通道ID，用于突破默认通道的数量限制
+                                  </FormDescription>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="payload.xiaomi.pass_through"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className='flex items-center gap-1'>
+                                    消息类型 (pass_through)
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        <div className='space-y-1 text-sm'>
+                                          <p><strong>0</strong>: 通知消息（显示在通知栏）</p>
+                                          <p><strong>1</strong>: 透传消息（直接传递给应用）</p>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </FormLabel>
+                                  <Select value={field.value?.toString() || '0'} onValueChange={(value) => field.onChange(parseInt(value))}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="0">通知消息 (推荐)</SelectItem>
+                                      <SelectItem value="1">透传消息</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormDescription>
+                                    选择消息传递方式
                                   </FormDescription>
                                 </FormItem>
                               )}

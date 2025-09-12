@@ -21,15 +21,16 @@ cd sdk/android/DooPushSDKExample
 
 ### 2. 配置参数
 
-#### dootask-services.json 配置
+#### doopush-services.json 配置
 
-在 `app/` 目录下创建 `dootask-services.json` 文件：
+在 `app/` 目录下创建 `doopush-services.json` 文件：
 
 ```json
 {
   "app_id": "your_app_id_here",
   "api_key": "your_api_key_here", 
-  "base_url": "https://your-server.com/api/v1"
+  "base_url": "https://your-server.com/api/v1",
+  "debug_enabled": true
 }
 ```
 
@@ -37,13 +38,37 @@ cd sdk/android/DooPushSDKExample
 - `app_id`: DooPush 应用ID
 - `api_key`: DooPush API密钥  
 - `base_url`: 服务器基础URL（包含API版本路径）
+- `debug_enabled`: 调试模式开关
 
-**注意：** 此文件已添加到 `.gitignore`，不会被版本控制。如果文件不存在或字段为空，SDK将使用内置默认配置。
+#### xiaomi-services.json 配置
+
+在 `app/` 目录下创建 `xiaomi-services.json` 文件（小米推送配置）：
+
+```json
+{
+  "app_id": "your_xiaomi_app_id",
+  "app_key": "your_xiaomi_app_key"
+}
+```
+
+**配置说明：**
+- `app_id`: 小米开发者平台的应用ID  
+- `app_key`: 小米开发者平台的应用Key
+
+**重要特性：**
+- ✅ **自动配置**: SDK 会自动从 `xiaomi-services.json` 读取配置
+- ✅ **智能启用**: 在小米设备上自动启用小米推送服务
+- ✅ **零代码集成**: 无需在代码中手动配置小米推送参数
+
+**注意：** 客户端SDK只需要 `app_id` 和 `app_key`，`app_secret` 仅用于服务端API调用。
+
+**注意：** 配置文件已添加到 `.gitignore`，不会被版本控制。如果文件不存在或字段为空，SDK将使用内置默认配置。
 
 #### 推送服务配置
 
 1. **FCM配置**: 将 `google-services.json` 放在 `app/` 目录下
 2. **HMS配置**: 将 `agconnect-services.json` 放在 `app/` 目录下
+3. **小米推送配置**: 在 DooPush 平台后台配置小米推送参数（App ID、App Key、App Secret）
 
 ### 3. 基本流程
 1. 启动应用，SDK自动初始化并检测推送服务
@@ -69,7 +94,8 @@ DooPushSDKExample/
 └── app/
     ├── google-services.json           # FCM配置文件
     ├── agconnect-services.json        # HMS配置文件
-    └── dootask-services.json          # DooPush配置文件
+    ├── doopush-services.json          # DooPush配置文件
+    └── xiaomi-services.json           # 小米推送配置文件
 ```
 
 ## 核心实现
@@ -124,7 +150,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
 ### 配置管理
 
 应用支持多级配置优先级：
-1. `dootask-services.json` 文件配置（推荐）
+1. `doopush-services.json` 文件配置（推荐）
 2. 全局变量默认值
 3. SDK内置默认配置
 
@@ -132,7 +158,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
 // 从JSON文件读取配置
 private fun loadConfigFromAssets() {
     try {
-        val inputStream = assets.open("dootask-services.json")
+        val inputStream = assets.open("doopush-services.json")
         val json = inputStream.bufferedReader().readText()
         val config = JSONObject(json)
         
@@ -170,6 +196,11 @@ private fun loadConfigFromAssets() {
 - 自动使用 HMS Push 服务
 - 支持角标显示
 - 需要 `agconnect-services.json` 配置文件
+
+### 小米/红米设备
+- 自动使用小米推送服务
+- 支持MIUI角标显示
+- 需要在 DooPush 平台配置小米推送参数
 
 ### Google Play 设备
 - 自动使用 FCM 服务

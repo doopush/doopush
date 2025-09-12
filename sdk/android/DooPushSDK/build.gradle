@@ -63,6 +63,9 @@ dependencies {
     
     // 华为 HMS Push（可选依赖）
     compileOnly 'com.huawei.hms:push:6.11.0.300'
+    
+    // 小米推送（可选依赖）
+    compileOnly 'com.umeng.umsdk:xiaomi-push:6.0.1'
 
     // 测试依赖
     testImplementation 'junit:junit:4.13.2'

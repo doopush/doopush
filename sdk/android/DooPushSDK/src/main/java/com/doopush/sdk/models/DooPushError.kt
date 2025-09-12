@@ -54,6 +54,14 @@ data class DooPushError(
         const val HMS_AUTH_ERROR = 3105
         const val HMS_PUSH_ERROR = 3106
         
+        // 小米推送相关错误码
+        const val XIAOMI_NOT_AVAILABLE = 3201
+        const val XIAOMI_INIT_FAILED = 3202
+        const val XIAOMI_TOKEN_FETCH_FAILED = 3203
+        const val XIAOMI_REGISTER_FAILED = 3204
+        const val XIAOMI_CONFIG_INVALID = 3205
+        const val XIAOMI_PUSH_ERROR = 3206
+        
         // 权限相关错误码
         const val PERMISSION_DENIED = 4001
         const val NOTIFICATION_PERMISSION_DENIED = 4002
@@ -193,6 +201,72 @@ data class DooPushError(
             return DooPushError(
                 code = HMS_PUSH_ERROR,
                 message = "华为推送发送失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建小米推送不可用错误
+         */
+        fun xiaomiNotAvailable(): DooPushError {
+            return DooPushError(
+                code = XIAOMI_NOT_AVAILABLE,
+                message = "小米推送服务不可用，请检查设备是否为小米设备且已安装小米推送SDK"
+            )
+        }
+        
+        /**
+         * 创建小米推送初始化失败错误
+         */
+        fun xiaomiInitFailed(details: String? = null): DooPushError {
+            return DooPushError(
+                code = XIAOMI_INIT_FAILED,
+                message = "小米推送初始化失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建小米推送Token获取失败错误
+         */
+        fun xiaomiTokenFailed(cause: Throwable? = null): DooPushError {
+            return DooPushError(
+                code = XIAOMI_TOKEN_FETCH_FAILED,
+                message = "小米推送Token获取失败",
+                details = cause?.message,
+                cause = cause
+            )
+        }
+        
+        /**
+         * 创建小米推送注册失败错误
+         */
+        fun xiaomiRegisterFailed(details: String? = null): DooPushError {
+            return DooPushError(
+                code = XIAOMI_REGISTER_FAILED,
+                message = "小米推送注册失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建小米推送配置无效错误
+         */
+        fun xiaomiConfigInvalid(details: String? = null): DooPushError {
+            return DooPushError(
+                code = XIAOMI_CONFIG_INVALID,
+                message = "小米推送配置无效",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建小米推送操作错误
+         */
+        fun xiaomiPushError(details: String? = null): DooPushError {
+            return DooPushError(
+                code = XIAOMI_PUSH_ERROR,
+                message = "小米推送操作失败",
                 details = details
             )
         }

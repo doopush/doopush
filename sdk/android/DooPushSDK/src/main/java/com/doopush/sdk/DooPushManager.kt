@@ -56,6 +56,7 @@ class DooPushManager private constructor() {
     private var networking: DooPushNetworking? = null
     private var fcmService: FCMService? = null
     private var hmsService: HMSService? = null
+    private var xiaomiService: XiaomiService? = null
     private var tcpConnection: DooPushTCPConnection? = null
     private var applicationContext: Context? = null
     
@@ -117,6 +118,7 @@ class DooPushManager private constructor() {
      * @param apiKey API密钥
      * @param baseURL 服务器基础URL (可选)
      * @param hmsConfig HMS推送配置 (可选)
+     * @param xiaomiConfig 小米推送配置 (可选)
      * @throws DooPushConfigException 配置参数无效时抛出
      */
     @Throws(DooPushConfigException::class)
@@ -125,7 +127,8 @@ class DooPushManager private constructor() {
         appId: String,
         apiKey: String,
         baseURL: String = DooPushConfig.DEFAULT_BASE_URL,
-        hmsConfig: DooPushConfig.HMSConfig? = null
+        hmsConfig: DooPushConfig.HMSConfig? = null,
+        xiaomiConfig: DooPushConfig.XiaomiConfig? = null
     ) {
         try {
             Log.d(TAG, "开始配置 DooPush SDK")
@@ -146,8 +149,21 @@ class DooPushManager private constructor() {
                 hmsConfig
             }
             
+            // 智能配置处理：小米设备自动启用小米推送
+            val finalXiaomiConfig = if (xiaomiConfig == null) {
+                val vendorInfo = DooPushDeviceVendor.getDeviceVendorInfo()
+                if (vendorInfo.preferredService == DooPushDeviceVendor.PushService.MIPUSH) {
+                    Log.d(TAG, "检测到小米设备，自动启用小米推送服务")
+                    DooPushConfig.XiaomiConfig() // 零配置，自动从 xiaomi-services.json 读取
+                } else {
+                    null
+                }
+            } else {
+                xiaomiConfig
+            }
+            
             // 创建配置
-            config = DooPushConfig.create(appId, apiKey, baseURL, finalHmsConfig)
+            config = DooPushConfig.create(appId, apiKey, baseURL, finalHmsConfig, finalXiaomiConfig)
             
             // 初始化各组件
             deviceManager = DooPushDevice(applicationContext!!)
@@ -157,6 +173,23 @@ class DooPushManager private constructor() {
             }
             fcmService = FCMService(context.applicationContext)
             hmsService = HMSService(context.applicationContext)
+            xiaomiService = XiaomiService(context.applicationContext).apply {
+                // 设置服务实例到接收器
+                XiaomiPushReceiver.setService(this)
+                
+                // 自动初始化小米推送（如果配置了小米推送）
+                if (finalXiaomiConfig != null) {
+                    if (finalXiaomiConfig.appId.isNotEmpty() && finalXiaomiConfig.appKey.isNotEmpty()) {
+                        // 使用手动配置
+                        initialize(finalXiaomiConfig.appId, finalXiaomiConfig.appKey)
+                        Log.d(TAG, "使用手动小米推送配置初始化")
+                    } else {
+                        // 自动从xiaomi-services.json读取配置
+                        autoInitialize()
+                        Log.d(TAG, "自动从xiaomi-services.json读取配置初始化")
+                    }
+                }
+            }
             tcpConnection = DooPushTCPConnection().apply {
                 delegate = tcpConnectionDelegate
             }
@@ -248,6 +281,33 @@ class DooPushManager private constructor() {
                         )
                     } else {
                         Log.w(TAG, "HMS未配置，fallback到FCM")
+                        registerWithFCM(callback)
+                    }
+                }
+                DooPushDeviceVendor.PushService.MIPUSH -> {
+                    if (config?.hasXiaomiConfig() == true) {
+                        // 组装设备信息（channel=xiaomi）
+                        val deviceInfo = deviceManager!!.getCurrentDeviceInfo("xiaomi")
+                        cachedDeviceInfo = deviceInfo
+                        
+                        xiaomiService!!.getToken(
+                            object : XiaomiService.TokenCallback {
+                                override fun onSuccess(token: String) {
+                                    Log.d(TAG, "小米推送Token获取成功: ${token.substring(0, 12)}...")
+                                    cachedToken = token
+                                    // 调用设备注册API
+                                    registerDeviceToServer(deviceInfo, token, callback)
+                                }
+                                
+                                override fun onError(error: DooPushError) {
+                                    Log.e(TAG, "小米推送Token获取失败: ${error.message}")
+                                    isRegistering.set(false)
+                                    callback?.onError(error) ?: this@DooPushManager.callback?.onRegisterError(error)
+                                }
+                            }
+                        )
+                    } else {
+                        Log.w(TAG, "小米推送未配置，fallback到FCM")
                         registerWithFCM(callback)
                     }
                 }
@@ -351,8 +411,34 @@ class DooPushManager private constructor() {
     }
     
     /**
+     * 获取小米推送Token
+     * 
+     * @param callback Token获取回调
+     */
+    fun getXiaomiToken(callback: DooPushTokenCallback) {
+        if (!checkInitialized()) {
+            callback.onError(DooPushError.configNotInitialized())
+            return
+        }
+        
+        xiaomiService!!.getToken(
+            object : XiaomiService.TokenCallback {
+                override fun onSuccess(token: String) {
+                    Log.d(TAG, "小米推送Token获取成功: ${token.substring(0, 12)}...")
+                    callback.onSuccess(token)
+                }
+                
+                override fun onError(error: DooPushError) {
+                    Log.e(TAG, "小米推送Token获取失败: ${error.message}")
+                    callback.onError(error)
+                }
+            }
+        )
+    }
+    
+    /**
      * 获取最适合的推送Token
-     * 根据设备厂商智能选择FCM或HMS推送
+     * 根据设备厂商智能选择FCM、HMS或小米推送
      * 
      * @param callback Token获取回调
      */
@@ -375,6 +461,15 @@ class DooPushManager private constructor() {
                     getFCMToken(callback)
                 }
             }
+            DooPushDeviceVendor.PushService.MIPUSH -> {
+                if (config?.hasXiaomiConfig() == true) {
+                    Log.d(TAG, "使用小米推送")
+                    getXiaomiToken(callback)
+                } else {
+                    Log.d(TAG, "小米推送未配置，fallback到FCM")
+                    getFCMToken(callback)
+                }
+            }
             else -> {
                 Log.d(TAG, "使用FCM推送")
                 getFCMToken(callback)
@@ -387,6 +482,13 @@ class DooPushManager private constructor() {
      */
     fun isHMSAvailable(): Boolean {
         return hmsService?.isHMSAvailable() ?: false
+    }
+    
+    /**
+     * 检查小米推送服务是否可用
+     */
+    fun isXiaomiAvailable(): Boolean {
+        return xiaomiService?.isXiaomiAvailable() ?: false
     }
     
     /**
@@ -539,6 +641,7 @@ class DooPushManager private constructor() {
         config?.let { builder.append("\n${it.getSummary()}") }
         fcmService?.let { builder.append("\n${it.getServiceStatus()}") }
         hmsService?.let { builder.append("\n${it.getServiceStatus()}") }
+        xiaomiService?.let { builder.append("\n${it.getServiceStatus()}") }
         deviceManager?.let { builder.append("\n设备: ${it.getDeviceSummary()}") }
         builder.append("\n${DooPushDeviceVendor.getDeviceDebugInfo()}")
         
@@ -585,6 +688,7 @@ class DooPushManager private constructor() {
             networking = null
             fcmService = null
             hmsService = null
+            xiaomiService = null
             tcpConnection = null
             
             Log.i(TAG, "SDK资源已释放")

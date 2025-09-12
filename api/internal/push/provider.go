@@ -118,6 +118,8 @@ func (m *PushManager) createAndroidProvider(app *models.App, channel string) (Pu
 		return m.createFCMProvider(androidConfig)
 	case "huawei":
 		return m.createHuaweiProvider(androidConfig)
+	case "xiaomi":
+		return m.createXiaomiProvider(androidConfig)
 	default:
 		return nil, fmt.Errorf("暂不支持的 Android 推送通道: %s", channel)
 	}
@@ -153,6 +155,20 @@ func (m *PushManager) createHuaweiProvider(config AndroidConfig) (PushProvider, 
 		return nil, fmt.Errorf("华为推送配置缺少 app_secret")
 	}
 	return NewAndroidProviderWithConfig("huawei", config), nil
+}
+
+// createXiaomiProvider 创建小米推送提供者
+func (m *PushManager) createXiaomiProvider(config AndroidConfig) (PushProvider, error) {
+	if config.AppID == "" {
+		return nil, fmt.Errorf("小米推送配置缺少 app_id")
+	}
+	if config.AppKey == "" {
+		return nil, fmt.Errorf("小米推送配置缺少 app_key")
+	}
+	if config.AppSecret == "" {
+		return nil, fmt.Errorf("小米推送配置缺少 app_secret")
+	}
+	return NewAndroidProviderWithConfig("xiaomi", config), nil
 }
 
 // SendPush 统一推送接口

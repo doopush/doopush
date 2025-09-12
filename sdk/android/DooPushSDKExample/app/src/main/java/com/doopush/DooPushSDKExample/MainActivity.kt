@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         var apiKey: String = ""
         var baseUrl: String = ""
         var debugEnabled: Boolean = true
+        
     }
     
     private lateinit var binding: ActivityMainBinding
@@ -172,14 +173,27 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         binding.btnClearBadge.setOnClickListener {
             testBadgeFunction(0) // 清除角标
         }
+        
+        // 推送服务状态按钮（暂时移除，等UI布局添加后再启用）
+        // binding.btnCheckServices?.setOnClickListener {
+        //     checkPushServicesStatus()
+        // }
     }
     
     /**
-     * 从 dootask-services.json 读取配置到全局变量
+     * 从配置文件读取配置到全局变量
      */
     private fun loadConfigFromFile() {
+        // 读取 DooPush 配置
+        loadDooPushConfig()
+    }
+    
+    /**
+     * 从 doopush-services.json 读取 DooPush 配置
+     */
+    private fun loadDooPushConfig() {
         try {
-            val inputStream: InputStream = assets.open("dootask-services.json")
+            val inputStream: InputStream = assets.open("doopush-services.json")
             val jsonString = inputStream.bufferedReader().use { it.readText() }
             val jsonObject = JSONObject(jsonString)
             
@@ -188,11 +202,12 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
             baseUrl = jsonObject.optString("base_url", "")
             debugEnabled = jsonObject.optBoolean("debug_enabled", true)
             
-            Log.d(TAG, "从dootask-services.json读取配置: appId=$appId, baseUrl=$baseUrl")
+            Log.d(TAG, "从doopush-services.json读取配置: appId=$appId, baseUrl=$baseUrl")
         } catch (e: Exception) {
-            Log.d(TAG, "dootask-services.json不存在或读取失败，全局变量保持空值")
+            Log.d(TAG, "doopush-services.json不存在或读取失败，全局变量保持空值")
         }
     }
+    
     
     /**
      * 配置SDK
@@ -203,7 +218,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
             
             Log.d(TAG, "使用配置: appId=$appId, baseUrl=$baseUrl")
             
-            // 直接使用全局变量配置SDK
+            // 配置SDK
             dooPushManager.configure(
                 context = this,
                 appId = appId,
@@ -260,6 +275,10 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
                     val serviceText = when (recommendedService) {
                         DooPushDeviceVendor.PushService.HMS -> "华为 HMS Push"
                         DooPushDeviceVendor.PushService.FCM -> "Google FCM"
+                        DooPushDeviceVendor.PushService.MIPUSH -> "小米推送"
+                        DooPushDeviceVendor.PushService.OPPO -> "OPPO推送"
+                        DooPushDeviceVendor.PushService.VIVO -> "VIVO推送"
+                        DooPushDeviceVendor.PushService.HONOR -> "荣耀推送"
                         else -> "推送服务"
                     }
                     binding.tvTokenType.text = "使用服务: $serviceText (${vendorInfo.brand})"
@@ -621,5 +640,61 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         super.onDestroy()
         // 不要在这里释放SDK，因为可能还有其他Activity在使用
         Log.d(TAG, "MainActivity 销毁")
+    }
+    
+    /**
+     * 检查推送服务状态
+     */
+    private fun checkPushServicesStatus() {
+        if (!DooPushManager.isInitialized()) {
+            showToast("SDK尚未初始化")
+            return
+        }
+        
+        val vendorInfo = dooPushManager.getDeviceVendorInfo()
+        val isFirebaseAvailable = dooPushManager.isFirebaseAvailable()
+        val isHMSAvailable = dooPushManager.isHMSAvailable()
+        val isXiaomiAvailable = dooPushManager.isXiaomiAvailable()
+        
+        val statusText = StringBuilder()
+        statusText.append("推送服务可用性状态：\n\n")
+        statusText.append("设备信息：\n")
+        statusText.append("- 制造商：${vendorInfo.manufacturer}\n")
+        statusText.append("- 品牌：${vendorInfo.brand}\n")
+        statusText.append("- 型号：${vendorInfo.model}\n")
+        statusText.append("- 推荐服务：${getServiceDisplayName(vendorInfo.preferredService)}\n\n")
+        
+        statusText.append("服务可用性：\n")
+        statusText.append("- Firebase Cloud Messaging：${if (isFirebaseAvailable) "✓ 可用" else "✗ 不可用"}\n")
+        statusText.append("- 华为 HMS Push：${if (isHMSAvailable) "✓ 可用" else "✗ 不可用"}\n")
+        statusText.append("- 小米推送：${if (isXiaomiAvailable) "✓ 可用" else "✗ 不可用"}\n")
+        
+        statusText.append("\n支持的服务：\n")
+        vendorInfo.supportedServices.forEach { service ->
+            statusText.append("- ${getServiceDisplayName(service)}\n")
+        }
+        
+        // 显示在对话框中
+        AlertDialog.Builder(this)
+            .setTitle("推送服务状态")
+            .setMessage(statusText.toString())
+            .setPositiveButton("确定", null)
+            .show()
+            
+        Log.d(TAG, "推送服务状态检查完成")
+    }
+    
+    /**
+     * 获取推送服务显示名称
+     */
+    private fun getServiceDisplayName(service: DooPushDeviceVendor.PushService): String {
+        return when (service) {
+            DooPushDeviceVendor.PushService.HMS -> "华为 HMS Push"
+            DooPushDeviceVendor.PushService.FCM -> "Google FCM" 
+            DooPushDeviceVendor.PushService.MIPUSH -> "小米推送"
+            DooPushDeviceVendor.PushService.OPPO -> "OPPO推送"
+            DooPushDeviceVendor.PushService.VIVO -> "VIVO推送"
+            DooPushDeviceVendor.PushService.HONOR -> "荣耀推送"
+        }
     }
 }

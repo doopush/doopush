@@ -41,8 +41,9 @@ type AndroidProviderConfig struct {
 	ServiceAccountKey string
 	ProjectID         string
 
-	// 华为配置
+	// 华为和小米配置
 	AppID     string
+	AppKey    string // 小米推送需要
 	AppSecret string
 }
 
@@ -73,6 +74,7 @@ func NewAndroidProviderWithConfig(channel string, config AndroidConfig) *Android
 			ServiceAccountKey: config.ServiceAccountKey,
 			ProjectID:         projectID,
 			AppID:             config.AppID,
+			AppKey:            config.AppKey,
 			AppSecret:         config.AppSecret,
 		},
 		httpClient: &http.Client{
@@ -291,6 +293,40 @@ type FirebaseServiceAccount struct {
 	TokenURI                string `json:"token_uri"`
 	AuthProviderX509CertURL string `json:"auth_provider_x509_cert_url"`
 	ClientX509CertURL       string `json:"client_x509_cert_url"`
+}
+
+// 小米推送相关数据结构
+
+// XiaomiMessage 小米推送消息结构
+type XiaomiMessage struct {
+	Title                 string                 `json:"title,omitempty"`                   // 通知标题
+	Description           string                 `json:"description,omitempty"`             // 通知内容
+	Payload               string                 `json:"payload,omitempty"`                 // 自定义载荷数据
+	RestrictedPackageName string                 `json:"restricted_package_name,omitempty"` // 应用包名
+	PassThrough           int                    `json:"pass_through,omitempty"`            // 是否透传消息：0=通知消息，1=透传消息
+	NotifyType            int                    `json:"notify_type,omitempty"`             // 提醒类型：1=声音，2=震动，4=指示灯
+	TimeToLive            int64                  `json:"time_to_live,omitempty"`            // 消息存活时间(ms)
+	NotifyID              int                    `json:"notify_id,omitempty"`               // 通知ID，用于消息去重
+	ChannelID             string                 `json:"channel_id,omitempty"`              // 推送通道ID：用于指定推送通道类型
+	Extra                 map[string]interface{} `json:"extra,omitempty"`                   // 扩展字段
+}
+
+// XiaomiResponse 小米推送API响应结构
+// XiaomiResponseData 小米推送响应数据结构
+type XiaomiResponseData struct {
+	ID       string `json:"id"`        // 消息ID
+	DayAcked string `json:"day_acked"` // 当日已确认数量
+	DayQuota string `json:"day_quota"` // 当日配额
+}
+
+type XiaomiResponse struct {
+	Result      string             `json:"result"`      // 响应结果：ok=成功
+	TraceID     string             `json:"trace_id"`    // 请求跟踪ID
+	Code        int                `json:"code"`        // 错误码：0=成功
+	Data        XiaomiResponseData `json:"data"`        // 响应数据
+	Description string             `json:"description"` // 错误描述
+	Info        string             `json:"info"`        // 附加信息
+	Reason      string             `json:"reason"`      // 失败原因（错误时）
 }
 
 // FCMAccessTokenResponse FCM access token 响应
@@ -535,12 +571,10 @@ func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog
 
 	if resp.StatusCode == http.StatusOK {
 		result.Success = true
-		fmt.Printf("FCM 推送成功: %s -> %s\n", device.Token[:min(20, len(device.Token))]+"...", pushLog.Title)
 	} else {
 		result.Success = false
 		// 使用统一错误处理
 		a.mapFCMError(result, resp.StatusCode, respBody)
-		fmt.Printf("FCM 推送失败: %s, 错误: %s\n", result.ErrorCode, result.ErrorMessage)
 	}
 
 	return result
@@ -586,8 +620,6 @@ func (a *AndroidProvider) sendHuawei(device *models.Device, pushLog *models.Push
 
 	result.Success = true
 	result.ResponseData = `{"message_id":"success"}`
-	fmt.Printf("✅ 华为推送发送成功: %s -> %s (badge: %d)\n",
-		device.Token[:min(20, len(device.Token))]+"...", pushLog.Title, pushLog.Badge)
 
 	return result
 }
@@ -761,9 +793,6 @@ func (a *AndroidProvider) sendHuaweiMessage(accessToken string, message *HuaweiM
 		return "", "", fmt.Errorf("序列化华为推送消息失败: %v", err)
 	}
 
-	// 输出调试信息
-	fmt.Printf("华为推送请求体: %s\n", string(messageJSON))
-
 	// 创建请求
 	req, err := http.NewRequest("POST", pushURL, bytes.NewBuffer(messageJSON))
 	if err != nil {
@@ -792,9 +821,6 @@ func (a *AndroidProvider) sendHuaweiMessage(accessToken string, message *HuaweiM
 		return "", "", fmt.Errorf("解析华为推送响应失败: %v, 原始响应: %s", err, string(body))
 	}
 
-	// 输出响应用于调试
-	fmt.Printf("华为推送响应: %s\n", string(body))
-
 	// 检查华为的响应码
 	if huaweiResp.Code != "80000000" {
 		return huaweiResp.Code, huaweiResp.Msg, fmt.Errorf("华为推送失败，错误码: %s, 错误信息: %s", huaweiResp.Code, huaweiResp.Msg)
@@ -803,16 +829,288 @@ func (a *AndroidProvider) sendHuaweiMessage(accessToken string, message *HuaweiM
 	return huaweiResp.Code, huaweiResp.Msg, nil
 }
 
+// buildXiaomiMessage 构建小米推送消息
+func (a *AndroidProvider) buildXiaomiMessage(device *models.Device, pushLog *models.PushLog) *XiaomiMessage {
+	// 构建基本消息结构
+	message := &XiaomiMessage{
+		Title:                 pushLog.Title,
+		Description:           pushLog.Content,
+		PassThrough:           0,                         // 0=通知消息，1=透传消息
+		NotifyType:            7,                         // 1=声音，2=震动，4=指示灯，7=全部
+		TimeToLive:            86400000,                  // 消息存活时间24小时(ms)
+		NotifyID:              int(pushLog.ID % 1000000), // 使用推送日志ID作为通知ID，取模避免过大
+		RestrictedPackageName: device.App.PackageName,    // 应用包名，小米推送必需参数
+		Extra:                 make(map[string]interface{}),
+	}
+
+	// 解析小米特有参数
+	passThrough := 0
+	notifyType := 7
+	timeToLive := int64(86400000)
+	channelID := ""
+
+	// 从pushLog.Payload中解析小米特有参数
+	if pushLog.Payload != "" && pushLog.Payload != "{}" {
+		var payloadMap map[string]interface{}
+		if err := json.Unmarshal([]byte(pushLog.Payload), &payloadMap); err == nil {
+			if xiData, ok := payloadMap["xiaomi"].(map[string]interface{}); ok {
+				if pt, ok := xiData["pass_through"].(float64); ok {
+					passThrough = int(pt)
+				}
+				if nt, ok := xiData["notify_type"].(float64); ok {
+					notifyType = int(nt)
+				}
+				if ttl, ok := xiData["time_to_live"].(float64); ok {
+					timeToLive = int64(ttl)
+				}
+				if ch, ok := xiData["channel_id"].(string); ok && ch != "" {
+					channelID = ch
+				}
+			}
+		}
+	}
+
+	message.PassThrough = passThrough
+	message.NotifyType = notifyType
+	message.TimeToLive = timeToLive
+	message.ChannelID = channelID
+
+	// 构建扩展数据字段，包含统一标识字段
+	extraMap := make(map[string]interface{})
+
+	// 添加统计标识字段，保持与APNs、FCM和华为推送一致
+	extraMap["badge"] = pushLog.Badge
+	extraMap["push_log_id"] = pushLog.ID
+	if pushLog.DedupKey != "" {
+		extraMap["dedup_key"] = pushLog.DedupKey
+	}
+	extraMap["dp_source"] = "doopush"
+
+	// 解析并合并自定义数据到extra字段
+	if pushLog.Payload != "" && pushLog.Payload != "{}" {
+		var customData map[string]interface{}
+		if err := json.Unmarshal([]byte(pushLog.Payload), &customData); err == nil {
+			// 合并自定义数据，但不覆盖统一标识字段和小米特有字段
+			for k, v := range customData {
+				if k != "push_log_id" && k != "dp_source" && k != "badge" && k != "xiaomi" {
+					extraMap[k] = v
+				}
+			}
+		}
+	}
+
+	message.Extra = extraMap
+
+	// 构建payload字段（小米推送的自定义数据载荷）
+	if len(extraMap) > 0 {
+		if payloadJSON, err := json.Marshal(extraMap); err == nil {
+			message.Payload = string(payloadJSON)
+		}
+	}
+
+	return message
+}
+
+// sendXiaomiMessage 发送小米推送消息，返回小米错误码、错误消息、消息ID和错误
+func (a *AndroidProvider) sendXiaomiMessage(message *XiaomiMessage, device *models.Device) (string, string, string, error) {
+	// 小米推送API endpoint - 向regid推送消息
+	pushURL := "https://api.xmpush.xiaomi.com/v3/message/regid"
+
+	// 构建请求参数
+	data := url.Values{}
+
+	// 添加基本参数
+	data.Set("registration_id", device.Token) // 目标设备Token
+	data.Set("title", message.Title)
+	data.Set("description", message.Description)
+	data.Set("payload", message.Payload)
+	data.Set("notify_type", fmt.Sprintf("%d", message.NotifyType))
+	data.Set("time_to_live", fmt.Sprintf("%d", message.TimeToLive))
+	data.Set("pass_through", fmt.Sprintf("%d", message.PassThrough))
+	data.Set("restricted_package_name", message.RestrictedPackageName) // 应用包名，小米推送必需参数
+
+	if message.NotifyID > 0 {
+		data.Set("notify_id", fmt.Sprintf("%d", message.NotifyID))
+	}
+
+	// 添加通道ID（如果配置了）
+	if message.ChannelID != "" {
+		data.Set("channel_id", message.ChannelID)
+	}
+
+	// 添加扩展数据
+	if len(message.Extra) > 0 {
+		for key, value := range message.Extra {
+			if strValue, ok := value.(string); ok {
+				data.Set("extra."+key, strValue)
+			} else {
+				data.Set("extra."+key, fmt.Sprintf("%v", value))
+			}
+		}
+	}
+
+	// 创建HTTP请求
+	req, err := http.NewRequest("POST", pushURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return "", "", "", fmt.Errorf("创建小米推送请求失败: %v", err)
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", fmt.Sprintf("key=%s", a.config.AppSecret)) // 小米推送使用App Secret作为认证
+
+	// 发送请求
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return "", "", "", fmt.Errorf("小米推送请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// 读取响应
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", "", fmt.Errorf("读取小米推送响应失败: %v", err)
+	}
+
+	// 解析小米响应
+	var xiaomiResp XiaomiResponse
+	if err := json.Unmarshal(body, &xiaomiResp); err != nil {
+		return "", "", "", fmt.Errorf("解析小米推送响应失败: %v, 原始响应: %s", err, string(body))
+	}
+
+	// 检查小米的响应结果
+	if xiaomiResp.Result != "ok" {
+		errorMsg := xiaomiResp.Description
+		if errorMsg == "" {
+			errorMsg = xiaomiResp.Reason
+		}
+		if errorMsg == "" {
+			errorMsg = xiaomiResp.Info
+		}
+		if errorMsg == "" {
+			errorMsg = "未知错误"
+		}
+		return xiaomiResp.Result, errorMsg, "", fmt.Errorf("小米推送失败，结果: %s, 错误码: %d, 错误信息: %s",
+			xiaomiResp.Result, xiaomiResp.Code, errorMsg)
+	}
+
+	// 成功时返回消息ID
+	messageID := xiaomiResp.Data.ID
+	if messageID == "" {
+		messageID = "unknown"
+	}
+
+	return xiaomiResp.Result, "", messageID, nil
+}
+
+// mapXiaomiError 映射小米错误到统一错误码
+func (a *AndroidProvider) mapXiaomiError(result *models.PushResult, xiaomiResult string, xiaomiMsg string) {
+	switch xiaomiResult {
+	case "ok":
+		// 成功，不应该调用此函数
+		result.Success = true
+		return
+	case "InvalidAppSecret":
+		result.ErrorCode = "AUTHENTICATION_ERROR"
+		result.ErrorMessage = "小米认证失败，请检查AppSecret"
+	case "InvalidRegistrationId":
+		result.ErrorCode = "INVALID_TOKEN"
+		result.ErrorMessage = "小米设备注册ID无效：" + xiaomiMsg
+	case "MismatchedSender":
+		result.ErrorCode = "AUTHENTICATION_ERROR"
+		result.ErrorMessage = "小米发送者不匹配，请检查应用配置"
+	case "MessageTooBig":
+		result.ErrorCode = "PAYLOAD_TOO_LARGE"
+		result.ErrorMessage = "小米推送消息过大：" + xiaomiMsg
+	case "MissingRegistration":
+		result.ErrorCode = "INVALID_TOKEN"
+		result.ErrorMessage = "小米设备注册ID缺失"
+	case "InvalidPackageName":
+		result.ErrorCode = "INVALID_ARGUMENT"
+		result.ErrorMessage = "小米应用包名无效：" + xiaomiMsg
+	case "QuotaExceeded":
+		result.ErrorCode = "QUOTA_EXCEEDED"
+		result.ErrorMessage = "小米推送配额超限：" + xiaomiMsg
+	case "DeviceQuotaExceeded":
+		result.ErrorCode = "QUOTA_EXCEEDED"
+		result.ErrorMessage = "小米设备配额超限：" + xiaomiMsg
+	case "NotRegistered":
+		result.ErrorCode = "INVALID_TOKEN"
+		result.ErrorMessage = "小米设备未注册：" + xiaomiMsg
+	case "InvalidTitle":
+		result.ErrorCode = "INVALID_ARGUMENT"
+		result.ErrorMessage = "小米推送标题无效：" + xiaomiMsg
+	case "InvalidDescription":
+		result.ErrorCode = "INVALID_ARGUMENT"
+		result.ErrorMessage = "小米推送内容无效：" + xiaomiMsg
+	case "InvalidPayload":
+		result.ErrorCode = "INVALID_ARGUMENT"
+		result.ErrorMessage = "小米推送载荷无效：" + xiaomiMsg
+	case "InvalidTimeToLive":
+		result.ErrorCode = "INVALID_ARGUMENT"
+		result.ErrorMessage = "小米消息存活时间无效：" + xiaomiMsg
+	case "InternalServerError":
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = "小米推送服务器内部错误：" + xiaomiMsg
+	case "ServerUnavailable":
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = "小米推送服务器不可用：" + xiaomiMsg
+	case "Timeout":
+		result.ErrorCode = "TIMEOUT"
+		result.ErrorMessage = "小米推送请求超时：" + xiaomiMsg
+	case "InvalidUserAccount":
+		result.ErrorCode = "AUTHENTICATION_ERROR"
+		result.ErrorMessage = "小米用户账号无效：" + xiaomiMsg
+	case "ForbiddenByUser":
+		result.ErrorCode = "PERMISSION_DENIED"
+		result.ErrorMessage = "小米用户禁止推送：" + xiaomiMsg
+	case "TargetDisabled":
+		result.ErrorCode = "TARGET_DISABLED"
+		result.ErrorMessage = "小米推送目标已禁用：" + xiaomiMsg
+	case "RestrictedPackageName":
+		result.ErrorCode = "PERMISSION_DENIED"
+		result.ErrorMessage = "小米应用包名受限：" + xiaomiMsg
+	case "InvalidSignature":
+		result.ErrorCode = "AUTHENTICATION_ERROR"
+		result.ErrorMessage = "小米推送签名无效：" + xiaomiMsg
+	default:
+		result.ErrorCode = "UNKNOWN_ERROR"
+		if xiaomiMsg != "" {
+			result.ErrorMessage = fmt.Sprintf("小米推送未知错误 (%s): %s", xiaomiResult, xiaomiMsg)
+		} else {
+			result.ErrorMessage = fmt.Sprintf("小米推送未知错误: %s", xiaomiResult)
+		}
+	}
+}
+
 // sendXiaomi 发送小米推送
 func (a *AndroidProvider) sendXiaomi(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	return &models.PushResult{
+	result := &models.PushResult{
 		AppID:        pushLog.AppID,
 		PushLogID:    pushLog.ID,
 		Success:      false,
-		ErrorCode:    "NOT_IMPLEMENTED",
-		ErrorMessage: "小米推送功能暂未实现，请使用FCM或华为推送",
 		ResponseData: "{}",
 	}
+
+	// 构建小米推送消息
+	message := a.buildXiaomiMessage(device, pushLog)
+
+	// 发送推送消息
+	xiaomiResult, xiaomiMsg, messageID, err := a.sendXiaomiMessage(message, device)
+	if err != nil {
+		// 检查是否是网络错误
+		if xiaomiResult == "" {
+			return a.createNetworkError(pushLog, err)
+		}
+		// 使用小米错误映射
+		a.mapXiaomiError(result, xiaomiResult, xiaomiMsg)
+		return result
+	}
+
+	result.Success = true
+	result.ResponseData = fmt.Sprintf(`{"message_id":"%s"}`, messageID)
+
+	return result
 }
 
 // sendOPPO 发送OPPO推送

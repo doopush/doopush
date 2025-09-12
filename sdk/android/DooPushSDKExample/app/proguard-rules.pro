@@ -24,8 +24,18 @@
 -keep class com.doopush.sdk.** { *; }
 
 # Keep Firebase
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
+# Firebase - 最小化规则
+-keep class com.google.firebase.FirebaseApp { *; }
+-keep class com.google.firebase.messaging.FirebaseMessaging { *; }
+-keep class com.google.firebase.messaging.FirebaseMessagingService { *; }
+-keep class com.google.firebase.messaging.RemoteMessage { *; }
+
+# Google Play Services 核心
+-keep class com.google.android.gms.tasks.Task { *; }
+-keep class com.google.android.gms.tasks.OnCompleteListener { *; }
+
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
 
 # Keep Gson
 -keepattributes Signature
@@ -56,3 +66,7 @@
 -keepclasseswithmembers class * {
     public <init>(android.content.Context, android.util.AttributeSet, int);
 }
+
+# 小米推送
+-keep class com.xiaomi.mipush.sdk.** { *; }
+-dontwarn com.xiaomi.**

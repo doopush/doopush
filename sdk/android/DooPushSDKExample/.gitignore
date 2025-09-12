@@ -86,9 +86,10 @@ lint/tmp/
 *.hprof
 
 # 自定义配置文件
-dootask-services.json
+doopush-services.json
 google-services.json
 agconnect-services.json
+xiaomi-services.json
 
 # 临时文件
 *.tmp

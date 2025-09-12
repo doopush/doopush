@@ -1,0 +1,6 @@
+{
+  "app_id": "your_doopush_app_id",
+  "api_key": "your_doopush_api_key",
+  "base_url": "https://your-doopush-server.com/api/v1",
+  "debug_enabled": true
+}

@@ -128,7 +128,7 @@ func (s *PushService) SendPush(appID uint, userID uint, req PushRequest) ([]mode
 
 // getTargetDevices 获取目标设备
 func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.Device, error) {
-	query := database.DB.Where("app_id = ? AND status = 1", appID)
+	query := database.DB.Preload("App").Where("app_id = ? AND status = 1", appID)
 
 	// 平台筛选
 	if target.Platform != "" {
@@ -186,8 +186,8 @@ func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.
 				return nil, errors.New("获取标签设备失败")
 			}
 		} else {
-			// 兼容旧的TagIDs方式
-			err := database.DB.Table("devices").
+			// 兼容旧的TagIDs方式（预加载App关联）
+			err := database.DB.Preload("App").Table("devices").
 				Joins("JOIN device_tag_maps ON devices.id = device_tag_maps.device_id").
 				Where("devices.app_id = ? AND devices.status = 1 AND device_tag_maps.tag_id IN ?", appID, target.TagIDs).
 				Find(&devices).Error
@@ -223,8 +223,8 @@ func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.
 				}
 			}
 
-			// 应用筛选规则查询设备
-			groupQuery := database.DB.Debug().Where("app_id = ? AND status = 1", appID)
+			// 应用筛选规则查询设备（预加载App关联）
+			groupQuery := database.DB.Preload("App").Debug().Where("app_id = ? AND status = 1", appID)
 			groupQuery = s.applyFilterRules(groupQuery, filterRules)
 
 			var groupDevices []models.Device
@@ -258,9 +258,9 @@ func (s *PushService) processPushLogs(pushLogs []models.PushLog) {
 	pushManager := push.NewPushManager()
 
 	for _, pushLog := range pushLogs {
-		// 获取设备信息
+		// 获取设备信息（预加载App关联）
 		var device models.Device
-		if err := database.DB.First(&device, pushLog.DeviceID).Error; err != nil {
+		if err := database.DB.Preload("App").First(&device, pushLog.DeviceID).Error; err != nil {
 			// 设备不存在，标记失败
 			result := models.PushResult{
 				AppID:        pushLog.AppID,

@@ -31,7 +31,12 @@ data class DooPushConfig(
     /**
      * HMS推送配置 (可选)
      */
-    val hmsConfig: HMSConfig? = null
+    val hmsConfig: HMSConfig? = null,
+    
+    /**
+     * 小米推送配置 (可选)
+     */
+    val xiaomiConfig: XiaomiConfig? = null
     
 ) {
     
@@ -54,6 +59,34 @@ data class DooPushConfig(
                 "AppID=auto(从agconnect-services.json读取)"
             }
             return "HMS配置: $appIdInfo"
+        }
+    }
+    
+    /**
+     * 小米推送配置类
+     * @param appId 小米应用ID
+     * @param appKey 小米应用Key
+     */
+    data class XiaomiConfig(
+        val appId: String = "",
+        val appKey: String = ""
+    ) {
+        fun isValid(): Boolean {
+            return true
+        }
+        
+        fun getSummary(): String {
+            val appIdInfo = if (appId.isNotEmpty()) {
+                "AppID=$appId"
+            } else {
+                "AppID=auto(从xiaomi-services.json读取)"
+            }
+            val appKeyInfo = if (appKey.isNotEmpty()) {
+                "AppKey=${appKey.take(8)}..."
+            } else {
+                "AppKey=auto(从xiaomi-services.json读取)"
+            }
+            return "小米推送配置: $appIdInfo, $appKeyInfo"
         }
     }
     
@@ -87,6 +120,7 @@ data class DooPushConfig(
          * @param apiKey API密钥
          * @param baseURL 服务器基础URL (可选)
          * @param hmsConfig HMS推送配置 (可选)
+         * @param xiaomiConfig 小米推送配置 (可选)
          * @return 配置实例
          * @throws DooPushConfigException 配置参数无效时抛出
          */
@@ -95,13 +129,15 @@ data class DooPushConfig(
             appId: String,
             apiKey: String,
             baseURL: String = DEFAULT_BASE_URL,
-            hmsConfig: HMSConfig? = null
+            hmsConfig: HMSConfig? = null,
+            xiaomiConfig: XiaomiConfig? = null
         ): DooPushConfig {
             val config = DooPushConfig(
                 appId = appId.trim(),
                 apiKey = apiKey.trim(),
                 baseURL = baseURL.trim().trimEnd('/'),
-                hmsConfig = hmsConfig
+                hmsConfig = hmsConfig,
+                xiaomiConfig = xiaomiConfig
             )
             
             config.validate()
@@ -240,6 +276,7 @@ data class DooPushConfig(
         }
         
         val hmsInfo = hmsConfig?.getSummary() ?: "HMS配置: 未配置"
+        val xiaomiInfo = xiaomiConfig?.getSummary() ?: "小米推送配置: 未配置"
         
         return """
             |DooPush配置:
@@ -248,6 +285,7 @@ data class DooPushConfig(
             |  服务器: $baseURL
             |  环境: ${environment.name}
             |  $hmsInfo
+            |  $xiaomiInfo
         """.trimMargin()
     }
     
@@ -256,6 +294,13 @@ data class DooPushConfig(
      */
     fun hasHMSConfig(): Boolean {
         return hmsConfig != null && hmsConfig.isValid()
+    }
+    
+    /**
+     * 检查是否配置了小米推送
+     */
+    fun hasXiaomiConfig(): Boolean {
+        return xiaomiConfig != null && xiaomiConfig.isValid()
     }
     
     override fun toString(): String {

@@ -66,24 +66,32 @@ android {
 }
 
 // 自动复制配置文件任务
-task copyConfigFile {
-    def sourceFile = file('dootask-services.json')
-    def targetFile = file('src/main/assets/dootask-services.json')
-    
-    // 只有当源文件存在时才执行
+tasks.register('copyConfigFile') {
+    def filesToCopy = [
+        'doopush-services.json',
+        'xiaomi-services.json'
+    ]
+    def targetDir = file('src/main/assets')
+
+    // 只有当至少有一个源文件存在时才执行
     onlyIf {
-        sourceFile.exists()
+        filesToCopy.any { file(it).exists() }
     }
-    
+
     doLast {
         // 确保目标目录存在
-        targetFile.parentFile.mkdirs()
-        
-        // 复制文件
-        copy {
-            from sourceFile
-            into targetFile.parent
-            include '*.json'
+        targetDir.mkdirs()
+
+        filesToCopy.each { fileName ->
+            def sourceFile = file(fileName)
+            def targetFile = new File(targetDir, fileName)
+            if (sourceFile.exists()) {
+                copy {
+                    from sourceFile
+                    into targetDir
+                    include fileName
+                }
+            }
         }
     }
 }
@@ -126,6 +134,9 @@ dependencies {
     // Huawei HMS
     implementation 'com.huawei.hms:push:6.11.0.300'
     implementation 'com.huawei.hms:base:6.11.0.300'
+    
+    // 小米推送
+    implementation 'com.umeng.umsdk:xiaomi-push:6.0.1'
     
     // 权限请求
     implementation 'com.github.permissions-dispatcher:permissionsdispatcher:4.9.2'
