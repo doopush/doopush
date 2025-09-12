@@ -445,14 +445,7 @@ func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog
 	// 生成 access token
 	accessToken, err := a.generateFCMAccessToken()
 	if err != nil {
-		return &models.PushResult{
-			AppID:        pushLog.AppID,
-			PushLogID:    pushLog.ID,
-			Success:      false,
-			ErrorCode:    "FCM_AUTH_ERROR",
-			ErrorMessage: fmt.Sprintf("FCM 认证失败: %v", err),
-			ResponseData: "{}",
-		}
+		return a.createAuthError(pushLog, "FCM", err)
 	}
 
 	// 构建自定义数据
@@ -504,14 +497,7 @@ func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog
 	// 序列化载荷
 	payloadBytes, err := json.Marshal(message)
 	if err != nil {
-		return &models.PushResult{
-			AppID:        pushLog.AppID,
-			PushLogID:    pushLog.ID,
-			Success:      false,
-			ErrorCode:    "PAYLOAD_ERROR",
-			ErrorMessage: fmt.Sprintf("载荷序列化失败: %v", err),
-			ResponseData: "{}",
-		}
+		return a.createPayloadError(pushLog, err)
 	}
 
 	// 构建 FCM v1 API 请求 URL
@@ -520,14 +506,7 @@ func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog
 	// 创建 HTTP 请求
 	req, err := http.NewRequest("POST", requestURL, bytes.NewReader(payloadBytes))
 	if err != nil {
-		return &models.PushResult{
-			AppID:        pushLog.AppID,
-			PushLogID:    pushLog.ID,
-			Success:      false,
-			ErrorCode:    "REQUEST_ERROR",
-			ErrorMessage: fmt.Sprintf("创建请求失败: %v", err),
-			ResponseData: "{}",
-		}
+		return a.createRequestError(pushLog, err)
 	}
 
 	// 设置请求头
@@ -537,28 +516,14 @@ func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog
 	// 发送请求
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return &models.PushResult{
-			AppID:        pushLog.AppID,
-			PushLogID:    pushLog.ID,
-			Success:      false,
-			ErrorCode:    "NETWORK_ERROR",
-			ErrorMessage: fmt.Sprintf("网络请求失败: %v", err),
-			ResponseData: "{}",
-		}
+		return a.createNetworkError(pushLog, err)
 	}
 	defer resp.Body.Close()
 
 	// 读取响应
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &models.PushResult{
-			AppID:        pushLog.AppID,
-			PushLogID:    pushLog.ID,
-			Success:      false,
-			ErrorCode:    "RESPONSE_ERROR",
-			ErrorMessage: fmt.Sprintf("读取响应失败: %v", err),
-			ResponseData: "{}",
-		}
+		return a.createResponseError(pushLog, err)
 	}
 
 	// 解析响应状态
@@ -573,26 +538,8 @@ func (a *AndroidProvider) sendFCM(device *models.Device, pushLog *models.PushLog
 		fmt.Printf("FCM 推送成功: %s -> %s\n", device.Token[:min(20, len(device.Token))]+"...", pushLog.Title)
 	} else {
 		result.Success = false
-		result.ErrorCode = fmt.Sprintf("HTTP_%d", resp.StatusCode)
-
-		// 尝试解析 FCM 错误响应
-		var fcmError struct {
-			Error struct {
-				Code    int    `json:"code"`
-				Message string `json:"message"`
-				Status  string `json:"status"`
-			} `json:"error"`
-		}
-
-		if err := json.Unmarshal(respBody, &fcmError); err == nil && fcmError.Error.Message != "" {
-			result.ErrorMessage = fcmError.Error.Message
-			if fcmError.Error.Status != "" {
-				result.ErrorCode = fcmError.Error.Status
-			}
-		} else {
-			result.ErrorMessage = fmt.Sprintf("FCM 推送失败，HTTP 状态码: %d", resp.StatusCode)
-		}
-
+		// 使用统一错误处理
+		a.mapFCMError(result, resp.StatusCode, respBody)
 		fmt.Printf("FCM 推送失败: %s, 错误: %s\n", result.ErrorCode, result.ErrorMessage)
 	}
 
@@ -619,19 +566,21 @@ func (a *AndroidProvider) sendHuawei(device *models.Device, pushLog *models.Push
 	// 获取 access token
 	accessToken, err := a.getHuaweiAccessToken()
 	if err != nil {
-		result.ErrorCode = "AUTH_ERROR"
-		result.ErrorMessage = fmt.Sprintf("华为认证失败: %v", err)
-		return result
+		return a.createAuthError(pushLog, "华为", err)
 	}
 
 	// 构建推送消息
 	message := a.buildHuaweiMessage(device, pushLog)
 
 	// 发送推送
-	err = a.sendHuaweiMessage(accessToken, message)
+	huaweiCode, huaweiMsg, err := a.sendHuaweiMessage(accessToken, message)
 	if err != nil {
-		result.ErrorCode = "SEND_ERROR"
-		result.ErrorMessage = fmt.Sprintf("华为推送发送失败: %v", err)
+		// 检查是否是网络错误
+		if huaweiCode == "" {
+			return a.createNetworkError(pushLog, err)
+		}
+		// 使用华为错误映射
+		a.mapHuaweiError(result, huaweiCode, huaweiMsg)
 		return result
 	}
 
@@ -719,11 +668,42 @@ func (a *AndroidProvider) buildHuaweiMessage(device *models.Device, pushLog *mod
 		}
 	}
 
+	// 构建自定义数据字段，包含统一标识字段
+	dataMap := make(map[string]interface{})
+
+	// 添加统计标识字段，保持与APNs和FCM一致
+	dataMap["badge"] = pushLog.Badge
+	dataMap["push_log_id"] = pushLog.ID
+	if pushLog.DedupKey != "" {
+		dataMap["dedup_key"] = pushLog.DedupKey
+	}
+	dataMap["dp_source"] = "doopush"
+
+	// 解析并合并自定义数据
+	if pushLog.Payload != "" && pushLog.Payload != "{}" {
+		var customData map[string]interface{}
+		if err := json.Unmarshal([]byte(pushLog.Payload), &customData); err == nil {
+			// 合并自定义数据，但不覆盖统一标识字段
+			for k, v := range customData {
+				if k != "push_log_id" && k != "dp_source" && k != "badge" && k != "huawei" {
+					dataMap[k] = v
+				}
+			}
+		}
+	}
+
+	// 序列化数据为JSON字符串（华为API要求）
+	dataJSON, err := json.Marshal(dataMap)
+	if err != nil {
+		dataJSON = []byte("{}")
+	}
+
 	// 构建Android配置 - 添加必需的ClickAction和华为特有参数
 	androidConfig := &HuaweiAndroidConfig{
 		Urgency:  "HIGH",
 		TTL:      "86400s",
-		Category: category, // 华为自定义分类，避免频控
+		Category: category,         // 华为自定义分类，避免频控
+		Data:     string(dataJSON), // 在Android配置中也设置数据，确保数据传递
 		Notification: &HuaweiAndroidNotification{
 			Title:        pushLog.Title,
 			Body:         pushLog.Content,
@@ -753,6 +733,7 @@ func (a *AndroidProvider) buildHuaweiMessage(device *models.Device, pushLog *mod
 		Notification: notification,
 		Android:      androidConfig,
 		Token:        []string{device.Token},
+		Data:         string(dataJSON), // 华为推送的data字段为字符串格式
 	}
 
 	// 返回完整的请求结构
@@ -769,15 +750,15 @@ type HuaweiResponse struct {
 	RequestID string `json:"requestId"`
 }
 
-// sendHuaweiMessage 发送华为推送消息
-func (a *AndroidProvider) sendHuaweiMessage(accessToken string, message *HuaweiMessageRequest) error {
+// sendHuaweiMessage 发送华为推送消息，返回华为错误码、错误消息和错误
+func (a *AndroidProvider) sendHuaweiMessage(accessToken string, message *HuaweiMessageRequest) (string, string, error) {
 	// 华为推送API endpoint
 	pushURL := fmt.Sprintf("https://push-api.cloud.huawei.com/v1/%s/messages:send", a.config.AppID)
 
 	// 序列化消息
 	messageJSON, err := json.Marshal(message)
 	if err != nil {
-		return fmt.Errorf("序列化华为推送消息失败: %v", err)
+		return "", "", fmt.Errorf("序列化华为推送消息失败: %v", err)
 	}
 
 	// 输出调试信息
@@ -786,7 +767,7 @@ func (a *AndroidProvider) sendHuaweiMessage(accessToken string, message *HuaweiM
 	// 创建请求
 	req, err := http.NewRequest("POST", pushURL, bytes.NewBuffer(messageJSON))
 	if err != nil {
-		return fmt.Errorf("创建华为推送请求失败: %v", err)
+		return "", "", fmt.Errorf("创建华为推送请求失败: %v", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
@@ -795,20 +776,20 @@ func (a *AndroidProvider) sendHuaweiMessage(accessToken string, message *HuaweiM
 	// 发送请求
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("华为推送请求失败: %v", err)
+		return "", "", fmt.Errorf("华为推送请求失败: %v", err)
 	}
 	defer resp.Body.Close()
 
 	// 读取响应
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("读取华为推送响应失败: %v", err)
+		return "", "", fmt.Errorf("读取华为推送响应失败: %v", err)
 	}
 
 	// 解析华为响应
 	var huaweiResp HuaweiResponse
 	if err := json.Unmarshal(body, &huaweiResp); err != nil {
-		return fmt.Errorf("解析华为推送响应失败: %v, 原始响应: %s", err, string(body))
+		return "", "", fmt.Errorf("解析华为推送响应失败: %v, 原始响应: %s", err, string(body))
 	}
 
 	// 输出响应用于调试
@@ -816,65 +797,278 @@ func (a *AndroidProvider) sendHuaweiMessage(accessToken string, message *HuaweiM
 
 	// 检查华为的响应码
 	if huaweiResp.Code != "80000000" {
-		return fmt.Errorf("华为推送失败，错误码: %s, 错误信息: %s", huaweiResp.Code, huaweiResp.Msg)
+		return huaweiResp.Code, huaweiResp.Msg, fmt.Errorf("华为推送失败，错误码: %s, 错误信息: %s", huaweiResp.Code, huaweiResp.Msg)
 	}
 
-	return nil
+	return huaweiResp.Code, huaweiResp.Msg, nil
 }
 
 // sendXiaomi 发送小米推送
 func (a *AndroidProvider) sendXiaomi(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	result := &models.PushResult{
+	return &models.PushResult{
 		AppID:        pushLog.AppID,
 		PushLogID:    pushLog.ID,
-		Success:      time.Now().UnixNano()%100 < 85, // 85%成功率
-		ResponseData: "{}",                           // 初始化为空 JSON 对象
+		Success:      false,
+		ErrorCode:    "NOT_IMPLEMENTED",
+		ErrorMessage: "小米推送功能暂未实现，请使用FCM或华为推送",
+		ResponseData: "{}",
 	}
-
-	if result.Success {
-		fmt.Printf("模拟小米推送成功: %s -> %s (badge: %d)\n", device.Token[:20]+"...", pushLog.Title, pushLog.Badge)
-	} else {
-		result.ErrorCode = "MIPUSH_ERROR"
-		result.ErrorMessage = "小米推送服务暂时不可用"
-	}
-
-	return result
 }
 
 // sendOPPO 发送OPPO推送
 func (a *AndroidProvider) sendOPPO(device *models.Device, pushLog *models.PushLog) *models.PushResult {
+	return &models.PushResult{
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      false,
+		ErrorCode:    "NOT_IMPLEMENTED",
+		ErrorMessage: "OPPO推送功能暂未实现，请使用FCM或华为推送",
+		ResponseData: "{}",
+	}
+}
+
+// sendVIVO 发送VIVO推送
+func (a *AndroidProvider) sendVIVO(device *models.Device, pushLog *models.PushLog) *models.PushResult {
+	return &models.PushResult{
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      false,
+		ErrorCode:    "NOT_IMPLEMENTED",
+		ErrorMessage: "VIVO推送功能暂未实现，请使用FCM或华为推送",
+		ResponseData: "{}",
+	}
+}
+
+// 统一错误处理和错误码映射
+
+// mapFCMError 映射FCM错误到统一错误码
+func (a *AndroidProvider) mapFCMError(result *models.PushResult, statusCode int, respBody []byte) {
+	// 先尝试解析 FCM 错误响应
+	var fcmError struct {
+		Error struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+			Status  string `json:"status"`
+			Details []struct {
+				Type        string `json:"@type"`
+				ErrorCode   string `json:"errorCode"`
+				MessageType string `json:"messageType,omitempty"`
+			} `json:"details,omitempty"`
+		} `json:"error"`
+	}
+
+	// HTTP状态码错误映射
+	switch statusCode {
+	case 400:
+		result.ErrorCode = "INVALID_ARGUMENT"
+		result.ErrorMessage = "请求参数无效"
+	case 401:
+		result.ErrorCode = "AUTHENTICATION_ERROR"
+		result.ErrorMessage = "认证失败，请检查服务账号密钥"
+	case 403:
+		result.ErrorCode = "PERMISSION_DENIED"
+		result.ErrorMessage = "权限不足或项目配置错误"
+	case 404:
+		result.ErrorCode = "NOT_FOUND"
+		result.ErrorMessage = "API端点不存在或项目ID错误"
+	case 429:
+		result.ErrorCode = "QUOTA_EXCEEDED"
+		result.ErrorMessage = "发送频率超限，请稍后重试"
+	case 500, 502, 503, 504:
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = "FCM服务器暂时不可用，请稍后重试"
+	default:
+		result.ErrorCode = fmt.Sprintf("HTTP_%d", statusCode)
+		result.ErrorMessage = fmt.Sprintf("FCM 推送失败，HTTP 状态码: %d", statusCode)
+	}
+
+	// 尝试解析详细错误信息
+	if err := json.Unmarshal(respBody, &fcmError); err == nil && fcmError.Error.Message != "" {
+		// FCM特定错误状态码映射
+		if fcmError.Error.Status != "" {
+			switch fcmError.Error.Status {
+			case "INVALID_ARGUMENT":
+				result.ErrorCode = "INVALID_ARGUMENT"
+				result.ErrorMessage = "请求参数无效：" + fcmError.Error.Message
+			case "PERMISSION_DENIED":
+				result.ErrorCode = "PERMISSION_DENIED"
+				result.ErrorMessage = "权限不足：" + fcmError.Error.Message
+			case "NOT_FOUND":
+				result.ErrorCode = "NOT_FOUND"
+				result.ErrorMessage = "资源不存在：" + fcmError.Error.Message
+			case "RESOURCE_EXHAUSTED":
+				result.ErrorCode = "QUOTA_EXCEEDED"
+				result.ErrorMessage = "资源耗尽：" + fcmError.Error.Message
+			case "UNAUTHENTICATED":
+				result.ErrorCode = "AUTHENTICATION_ERROR"
+				result.ErrorMessage = "认证失败：" + fcmError.Error.Message
+			case "UNAVAILABLE":
+				result.ErrorCode = "SERVER_ERROR"
+				result.ErrorMessage = "服务不可用：" + fcmError.Error.Message
+			case "INTERNAL":
+				result.ErrorCode = "SERVER_ERROR"
+				result.ErrorMessage = "内部服务器错误：" + fcmError.Error.Message
+			default:
+				result.ErrorCode = fcmError.Error.Status
+				result.ErrorMessage = fcmError.Error.Message
+			}
+		}
+
+		// 检查详细错误码
+		if len(fcmError.Error.Details) > 0 {
+			for _, detail := range fcmError.Error.Details {
+				switch detail.ErrorCode {
+				case "UNREGISTERED":
+					result.ErrorCode = "INVALID_TOKEN"
+					result.ErrorMessage = "设备token已失效，请重新注册"
+				case "INVALID_REGISTRATION":
+					result.ErrorCode = "INVALID_TOKEN"
+					result.ErrorMessage = "设备token格式无效"
+				case "SENDER_ID_MISMATCH":
+					result.ErrorCode = "SENDER_MISMATCH"
+					result.ErrorMessage = "发送方ID不匹配"
+				case "MESSAGE_TOO_BIG":
+					result.ErrorCode = "PAYLOAD_TOO_LARGE"
+					result.ErrorMessage = "消息载荷过大"
+				case "INVALID_DATA_KEY":
+					result.ErrorCode = "INVALID_DATA_KEY"
+					result.ErrorMessage = "数据键无效"
+				case "INVALID_TTL":
+					result.ErrorCode = "INVALID_TTL"
+					result.ErrorMessage = "TTL设置无效"
+				case "UNAVAILABLE":
+					result.ErrorCode = "SERVER_ERROR"
+					result.ErrorMessage = "FCM服务暂时不可用"
+				case "INTERNAL":
+					result.ErrorCode = "SERVER_ERROR"
+					result.ErrorMessage = "FCM内部错误"
+				}
+			}
+		}
+	}
+}
+
+// mapHuaweiError 映射华为错误到统一错误码
+func (a *AndroidProvider) mapHuaweiError(result *models.PushResult, huaweiCode string, huaweiMsg string) {
+	switch huaweiCode {
+	case "80000000":
+		// 成功，不应该调用此函数
+		result.Success = true
+		return
+	case "80100000":
+		result.ErrorCode = "AUTHENTICATION_ERROR"
+		result.ErrorMessage = "华为认证失败，请检查AppId和AppSecret"
+	case "80100001":
+		result.ErrorCode = "INVALID_ARGUMENT"
+		result.ErrorMessage = "华为推送参数错误：" + huaweiMsg
+	case "80100002":
+		result.ErrorCode = "INVALID_TOKEN"
+		result.ErrorMessage = "华为设备token无效：" + huaweiMsg
+	case "80100003":
+		result.ErrorCode = "QUOTA_EXCEEDED"
+		result.ErrorMessage = "华为推送频率超限：" + huaweiMsg
+	case "80100013":
+		result.ErrorCode = "PERMISSION_DENIED"
+		result.ErrorMessage = "华为推送权限不足：" + huaweiMsg
+	case "80200001":
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = "华为推送服务器错误：" + huaweiMsg
+	case "80200003":
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = "华为推送服务暂时不可用：" + huaweiMsg
+	case "80300002":
+		result.ErrorCode = "INVALID_TOKEN"
+		result.ErrorMessage = "华为设备token已失效：" + huaweiMsg
+	case "80300007":
+		result.ErrorCode = "PAYLOAD_TOO_LARGE"
+		result.ErrorMessage = "华为推送消息过大：" + huaweiMsg
+	case "80300008":
+		result.ErrorCode = "INVALID_TTL"
+		result.ErrorMessage = "华为推送TTL设置无效：" + huaweiMsg
+	case "80300010":
+		result.ErrorCode = "QUOTA_EXCEEDED"
+		result.ErrorMessage = "华为推送次数超限：" + huaweiMsg
+	default:
+		result.ErrorCode = "HUAWEI_ERROR_" + huaweiCode
+		result.ErrorMessage = fmt.Sprintf("华为推送失败，错误码: %s, 错误信息: %s", huaweiCode, huaweiMsg)
+	}
+}
+
+// createNetworkError 创建网络错误结果
+func (a *AndroidProvider) createNetworkError(pushLog *models.PushLog, err error) *models.PushResult {
 	result := &models.PushResult{
 		AppID:        pushLog.AppID,
 		PushLogID:    pushLog.ID,
-		Success:      time.Now().UnixNano()%100 < 75, // 75%成功率
-		ResponseData: "{}",                           // 初始化为空 JSON 对象
+		Success:      false,
+		ResponseData: "{}",
 	}
 
-	if result.Success {
-		fmt.Printf("模拟OPPO推送成功: %s -> %s (badge: %d)\n", device.Token[:20]+"...", pushLog.Title, pushLog.Badge)
+	// 检查错误类型
+	errStr := err.Error()
+	if strings.Contains(errStr, "timeout") || strings.Contains(errStr, "deadline exceeded") {
+		result.ErrorCode = "NETWORK_TIMEOUT"
+		result.ErrorMessage = "网络请求超时，请稍后重试"
+	} else if strings.Contains(errStr, "connection refused") {
+		result.ErrorCode = "CONNECTION_REFUSED"
+		result.ErrorMessage = "连接被拒绝，请检查网络设置"
+	} else if strings.Contains(errStr, "no such host") {
+		result.ErrorCode = "DNS_ERROR"
+		result.ErrorMessage = "DNS解析失败，请检查网络连接"
+	} else if strings.Contains(errStr, "certificate") || strings.Contains(errStr, "tls") {
+		result.ErrorCode = "TLS_ERROR"
+		result.ErrorMessage = "TLS/SSL连接错误"
 	} else {
-		result.ErrorCode = "OPPO_ERROR"
-		result.ErrorMessage = "OPPO推送服务暂时不可用"
+		result.ErrorCode = "NETWORK_ERROR"
+		result.ErrorMessage = fmt.Sprintf("网络请求失败: %v", err)
 	}
 
 	return result
 }
 
-// sendVIVO 发送VIVO推送
-func (a *AndroidProvider) sendVIVO(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	result := &models.PushResult{
+// createAuthError 创建认证错误结果
+func (a *AndroidProvider) createAuthError(pushLog *models.PushLog, provider string, err error) *models.PushResult {
+	return &models.PushResult{
 		AppID:        pushLog.AppID,
 		PushLogID:    pushLog.ID,
-		Success:      time.Now().UnixNano()%100 < 70, // 70%成功率
-		ResponseData: "{}",                           // 初始化为空 JSON 对象
+		Success:      false,
+		ErrorCode:    "AUTHENTICATION_ERROR",
+		ErrorMessage: fmt.Sprintf("%s 认证失败: %v", provider, err),
+		ResponseData: "{}",
 	}
+}
 
-	if result.Success {
-		fmt.Printf("模拟VIVO推送成功: %s -> %s (badge: %d)\n", device.Token[:20]+"...", pushLog.Title, pushLog.Badge)
-	} else {
-		result.ErrorCode = "VIVO_ERROR"
-		result.ErrorMessage = "VIVO推送服务暂时不可用"
+// createPayloadError 创建载荷错误结果
+func (a *AndroidProvider) createPayloadError(pushLog *models.PushLog, err error) *models.PushResult {
+	return &models.PushResult{
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      false,
+		ErrorCode:    "PAYLOAD_ERROR",
+		ErrorMessage: fmt.Sprintf("载荷序列化失败: %v", err),
+		ResponseData: "{}",
 	}
+}
 
-	return result
+// createRequestError 创建请求构建错误结果
+func (a *AndroidProvider) createRequestError(pushLog *models.PushLog, err error) *models.PushResult {
+	return &models.PushResult{
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      false,
+		ErrorCode:    "REQUEST_ERROR",
+		ErrorMessage: fmt.Sprintf("创建请求失败: %v", err),
+		ResponseData: "{}",
+	}
+}
+
+// createResponseError 创建响应读取错误结果
+func (a *AndroidProvider) createResponseError(pushLog *models.PushLog, err error) *models.PushResult {
+	return &models.PushResult{
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      false,
+		ErrorCode:    "RESPONSE_ERROR",
+		ErrorMessage: fmt.Sprintf("读取响应失败: %v", err),
+		ResponseData: "{}",
+	}
 }

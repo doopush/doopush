@@ -254,6 +254,7 @@ func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) 
 	}
 
 	// 注入统计标识，供客户端上报使用
+	payloadMap["badge"] = pushLog.Badge
 	payloadMap["push_log_id"] = pushLog.ID
 	if pushLog.DedupKey != "" {
 		payloadMap["dedup_key"] = pushLog.DedupKey

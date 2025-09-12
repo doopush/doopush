@@ -478,7 +478,7 @@ export function PushConfig() {
                     <div>
                       <h4 className="font-medium mb-3">Android 推送配置</h4>
                       <ul className="text-sm text-muted-foreground space-y-2">
-                        <li>• FCM: 需要 google-services.json 或服务器密钥</li>
+                        <li>• FCM: 需要 Firebase 服务账号密钥 JSON</li>
                         <li>• 华为: HMS Core App ID 和 App Secret</li>
                         <li>• 小米: AppID、AppKey 和 AppSecret</li>
                         <li>• OPPO/VIVO: AppID、AppKey 和 MasterSecret</li>

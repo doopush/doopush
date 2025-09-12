@@ -425,13 +425,13 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                         <FormLabel>服务账号密钥 *</FormLabel>
                         <FormControl>
                           <Textarea 
-                            placeholder="粘贴完整的 Firebase 服务账号密钥 JSON 文件内容" 
-                            className="min-h-[120px] font-mono text-sm"
+                            placeholder={`粘贴完整的 Firebase 服务账号密钥 JSON 文件内容，格式如下：\n{\n\t"type": "service_account",\n\t"project_id": "your-project-id",\n\t"private_key_id": "...",\n\t"private_key": "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n",\n\t"client_email": "...@your-project-id.iam.gserviceaccount.com",\n\t...\n}`} 
+                            className="min-h-[140px] font-mono text-sm"
                             {...field} 
                           />
                         </FormControl>
                         <FormDescription>
-                          从 Firebase 控制台 → 项目设置 → 服务账号 → 生成新的私钥获取的完整 JSON 文件内容（包含项目 ID）
+                          从 Firebase 控制台 → 项目设置 → 服务账号 → 生成新的私钥，获取的完整 JSON 文件内容
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

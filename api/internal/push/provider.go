@@ -194,30 +194,6 @@ func (m *MockAPNsProvider) SendPush(device *models.Device, pushLog *models.PushL
 	return result
 }
 
-// MockAndroidProvider 模拟Android提供者 (用于开发测试)
-type MockAndroidProvider struct {
-	channel string
-}
-
-func (m *MockAndroidProvider) SendPush(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	result := &models.PushResult{
-		AppID:        pushLog.AppID,
-		PushLogID:    pushLog.ID,
-		Success:      time.Now().UnixNano()%10 < 8, // 80%成功率
-		ResponseData: "{}",                         // 初始化为空 JSON 对象
-	}
-
-	if result.Success {
-		fmt.Printf("✅ 模拟Android(%s)推送成功: [%s] %s\n", m.channel, pushLog.Title, pushLog.Content)
-	} else {
-		result.ErrorCode = "MOCK_FAILURE"
-		result.ErrorMessage = fmt.Sprintf("模拟%s推送失败", m.channel)
-		fmt.Printf("❌ 模拟Android(%s)推送失败: %s\n", m.channel, result.ErrorMessage)
-	}
-
-	return result
-}
-
 // ValidateConfig 验证推送配置
 func (m *PushManager) ValidateConfig(platform, channel string, configJSON string) error {
 	switch platform {
@@ -369,8 +345,30 @@ func (m *PushManager) TestConfigWithDevice(appID uint, title, content, platform,
 		normalizeConfig(&apnsConfig)
 		provider, err = NewAPNsProviderWithConfig(apnsConfig)
 	case "android":
-		provider = NewAndroidProvider(channel)
-		// TODO: 实现真实的Android推送提供者创建
+		var androidConfig AndroidConfig
+		if err := json.Unmarshal([]byte(configJSON), &androidConfig); err != nil {
+			return &models.PushResult{
+				Success:      false,
+				ErrorCode:    "CONFIG_ERROR",
+				ErrorMessage: "Android配置解析失败: " + err.Error(),
+				ResponseData: "{}", // 初始化为空 JSON 对象
+			}
+		}
+
+		// 根据通道类型创建提供者
+		switch channel {
+		case "fcm":
+			provider, err = m.createFCMProvider(androidConfig)
+		case "huawei":
+			provider, err = m.createHuaweiProvider(androidConfig)
+		default:
+			return &models.PushResult{
+				Success:      false,
+				ErrorCode:    "UNSUPPORTED_CHANNEL",
+				ErrorMessage: "暂不支持的 Android 推送通道: " + channel,
+				ResponseData: "{}", // 初始化为空 JSON 对象
+			}
+		}
 	default:
 		return &models.PushResult{
 			Success:      false,

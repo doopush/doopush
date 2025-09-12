@@ -173,9 +173,9 @@ func (c *ConfigController) GetAppConfigs(ctx *gin.Context) {
 
 			// Android配置：隐藏各种secret字段
 			if configs[i].Platform == "android" {
-				// FCM: 隐藏server_key
-				if _, exists := configMap["server_key"]; exists {
-					configMap["server_key"] = "[REDACTED]"
+				// FCM: 隐藏service_account_key
+				if _, exists := configMap["service_account_key"]; exists {
+					configMap["service_account_key"] = "[REDACTED]"
 					modified = true
 				}
 				// 华为、小米、VIVO等：隐藏app_secret

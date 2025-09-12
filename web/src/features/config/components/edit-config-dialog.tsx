@@ -121,8 +121,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
         } else if (config.platform === 'android') {
           switch (config.channel) {
             case 'fcm':
-              checkAndSetField('server_key', configData.server_key)
-              checkAndSetField('sender_id', configData.sender_id)
+              checkAndSetField('service_account_key', configData.service_account_key)
               break
             case 'huawei':
               checkAndSetField('app_id', configData.app_id)
@@ -362,27 +361,27 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                     )}
                   />
 
-              <FormField
-                control={form.control}
+                  <FormField
+                    control={form.control}
                     name="private_key"
-                render={({ field }) => (
-                  <FormItem>
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Private Key *</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                            placeholder={getFieldPlaceholder('private_key', '-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----')}
-                        className="resize-none font-mono text-sm"
+                        <FormControl>
+                          <Textarea 
+                            placeholder={getFieldPlaceholder('private_key', '')}
+                            className="resize-none font-mono text-sm"
                             rows={6}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                          {getFieldDescription('private_key', 'APNs私钥内容，包含BEGIN和END标签')}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('private_key', '')}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
-                    )}
-                  />
+                        )}
+                      />
 
                   <FormField
                     control={form.control}
@@ -418,13 +417,13 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                         <FormLabel>服务账号密钥 *</FormLabel>
                         <FormControl>
                           <Textarea 
-                            placeholder="粘贴完整的 Firebase 服务账号密钥 JSON 文件内容" 
-                            className="min-h-[120px] font-mono text-sm"
+                            placeholder={getFieldPlaceholder('service_account_key', '')}
+                            className="min-h-[80px] font-mono text-sm"
                             {...field} 
                           />
                         </FormControl>
                         <FormDescription>
-                          从 Firebase 控制台 → 项目设置 → 服务账号 → 生成新的私钥获取的完整 JSON 文件内容（包含项目 ID）
+                          {getFieldDescription('service_account_key', '')}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
