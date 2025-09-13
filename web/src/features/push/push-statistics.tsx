@@ -444,7 +444,12 @@ export default function PushStatistics() {
                             outerRadius={80}
                             fill="#8884d8"
                             dataKey="value"
-                            label={({ name, percent }) => `${name} ${(percent ? (percent * 100).toFixed(0) : 0)}%`}
+                            label={(props) => {
+                              const { name, value } = props as unknown as { name?: string; value?: number }
+                              const total = platformData.reduce((sum, item) => sum + item.value, 0)
+                              const pct = value && total > 0 ? ((value / total) * 100).toFixed(0) : '0'
+                              return `${name ?? ''} ${pct}%`
+                            }}
                           >
                             {platformData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.color} />
