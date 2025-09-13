@@ -120,6 +120,8 @@ func (m *PushManager) createAndroidProvider(app *models.App, channel string) (Pu
 		return m.createHuaweiProvider(androidConfig)
 	case "xiaomi":
 		return m.createXiaomiProvider(androidConfig)
+	case "oppo":
+		return m.createOppoProvider(androidConfig)
 	default:
 		return nil, fmt.Errorf("暂不支持的 Android 推送通道: %s", channel)
 	}
@@ -169,6 +171,20 @@ func (m *PushManager) createXiaomiProvider(config AndroidConfig) (PushProvider, 
 		return nil, fmt.Errorf("小米推送配置缺少 app_secret")
 	}
 	return NewAndroidProviderWithConfig("xiaomi", config), nil
+}
+
+// createOppoProvider 创建OPPO推送提供者
+func (m *PushManager) createOppoProvider(config AndroidConfig) (PushProvider, error) {
+	if config.AppID == "" {
+		return nil, fmt.Errorf("OPPO推送配置缺少 app_id")
+	}
+	if config.AppKey == "" {
+		return nil, fmt.Errorf("OPPO推送配置缺少 app_key")
+	}
+	if config.AppSecret == "" {
+		return nil, fmt.Errorf("OPPO推送配置缺少 app_secret")
+	}
+	return NewAndroidProviderWithConfig("oppo", config), nil
 }
 
 // SendPush 统一推送接口
@@ -317,6 +333,30 @@ func (m *PushManager) validateAndroidConfig(channel, configJSON string) error {
 		}
 		return nil
 
+	case "xiaomi":
+		if androidConfig.AppID == "" {
+			return fmt.Errorf("小米推送配置缺少 app_id")
+		}
+		if androidConfig.AppKey == "" {
+			return fmt.Errorf("小米推送配置缺少 app_key")
+		}
+		if androidConfig.AppSecret == "" {
+			return fmt.Errorf("小米推送配置缺少 app_secret")
+		}
+		return nil
+
+	case "oppo":
+		if androidConfig.AppID == "" {
+			return fmt.Errorf("OPPO推送配置缺少 app_id")
+		}
+		if androidConfig.AppKey == "" {
+			return fmt.Errorf("OPPO推送配置缺少 app_key")
+		}
+		if androidConfig.AppSecret == "" {
+			return fmt.Errorf("OPPO推送配置缺少 app_secret")
+		}
+		return nil
+
 	default:
 		return fmt.Errorf("暂不支持的 Android 推送通道: %s", channel)
 	}
@@ -377,6 +417,10 @@ func (m *PushManager) TestConfigWithDevice(appID uint, title, content, platform,
 			provider, err = m.createFCMProvider(androidConfig)
 		case "huawei":
 			provider, err = m.createHuaweiProvider(androidConfig)
+		case "xiaomi":
+			provider, err = m.createXiaomiProvider(androidConfig)
+		case "oppo":
+			provider, err = m.createOppoProvider(androidConfig)
 		default:
 			return &models.PushResult{
 				Success:      false,

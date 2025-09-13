@@ -62,6 +62,14 @@ data class DooPushError(
         const val XIAOMI_CONFIG_INVALID = 3205
         const val XIAOMI_PUSH_ERROR = 3206
         
+        // OPPO推送相关错误码
+        const val OPPO_NOT_AVAILABLE = 3301
+        const val OPPO_INIT_FAILED = 3302
+        const val OPPO_TOKEN_FETCH_FAILED = 3303
+        const val OPPO_REGISTER_FAILED = 3304
+        const val OPPO_CONFIG_INVALID = 3305
+        const val OPPO_PUSH_ERROR = 3306
+        
         // 权限相关错误码
         const val PERMISSION_DENIED = 4001
         const val NOTIFICATION_PERMISSION_DENIED = 4002
@@ -267,6 +275,72 @@ data class DooPushError(
             return DooPushError(
                 code = XIAOMI_PUSH_ERROR,
                 message = "小米推送操作失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建OPPO推送不可用错误
+         */
+        fun oppoNotAvailable(): DooPushError {
+            return DooPushError(
+                code = OPPO_NOT_AVAILABLE,
+                message = "OPPO推送服务不可用，可能是设备不支持或SDK未集成"
+            )
+        }
+        
+        /**
+         * 创建OPPO推送初始化失败错误
+         */
+        fun oppoInitFailed(details: String? = null): DooPushError {
+            return DooPushError(
+                code = OPPO_INIT_FAILED,
+                message = "OPPO推送初始化失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建OPPO推送Token获取失败错误
+         */
+        fun oppoTokenFailed(cause: Throwable? = null): DooPushError {
+            return DooPushError(
+                code = OPPO_TOKEN_FETCH_FAILED,
+                message = "OPPO推送Token获取失败",
+                details = cause?.message,
+                cause = cause
+            )
+        }
+        
+        /**
+         * 创建OPPO推送注册失败错误
+         */
+        fun oppoRegisterFailed(details: String? = null): DooPushError {
+            return DooPushError(
+                code = OPPO_REGISTER_FAILED,
+                message = "OPPO推送注册失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建OPPO推送配置无效错误
+         */
+        fun oppoConfigInvalid(details: String? = null): DooPushError {
+            return DooPushError(
+                code = OPPO_CONFIG_INVALID,
+                message = "OPPO推送配置无效",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建OPPO推送操作错误
+         */
+        fun oppoPushError(details: String? = null): DooPushError {
+            return DooPushError(
+                code = OPPO_PUSH_ERROR,
+                message = "OPPO推送操作失败",
                 details = details
             )
         }

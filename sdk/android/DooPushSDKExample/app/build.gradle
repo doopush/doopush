@@ -69,7 +69,8 @@ android {
 tasks.register('copyConfigFile') {
     def filesToCopy = [
         'doopush-services.json',
-        'xiaomi-services.json'
+        'xiaomi-services.json',
+        'oppo-services.json'
     ]
     def targetDir = file('src/main/assets')
 
@@ -110,6 +111,15 @@ kotlin {
 dependencies {
     // DooPush SDK 本地依赖
     implementation project(':doopush-sdk')
+    
+    // 本地 aar 文件依赖（请根据实际文件名进行修改）
+    // 格式：implementation(name: 'aar文件名(不含.aar扩展名)', ext: 'aar')
+    // 示例：
+    // implementation(name: 'oppo-push-sdk', ext: 'aar')
+    // implementation(name: 'vivo-push-sdk', ext: 'aar')
+    
+    // 批量加载 libs 目录中的所有 aar 文件（可选方案）
+     implementation fileTree(dir: 'libs', include: ['*.aar'])
     
     // Android 核心库
     implementation 'androidx.core:core-ktx:1.12.0'

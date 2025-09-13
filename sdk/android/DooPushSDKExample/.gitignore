@@ -90,6 +90,7 @@ doopush-services.json
 google-services.json
 agconnect-services.json
 xiaomi-services.json
+oppo-services.json
 
 # 临时文件
 *.tmp

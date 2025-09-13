@@ -297,6 +297,30 @@ type FirebaseServiceAccount struct {
 
 // 小米推送相关数据结构
 
+// OppoMessage OPPO推送消息结构
+type OppoMessage struct {
+	AppID            string                 `json:"app_id"`                // OPPO应用ID
+	AppKey           string                 `json:"app_key"`               // OPPO应用Key
+	TargetType       int                    `json:"target_type"`           // 目标类型：2=注册ID
+	TargetValue      string                 `json:"target_value"`          // 设备Token
+	Title            string                 `json:"title"`                 // 通知标题
+	Content          string                 `json:"content"`               // 通知内容
+	ClickActionType  int                    `json:"click_action_type"`     // 点击行为类型：0=无，1=打开应用，2=打开链接，3=启动指定页面
+	ClickActionValue string                 `json:"click_action_value"`    // 点击行为值
+	CustomData       map[string]interface{} `json:"custom_data,omitempty"` // 自定义数据
+	OfflineTtl       int                    `json:"offline_ttl"`           // 离线消息存活时间(秒)
+	PushTimeType     int                    `json:"push_time_type"`        // 推送时间类型：0=立即，1=定时
+	TimeStamp        int64                  `json:"time_stamp,omitempty"`  // 定时推送时间戳(秒)
+}
+
+// OppoResponse OPPO推送API响应结构
+type OppoResponse struct {
+	Code      int                    `json:"code"`                // 响应码：0=成功
+	Message   string                 `json:"message"`             // 响应消息
+	Data      map[string]interface{} `json:"data,omitempty"`      // 响应数据
+	MessageID string                 `json:"messageId,omitempty"` // 消息ID
+}
+
 // XiaomiMessage 小米推送消息结构
 type XiaomiMessage struct {
 	Title                 string                 `json:"title,omitempty"`                   // 通知标题
@@ -830,6 +854,90 @@ func (a *AndroidProvider) sendHuaweiMessage(accessToken string, message *HuaweiM
 }
 
 // buildXiaomiMessage 构建小米推送消息
+// buildOppoMessage 构建OPPO推送消息
+func (a *AndroidProvider) buildOppoMessage(device *models.Device, pushLog *models.PushLog) *OppoMessage {
+	// 构建基本消息结构
+	message := &OppoMessage{
+		AppID:            a.config.AppID,
+		AppKey:           a.config.AppKey,
+		TargetType:       2,            // 2=注册ID
+		TargetValue:      device.Token, // 设备Token
+		Title:            pushLog.Title,
+		Content:          pushLog.Content,
+		ClickActionType:  1,     // 1=打开应用
+		ClickActionValue: "",    // 默认空，打开主页
+		OfflineTtl:       86400, // 离线消息存活时间24小时(秒)
+		PushTimeType:     0,     // 0=立即推送
+		TimeStamp:        0,     // 立即推送时为0
+		CustomData:       make(map[string]interface{}),
+	}
+
+	// 解析OPPO特有参数
+	clickActionType := 1
+	clickActionValue := ""
+	offlineTtl := 86400
+	pushTimeType := 0
+	var timeStamp int64 = 0
+
+	// 从pushLog.Payload中解析OPPO特有参数
+	if pushLog.Payload != "" && pushLog.Payload != "{}" {
+		var payloadMap map[string]interface{}
+		if err := json.Unmarshal([]byte(pushLog.Payload), &payloadMap); err == nil {
+			if oppoData, ok := payloadMap["oppo"].(map[string]interface{}); ok {
+				if cat, ok := oppoData["click_action_type"].(float64); ok {
+					clickActionType = int(cat)
+				}
+				if cav, ok := oppoData["click_action_value"].(string); ok {
+					clickActionValue = cav
+				}
+				if ttl, ok := oppoData["offline_ttl"].(float64); ok {
+					offlineTtl = int(ttl)
+				}
+				if ptt, ok := oppoData["push_time_type"].(float64); ok {
+					pushTimeType = int(ptt)
+				}
+				if ts, ok := oppoData["time_stamp"].(float64); ok {
+					timeStamp = int64(ts)
+				}
+			}
+		}
+	}
+
+	message.ClickActionType = clickActionType
+	message.ClickActionValue = clickActionValue
+	message.OfflineTtl = offlineTtl
+	message.PushTimeType = pushTimeType
+	message.TimeStamp = timeStamp
+
+	// 构建自定义数据字段，包含统一标识字段
+	customData := make(map[string]interface{})
+
+	// 添加统计标识字段，保持与其他推送服务一致
+	customData["badge"] = pushLog.Badge
+	customData["push_log_id"] = pushLog.ID
+	if pushLog.DedupKey != "" {
+		customData["dedup_key"] = pushLog.DedupKey
+	}
+	customData["dp_source"] = "doopush"
+
+	// 解析并合并自定义数据到CustomData字段
+	if pushLog.Payload != "" && pushLog.Payload != "{}" {
+		var payloadData map[string]interface{}
+		if err := json.Unmarshal([]byte(pushLog.Payload), &payloadData); err == nil {
+			// 合并自定义数据，但不覆盖统一标识字段和OPPO特有字段
+			for k, v := range payloadData {
+				if k != "push_log_id" && k != "dp_source" && k != "badge" && k != "oppo" {
+					customData[k] = v
+				}
+			}
+		}
+	}
+
+	message.CustomData = customData
+
+	return message
+}
+
 func (a *AndroidProvider) buildXiaomiMessage(device *models.Device, pushLog *models.PushLog) *XiaomiMessage {
 	// 构建基本消息结构
 	message := &XiaomiMessage{
@@ -1003,6 +1111,74 @@ func (a *AndroidProvider) sendXiaomiMessage(message *XiaomiMessage, device *mode
 	return xiaomiResp.Result, "", messageID, nil
 }
 
+// sendOppoMessage 发送OPPO推送消息，返回OPPO错误码、错误消息、消息ID和错误
+func (a *AndroidProvider) sendOppoMessage(message *OppoMessage, device *models.Device) (string, string, string, error) {
+	// OPPO推送API endpoint
+	pushURL := "https://api.heytapmobi.com/application/v3/message/send"
+
+	// 序列化消息为JSON
+	messageJSON, err := json.Marshal(message)
+	if err != nil {
+		return "", "", "", fmt.Errorf("序列化OPPO推送消息失败: %v", err)
+	}
+
+	// 创建HTTP请求
+	req, err := http.NewRequest("POST", pushURL, bytes.NewBuffer(messageJSON))
+	if err != nil {
+		return "", "", "", fmt.Errorf("创建OPPO推送请求失败: %v", err)
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	// OPPO推送使用Master Secret作为认证，通过AuthToken头传递
+	req.Header.Set("AuthToken", fmt.Sprintf("%s:%s", message.AppKey, a.config.AppSecret))
+
+	// 发送请求
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return "", "", "", fmt.Errorf("OPPO推送请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// 读取响应
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", "", fmt.Errorf("读取OPPO推送响应失败: %v", err)
+	}
+
+	// 解析OPPO响应
+	var oppoResp OppoResponse
+	if err := json.Unmarshal(body, &oppoResp); err != nil {
+		return "", "", "", fmt.Errorf("解析OPPO推送响应失败: %v, 原始响应: %s", err, string(body))
+	}
+
+	// 检查OPPO的响应结果
+	if oppoResp.Code != 0 {
+		errorMsg := oppoResp.Message
+		if errorMsg == "" {
+			errorMsg = "未知错误"
+		}
+		return fmt.Sprintf("%d", oppoResp.Code), errorMsg, "", fmt.Errorf("OPPO推送失败，错误码: %d, 错误信息: %s",
+			oppoResp.Code, errorMsg)
+	}
+
+	// 成功时返回消息ID
+	messageID := oppoResp.MessageID
+	if messageID == "" {
+		// 尝试从Data字段中获取消息ID
+		if dataMap, ok := oppoResp.Data["messageId"]; ok {
+			if msgID, ok := dataMap.(string); ok {
+				messageID = msgID
+			}
+		}
+		if messageID == "" {
+			messageID = "unknown"
+		}
+	}
+
+	return "0", "", messageID, nil
+}
+
 // mapXiaomiError 映射小米错误到统一错误码
 func (a *AndroidProvider) mapXiaomiError(result *models.PushResult, xiaomiResult string, xiaomiMsg string) {
 	switch xiaomiResult {
@@ -1115,14 +1291,32 @@ func (a *AndroidProvider) sendXiaomi(device *models.Device, pushLog *models.Push
 
 // sendOPPO 发送OPPO推送
 func (a *AndroidProvider) sendOPPO(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	return &models.PushResult{
+	result := &models.PushResult{
 		AppID:        pushLog.AppID,
 		PushLogID:    pushLog.ID,
 		Success:      false,
-		ErrorCode:    "NOT_IMPLEMENTED",
-		ErrorMessage: "OPPO推送功能暂未实现，请使用FCM或华为推送",
 		ResponseData: "{}",
 	}
+
+	// 构建OPPO推送消息
+	message := a.buildOppoMessage(device, pushLog)
+
+	// 发送推送消息
+	oppoResult, oppoMsg, messageID, err := a.sendOppoMessage(message, device)
+	if err != nil {
+		// 检查是否是网络错误
+		if oppoResult == "" {
+			return a.createNetworkError(pushLog, err)
+		}
+		// 使用OPPO错误映射
+		a.mapOppoError(result, oppoResult, oppoMsg)
+		return result
+	}
+
+	result.Success = true
+	result.ResponseData = fmt.Sprintf(`{"message_id":"%s"}`, messageID)
+
+	return result
 }
 
 // sendVIVO 发送VIVO推送
@@ -1289,6 +1483,52 @@ func (a *AndroidProvider) mapHuaweiError(result *models.PushResult, huaweiCode s
 	default:
 		result.ErrorCode = "HUAWEI_ERROR_" + huaweiCode
 		result.ErrorMessage = fmt.Sprintf("华为推送失败，错误码: %s, 错误信息: %s", huaweiCode, huaweiMsg)
+	}
+}
+
+// mapOppoError 映射OPPO错误到统一错误码
+func (a *AndroidProvider) mapOppoError(result *models.PushResult, oppoCode string, oppoMsg string) {
+	switch oppoCode {
+	case "0":
+		// 成功，不应该调用此函数
+		result.Success = true
+		return
+	case "10000":
+		result.ErrorCode = "INVALID_ARGUMENT"
+		result.ErrorMessage = "OPPO推送参数无效：" + oppoMsg
+	case "10001":
+		result.ErrorCode = "AUTHENTICATION_ERROR"
+		result.ErrorMessage = "OPPO推送认证失败：" + oppoMsg
+	case "10002":
+		result.ErrorCode = "PERMISSION_DENIED"
+		result.ErrorMessage = "OPPO推送权限不足：" + oppoMsg
+	case "10003":
+		result.ErrorCode = "QUOTA_EXCEEDED"
+		result.ErrorMessage = "OPPO推送频率超限：" + oppoMsg
+	case "10004":
+		result.ErrorCode = "INVALID_TOKEN"
+		result.ErrorMessage = "OPPO设备token无效：" + oppoMsg
+	case "10005":
+		result.ErrorCode = "PAYLOAD_TOO_LARGE"
+		result.ErrorMessage = "OPPO推送消息过大：" + oppoMsg
+	case "10006":
+		result.ErrorCode = "APP_NOT_FOUND"
+		result.ErrorMessage = "OPPO应用未找到：" + oppoMsg
+	case "10007":
+		result.ErrorCode = "INVALID_CONFIG"
+		result.ErrorMessage = "OPPO推送配置错误：" + oppoMsg
+	case "20000":
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = "OPPO推送服务器错误：" + oppoMsg
+	case "20001":
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = "OPPO推送服务暂时不可用：" + oppoMsg
+	case "30000":
+		result.ErrorCode = "INVALID_CHANNEL"
+		result.ErrorMessage = "OPPO推送通道无效：" + oppoMsg
+	default:
+		result.ErrorCode = "OPPO_ERROR_" + oppoCode
+		result.ErrorMessage = fmt.Sprintf("OPPO推送失败，错误码: %s, 错误信息: %s", oppoCode, oppoMsg)
 	}
 }
 

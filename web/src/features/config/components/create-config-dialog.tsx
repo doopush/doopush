@@ -52,8 +52,7 @@ const createConfigSchema = z.object({
   // Android 其他厂商字段
   app_id: z.string().optional(),      // 华为/小米/OPPO/VIVO/荣耀/三星
   app_key: z.string().optional(),     // 小米/OPPO/VIVO/荣耀/三星
-  app_secret: z.string().optional(),  // 华为/小米/VIVO/荣耀/三星
-  master_secret: z.string().optional(), // OPPO
+  app_secret: z.string().optional(),  // 华为/小米/OPPO/VIVO/荣耀/三星
 }).refine((data) => {
   // 根据平台和通道验证必填字段
   if (data.platform === 'ios' && data.channel === 'apns') {
@@ -68,7 +67,7 @@ const createConfigSchema = z.object({
       case 'xiaomi':
         return data.app_id && data.app_key && data.app_secret
       case 'oppo':
-        return data.app_id && data.app_key && data.master_secret
+        return data.app_id && data.app_key && data.app_secret
       case 'vivo':
       case 'honor':
       case 'samsung':
@@ -107,7 +106,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
       app_id: '',
       app_key: '',
       app_secret: '',
-      master_secret: '',
+      app_secret: '',
     },
   })
 
@@ -127,7 +126,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
         app_id: '',
         app_key: '',
         app_secret: '',
-        master_secret: '',
+        app_secret: '',
       })
     }
   }, [open, defaultPlatform, form, currentApp?.package_name])
@@ -181,7 +180,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
             configData = {
               app_id: data.app_id,
               app_key: data.app_key,
-              master_secret: data.master_secret
+              app_secret: data.app_secret
             }
             break
           case 'vivo':
@@ -556,7 +555,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
 
                   <FormField
                     control={form.control}
-                    name="master_secret"
+                    name="app_secret"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Master Secret *</FormLabel>

@@ -279,7 +279,6 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
                         DooPushDeviceVendor.PushService.OPPO -> "OPPO推送"
                         DooPushDeviceVendor.PushService.VIVO -> "VIVO推送"
                         DooPushDeviceVendor.PushService.HONOR -> "荣耀推送"
-                        else -> "推送服务"
                     }
                     binding.tvTokenType.text = "使用服务: $serviceText (${vendorInfo.brand})"
                     binding.tvTokenType.visibility = View.VISIBLE
@@ -556,7 +555,10 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
             val serviceText = when (vendorInfo.preferredService) {
                 DooPushDeviceVendor.PushService.HMS -> "华为 HMS Push"
                 DooPushDeviceVendor.PushService.FCM -> "Google FCM"
-                else -> "推送服务"
+                DooPushDeviceVendor.PushService.MIPUSH -> "小米推送"
+                DooPushDeviceVendor.PushService.OPPO -> "OPPO推送"
+                DooPushDeviceVendor.PushService.VIVO -> "VIVO推送"
+                DooPushDeviceVendor.PushService.HONOR -> "荣耀推送"
             }
             binding.tvTokenType.text = "使用服务: $serviceText (${vendorInfo.brand})"
             binding.tvTokenType.visibility = View.VISIBLE
@@ -615,7 +617,10 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
             val serviceText = when (vendorInfo.preferredService) {
                 DooPushDeviceVendor.PushService.HMS -> "华为 HMS Push"
                 DooPushDeviceVendor.PushService.FCM -> "Google FCM"
-                else -> "推送服务"
+                DooPushDeviceVendor.PushService.MIPUSH -> "小米推送"
+                DooPushDeviceVendor.PushService.OPPO -> "OPPO推送"
+                DooPushDeviceVendor.PushService.VIVO -> "VIVO推送"
+                DooPushDeviceVendor.PushService.HONOR -> "荣耀推送"
             }
             binding.tvTokenType.text = "使用服务: $serviceText (${vendorInfo.brand})"
             binding.tvTokenType.visibility = View.VISIBLE
@@ -655,6 +660,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         val isFirebaseAvailable = dooPushManager.isFirebaseAvailable()
         val isHMSAvailable = dooPushManager.isHMSAvailable()
         val isXiaomiAvailable = dooPushManager.isXiaomiAvailable()
+        val isOppoAvailable = dooPushManager.isOppoAvailable()
         
         val statusText = StringBuilder()
         statusText.append("推送服务可用性状态：\n\n")
@@ -668,6 +674,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         statusText.append("- Firebase Cloud Messaging：${if (isFirebaseAvailable) "✓ 可用" else "✗ 不可用"}\n")
         statusText.append("- 华为 HMS Push：${if (isHMSAvailable) "✓ 可用" else "✗ 不可用"}\n")
         statusText.append("- 小米推送：${if (isXiaomiAvailable) "✓ 可用" else "✗ 不可用"}\n")
+        statusText.append("- OPPO推送：${if (isOppoAvailable) "✓ 可用" else "✗ 不可用"}\n")
         
         statusText.append("\n支持的服务：\n")
         vendorInfo.supportedServices.forEach { service ->

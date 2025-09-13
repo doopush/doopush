@@ -36,7 +36,12 @@ data class DooPushConfig(
     /**
      * 小米推送配置 (可选)
      */
-    val xiaomiConfig: XiaomiConfig? = null
+    val xiaomiConfig: XiaomiConfig? = null,
+    
+    /**
+     * OPPO推送配置 (可选)
+     */
+    val oppoConfig: OppoConfig? = null
     
 ) {
     
@@ -90,6 +95,34 @@ data class DooPushConfig(
         }
     }
     
+    /**
+     * OPPO推送配置类
+     * @param appId OPPO应用ID，如果为空则会从 oppo-services.json 自动读取
+     * @param appKey OPPO应用Key，如果为空则会从 oppo-services.json 自动读取
+     */
+    data class OppoConfig(
+        val appId: String = "",
+        val appKey: String = ""
+    ) {
+        fun isValid(): Boolean {
+            return true
+        }
+        
+        fun getSummary(): String {
+            val appIdInfo = if (appId.isNotEmpty()) {
+                "AppID=$appId"
+            } else {
+                "AppID=auto(从oppo-services.json读取)"
+            }
+            val appKeyInfo = if (appKey.isNotEmpty()) {
+                "AppKey=${appKey.take(8)}..."
+            } else {
+                "AppKey=auto(从oppo-services.json读取)"
+            }
+            return "OPPO推送配置: $appIdInfo, $appKeyInfo"
+        }
+    }
+    
     companion object {
         
         /**
@@ -121,6 +154,7 @@ data class DooPushConfig(
          * @param baseURL 服务器基础URL (可选)
          * @param hmsConfig HMS推送配置 (可选)
          * @param xiaomiConfig 小米推送配置 (可选)
+         * @param oppoConfig OPPO推送配置 (可选)
          * @return 配置实例
          * @throws DooPushConfigException 配置参数无效时抛出
          */
@@ -130,14 +164,16 @@ data class DooPushConfig(
             apiKey: String,
             baseURL: String = DEFAULT_BASE_URL,
             hmsConfig: HMSConfig? = null,
-            xiaomiConfig: XiaomiConfig? = null
+            xiaomiConfig: XiaomiConfig? = null,
+            oppoConfig: OppoConfig? = null
         ): DooPushConfig {
             val config = DooPushConfig(
                 appId = appId.trim(),
                 apiKey = apiKey.trim(),
                 baseURL = baseURL.trim().trimEnd('/'),
                 hmsConfig = hmsConfig,
-                xiaomiConfig = xiaomiConfig
+                xiaomiConfig = xiaomiConfig,
+                oppoConfig = oppoConfig
             )
             
             config.validate()
@@ -277,6 +313,7 @@ data class DooPushConfig(
         
         val hmsInfo = hmsConfig?.getSummary() ?: "HMS配置: 未配置"
         val xiaomiInfo = xiaomiConfig?.getSummary() ?: "小米推送配置: 未配置"
+        val oppoInfo = oppoConfig?.getSummary() ?: "OPPO推送配置: 未配置"
         
         return """
             |DooPush配置:
@@ -286,6 +323,7 @@ data class DooPushConfig(
             |  环境: ${environment.name}
             |  $hmsInfo
             |  $xiaomiInfo
+            |  $oppoInfo
         """.trimMargin()
     }
     
@@ -301,6 +339,13 @@ data class DooPushConfig(
      */
     fun hasXiaomiConfig(): Boolean {
         return xiaomiConfig != null && xiaomiConfig.isValid()
+    }
+    
+    /**
+     * 检查是否配置了OPPO推送
+     */
+    fun hasOppoConfig(): Boolean {
+        return oppoConfig != null && oppoConfig.isValid()
     }
     
     override fun toString(): String {

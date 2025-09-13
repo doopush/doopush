@@ -46,7 +46,7 @@ const editConfigSchema = z.object({
   app_id: z.string().optional(),      // 华为/小米/OPPO/VIVO/荣耀/三星
   app_key: z.string().optional(),     // 小米/OPPO/VIVO/荣耀/三星
   app_secret: z.string().optional(),  // 华为/小米/VIVO/荣耀/三星
-  master_secret: z.string().optional(), // OPPO
+  app_secret: z.string().optional(), // OPPO
 })
 
 type EditConfigFormData = z.infer<typeof editConfigSchema>
@@ -76,7 +76,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
       app_id: '',
       app_key: '',
       app_secret: '',
-      master_secret: '',
+      app_secret: '',
     },
   })
 
@@ -98,7 +98,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
           app_id: '',
           app_key: '',
           app_secret: '',
-          master_secret: '',
+          app_secret: '',
         })
         
         // 检查隐藏字段的函数
@@ -135,7 +135,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
             case 'oppo':
               checkAndSetField('app_id', configData.app_id)
               checkAndSetField('app_key', configData.app_key)
-              checkAndSetField('master_secret', configData.master_secret)
+              checkAndSetField('app_secret', configData.app_secret)
               break
             case 'vivo':
             case 'honor':
@@ -206,7 +206,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
             configData = {
               app_id: buildFieldValue('app_id', data.app_id || ''),
               app_key: buildFieldValue('app_key', data.app_key || ''),
-              master_secret: buildFieldValue('master_secret', data.master_secret || '')
+              app_secret: buildFieldValue('app_secret', data.app_secret || '')
             }
             break
           case 'vivo':
@@ -567,15 +567,15 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
 
                   <FormField
                     control={form.control}
-                    name="master_secret"
+                    name="app_secret"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Master Secret *</FormLabel>
                         <FormControl>
-                          <Input placeholder={getFieldPlaceholder('master_secret', '输入 OPPO Master Secret')} {...field} />
+                          <Input placeholder={getFieldPlaceholder('app_secret', '输入 OPPO Master Secret')} {...field} />
                         </FormControl>
                         <FormDescription>
-                          {getFieldDescription('master_secret', 'OPPO开发者联盟的主密钥')}
+                          {getFieldDescription('app_secret', 'OPPO开发者联盟的主密钥')}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

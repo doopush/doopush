@@ -70,3 +70,7 @@
 # 小米推送
 -keep class com.xiaomi.mipush.sdk.** { *; }
 -dontwarn com.xiaomi.**
+
+# OPPO推送
+-keep public class * extends android.app.Service
+-keep class com.heytap.msp.** { *;}

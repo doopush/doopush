@@ -481,7 +481,7 @@ export function PushConfig() {
                         <li>• FCM: 需要 Firebase 服务账号密钥 JSON</li>
                         <li>• 华为: HMS Core App ID 和 App Secret</li>
                         <li>• 小米: AppID、AppKey 和 AppSecret</li>
-                        <li>• OPPO/VIVO: AppID、AppKey 和 MasterSecret</li>
+                        <li>• OPPO/VIVO: AppID、AppKey 和 AppSecret</li>
                       </ul>
                     </div>
                   )}

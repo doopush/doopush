@@ -413,3 +413,97 @@ export interface ScheduledPush {
   created_at: string
   updated_at: string
 }
+
+// ===== 推送配置相关 =====
+// iOS推送配置
+export interface IOSPushConfig {
+  environment: 'development' | 'production'
+  // P8密钥配置（推荐）
+  key_id?: string
+  team_id?: string
+  bundle_id?: string
+  private_key?: string  // P8私钥内容
+  // P12证书配置（传统方式）
+  cert_pem?: string     // P12证书PEM格式
+  key_pem?: string      // P12私钥PEM格式
+}
+
+// Android推送基础配置
+export interface AndroidPushBaseConfig {
+  app_id: string
+  app_key?: string      // 小米、OPPO、VIVO、荣耀、三星需要
+  app_secret: string    // 所有厂商都需要
+}
+
+// FCM推送配置
+export interface FCMPushConfig {
+  service_account_key: string  // Firebase服务账号密钥JSON
+}
+
+// 华为推送配置
+export interface HuaweiPushConfig extends AndroidPushBaseConfig {
+  // 华为只需要 app_id 和 app_secret
+}
+
+// 小米推送配置
+export interface XiaomiPushConfig extends AndroidPushBaseConfig {
+  // 小米需要 app_id、app_key 和 app_secret
+  app_key: string  // 小米必需
+}
+
+// OPPO推送配置
+export interface OppoPushConfig extends AndroidPushBaseConfig {
+  // OPPO需要 app_id、app_key 和 app_secret
+  app_key: string  // OPPO必需
+}
+
+// VIVO推送配置
+export interface VivoPushConfig extends AndroidPushBaseConfig {
+  // VIVO需要 app_id、app_key 和 app_secret
+  app_key: string  // VIVO必需
+}
+
+// 荣耀推送配置
+export interface HonorPushConfig extends AndroidPushBaseConfig {
+  // 荣耀需要 app_id、app_key 和 app_secret
+  app_key: string  // 荣耀必需
+}
+
+// 三星推送配置
+export interface SamsungPushConfig extends AndroidPushBaseConfig {
+  // 三星需要 app_id、app_key 和 app_secret
+  app_key: string  // 三星必需
+}
+
+// 推送配置联合类型
+export type PushConfig = 
+  | IOSPushConfig 
+  | FCMPushConfig 
+  | HuaweiPushConfig 
+  | XiaomiPushConfig 
+  | OppoPushConfig 
+  | VivoPushConfig 
+  | HonorPushConfig 
+  | SamsungPushConfig
+
+// 推送厂商特有参数
+export interface HuaweiPushParams {
+  urgency?: 'HIGH' | 'NORMAL'
+  category?: string
+  ttl?: number
+}
+
+export interface XiaomiPushParams {
+  channel_id?: string
+  pass_through?: 0 | 1
+  notify_type?: number
+  time_to_live?: number
+}
+
+export interface OppoPushParams {
+  click_action_type?: 0 | 1 | 2 | 3  // 0=无行为 1=打开应用 2=打开链接 3=打开指定页面
+  click_action_value?: string         // 点击行为对应的值
+  offline_ttl?: number               // 离线消息存活时间(秒)
+  push_time_type?: 0 | 1             // 0=立即推送 1=定时推送
+  time_stamp?: number                // 定时推送时间戳(秒)
+}

@@ -57,6 +57,7 @@ class DooPushManager private constructor() {
     private var fcmService: FCMService? = null
     private var hmsService: HMSService? = null
     private var xiaomiService: XiaomiService? = null
+    private var oppoService: OppoService? = null
     private var tcpConnection: DooPushTCPConnection? = null
     private var applicationContext: Context? = null
     
@@ -119,6 +120,7 @@ class DooPushManager private constructor() {
      * @param baseURL 服务器基础URL (可选)
      * @param hmsConfig HMS推送配置 (可选)
      * @param xiaomiConfig 小米推送配置 (可选)
+     * @param oppoConfig OPPO推送配置 (可选)
      * @throws DooPushConfigException 配置参数无效时抛出
      */
     @Throws(DooPushConfigException::class)
@@ -128,7 +130,8 @@ class DooPushManager private constructor() {
         apiKey: String,
         baseURL: String = DooPushConfig.DEFAULT_BASE_URL,
         hmsConfig: DooPushConfig.HMSConfig? = null,
-        xiaomiConfig: DooPushConfig.XiaomiConfig? = null
+        xiaomiConfig: DooPushConfig.XiaomiConfig? = null,
+        oppoConfig: DooPushConfig.OppoConfig? = null
     ) {
         try {
             Log.d(TAG, "开始配置 DooPush SDK")
@@ -162,8 +165,21 @@ class DooPushManager private constructor() {
                 xiaomiConfig
             }
             
+            // 智能配置处理：OPPO设备自动启用OPPO推送
+            val finalOppoConfig = if (oppoConfig == null) {
+                val vendorInfo = DooPushDeviceVendor.getDeviceVendorInfo()
+                if (vendorInfo.preferredService == DooPushDeviceVendor.PushService.OPPO) {
+                    Log.d(TAG, "检测到OPPO设备，自动启用OPPO推送服务")
+                    DooPushConfig.OppoConfig() // 零配置，自动从 oppo-services.json 读取
+                } else {
+                    null
+                }
+            } else {
+                oppoConfig
+            }
+            
             // 创建配置
-            config = DooPushConfig.create(appId, apiKey, baseURL, finalHmsConfig, finalXiaomiConfig)
+            config = DooPushConfig.create(appId, apiKey, baseURL, finalHmsConfig, finalXiaomiConfig, finalOppoConfig)
             
             // 初始化各组件
             deviceManager = DooPushDevice(applicationContext!!)
@@ -187,6 +203,22 @@ class DooPushManager private constructor() {
                         // 自动从xiaomi-services.json读取配置
                         autoInitialize()
                         Log.d(TAG, "自动从xiaomi-services.json读取配置初始化")
+                    }
+                }
+            }
+            oppoService = OppoService(context.applicationContext).apply {
+                // OPPO推送服务已初始化
+                
+                // 自动初始化OPPO推送（如果配置了OPPO推送）
+                if (finalOppoConfig != null) {
+                    if (finalOppoConfig.appId.isNotEmpty() && finalOppoConfig.appKey.isNotEmpty()) {
+                        // 使用手动配置（注意：OPPO推送还需要appSecret，这里从配置文件获取）
+                        autoInitialize()
+                        Log.d(TAG, "使用手动OPPO推送配置初始化")
+                    } else {
+                        // 自动从oppo-services.json读取配置
+                        autoInitialize()
+                        Log.d(TAG, "自动从oppo-services.json读取配置初始化")
                     }
                 }
             }
@@ -308,6 +340,33 @@ class DooPushManager private constructor() {
                         )
                     } else {
                         Log.w(TAG, "小米推送未配置，fallback到FCM")
+                        registerWithFCM(callback)
+                    }
+                }
+                DooPushDeviceVendor.PushService.OPPO -> {
+                    if (config?.hasOppoConfig() == true) {
+                        // 组装设备信息（channel=oppo）
+                        val deviceInfo = deviceManager!!.getCurrentDeviceInfo("oppo")
+                        cachedDeviceInfo = deviceInfo
+                        
+                        oppoService!!.getToken(
+                            object : OppoService.TokenCallback {
+                                override fun onSuccess(token: String) {
+                                    Log.d(TAG, "OPPO推送Token获取成功: ${token.substring(0, 12)}...")
+                                    cachedToken = token
+                                    // 调用设备注册API
+                                    registerDeviceToServer(deviceInfo, token, callback)
+                                }
+                                
+                                override fun onError(error: DooPushError) {
+                                    Log.e(TAG, "OPPO推送Token获取失败: ${error.message}")
+                                    isRegistering.set(false)
+                                    callback?.onError(error) ?: this@DooPushManager.callback?.onRegisterError(error)
+                                }
+                            }
+                        )
+                    } else {
+                        Log.w(TAG, "OPPO推送未配置，fallback到FCM")
                         registerWithFCM(callback)
                     }
                 }
@@ -489,6 +548,13 @@ class DooPushManager private constructor() {
      */
     fun isXiaomiAvailable(): Boolean {
         return xiaomiService?.isXiaomiAvailable() ?: false
+    }
+
+    /**
+     * 检查OPPO推送服务是否可用
+     */
+    fun isOppoAvailable(): Boolean {
+        return oppoService?.isOppoAvailable() ?: false
     }
     
     /**

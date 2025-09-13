@@ -5,8 +5,8 @@
 ## 主要功能
 
 - **SDK状态监控**：实时显示SDK配置状态、注册状态、推送权限
-- **设备管理**：自动获取设备Token、设备信息，支持华为和FCM双重推送服务
-- **推送注册**：一键注册推送通知，自动检测最佳推送服务（HMS/FCM）
+- **设备管理**：自动获取设备Token、设备信息，支持华为、小米、OPPO和FCM多厂商推送服务
+- **推送注册**：一键注册推送通知，自动检测最佳推送服务（HMS/FCM/MIPUSH/OPPO）
 - **通知历史**：接收推送历史记录，支持详情查看和状态跟踪
 - **角标管理**：应用角标数字的设置和清除操作，支持多厂商设备
 - **设置页面**：详细的配置信息展示和服务器连接测试
@@ -64,11 +64,41 @@ cd sdk/android/DooPushSDKExample
 
 **注意：** 配置文件已添加到 `.gitignore`，不会被版本控制。如果文件不存在或字段为空，SDK将使用内置默认配置。
 
+#### oppo-services.json 配置
+
+在 `app/` 目录下创建 `oppo-services.json` 文件（OPPO推送配置）：
+
+```json
+{
+  "app_id": "your_oppo_app_id",
+  "app_key": "your_oppo_app_key",
+  "app_secret": "your_oppo_app_secret"
+}
+```
+
+**配置说明：**
+- `app_id`: OPPO开发者平台的应用ID
+- `app_key`: OPPO开发者平台的应用Key  
+- `app_secret`: OPPO开发者平台的应用Secret（服务端推送必需）
+
+**重要特性：**
+- ✅ **自动配置**: SDK 会自动从 `oppo-services.json` 读取配置
+- ✅ **智能启用**: 在OPPO/OnePlus设备上自动启用OPPO推送服务
+- ✅ **零代码集成**: 无需在代码中手动配置OPPO推送参数
+- 🔐 **安全性**: `app_secret` 仅用于服务端，客户端SDK不暴露敏感信息
+
+**支持设备：**
+- OPPO手机 (ColorOS)
+- OnePlus手机 (OxygenOS/ColorOS)
+
+**注意：** 与华为和小米不同，OPPO推送需要三个参数（app_id、app_key、app_secret），其中app_secret主要用于服务端API认证。
+
 #### 推送服务配置
 
 1. **FCM配置**: 将 `google-services.json` 放在 `app/` 目录下
 2. **HMS配置**: 将 `agconnect-services.json` 放在 `app/` 目录下
 3. **小米推送配置**: 在 DooPush 平台后台配置小米推送参数（App ID、App Key、App Secret）
+4. **OPPO推送配置**: 在 DooPush 平台后台配置OPPO推送参数（App ID、App Key、App Secret）
 
 ### 3. 基本流程
 1. 启动应用，SDK自动初始化并检测推送服务
@@ -95,7 +125,8 @@ DooPushSDKExample/
     ├── google-services.json           # FCM配置文件
     ├── agconnect-services.json        # HMS配置文件
     ├── doopush-services.json          # DooPush配置文件
-    └── xiaomi-services.json           # 小米推送配置文件
+    ├── xiaomi-services.json           # 小米推送配置文件
+    └── oppo-services.json             # OPPO推送配置文件
 ```
 
 ## 核心实现
@@ -202,6 +233,12 @@ private fun loadConfigFromAssets() {
 - 支持MIUI角标显示
 - 需要在 DooPush 平台配置小米推送参数
 
+### OPPO/OnePlus设备
+- 自动使用OPPO推送服务（HeytapPush）
+- 支持ColorOS角标显示
+- 需要在 DooPush 平台配置OPPO推送参数
+- OnePlus设备统一使用OPPO推送通道
+
 ### Google Play 设备
 - 自动使用 FCM 服务
 - 需要 `google-services.json` 配置文件
@@ -224,6 +261,9 @@ adb logcat -s DooPushManager
 # 查看角标管理日志
 adb logcat -s DooPush_BadgeManager
 
+# 查看OPPO推送日志
+adb logcat -s OppoService
+
 # 查看应用完整日志
 adb logcat | grep DooPushSDKExample
 ```
@@ -233,6 +273,15 @@ adb logcat | grep DooPushSDKExample
 2. **Token获取失败**: 确认推送服务配置正确
 3. **角标不显示**: 检查设备权限和桌面兼容性
 4. **华为推送异常**: 确认 HMS Core 版本和配置
+5. **小米推送异常**: 确认小米推送SDK集成和配置参数
+6. **OPPO推送异常**: 确认OPPO开发者平台配置和app_secret正确性
+7. **设备推送服务检测失败**: 检查设备系统版本和推送服务可用性
+
+### OPPO推送特殊说明
+- **应用签名**: OPPO推送对应用签名有严格要求，确保使用正确的签名文件
+- **权限配置**: 确认已添加OPPO推送所需的权限和组件
+- **调试模式**: 开发阶段可使用debug模式，生产环境务必关闭
+- **消息分类**: OPPO推送支持不同消息类型（通知消息、透传消息），选择合适类型
 
 ## SDK集成示例
 

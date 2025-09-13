@@ -213,7 +213,14 @@ object DooPushDeviceVendor {
      */
     private fun isOppoPushAvailable(context: Context): Boolean {
         return try {
-            Class.forName("com.coloros.mcsdk.push.PushManager")
+            // 检查是否为OPPO或OnePlus设备
+            val vendorInfo = getDeviceVendorInfo()
+            if (vendorInfo.preferredService != PushService.OPPO) {
+                return false
+            }
+            
+            // 检查OPPO推送SDK是否可用（HeytapPush）
+            Class.forName("com.heytap.msp.push.HeytapPushManager")
             true
         } catch (e: ClassNotFoundException) {
             Log.d(TAG, "OPPO推送不可用: ${e.message}")
