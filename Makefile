@@ -5,9 +5,16 @@ BINARY_NAME=doopush
 .PHONY: default
 default: help
 
+GO_AIR_VERSION := v1.62.0
+.PHONY: install-air
+install-air:
+	@if ! command -v air &> /dev/null; then \
+		go install github.com/air-verse/air@$(GO_AIR_VERSION); \
+	fi
+
 # 后端命令
 .PHONY: api-dev
-api-dev: ## 运行后端开发服务器
+api-dev: install-air ## 运行后端开发服务器
 	cd api && air --build.cmd "go build -o ./tmp/dev main.go" --build.exclude_dir "uploads,tmp" --build.full_bin "./tmp/dev serve --env-file ../.env"
 
 .PHONY: api-gateway
