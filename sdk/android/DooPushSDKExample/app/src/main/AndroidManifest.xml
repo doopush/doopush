@@ -127,6 +127,17 @@
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:process=":pushservice" />
 
+        <!-- OPPO/OnePlus Heytap 透传回调服务 -->
+        <service
+            android:name=".OppoPushMessageService"
+            android:exported="true"
+            android:permission="com.heytap.mcs.permission.SEND_PUSH_MESSAGE">
+            <intent-filter>
+                <action android:name="com.heytap.mcs.action.RECEIVE_MCS_MESSAGE" />
+                <action android:name="com.heytap.msp.push.RECEIVE_MCS_MESSAGE" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>

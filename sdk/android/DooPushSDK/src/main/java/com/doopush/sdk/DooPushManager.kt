@@ -192,35 +192,14 @@ class DooPushManager private constructor() {
             xiaomiService = XiaomiService(context.applicationContext).apply {
                 // 设置服务实例到接收器
                 XiaomiPushReceiver.setService(this)
-                
-                // 自动初始化小米推送（如果配置了小米推送）
-                if (finalXiaomiConfig != null) {
-                    if (finalXiaomiConfig.appId.isNotEmpty() && finalXiaomiConfig.appKey.isNotEmpty()) {
-                        // 使用手动配置
-                        initialize(finalXiaomiConfig.appId, finalXiaomiConfig.appKey)
-                        Log.d(TAG, "使用手动小米推送配置初始化")
-                    } else {
-                        // 自动从xiaomi-services.json读取配置
-                        autoInitialize()
-                        Log.d(TAG, "自动从xiaomi-services.json读取配置初始化")
-                    }
-                }
+                // 延迟初始化：在注册或获取Token时再进行
+                Log.d(TAG, "小米推送服务实例已创建（延迟初始化）")
             }
             oppoService = OppoService(context.applicationContext).apply {
-                // OPPO推送服务已初始化
-                
-                // 自动初始化OPPO推送（如果配置了OPPO推送）
-                if (finalOppoConfig != null) {
-                    if (finalOppoConfig.appId.isNotEmpty() && finalOppoConfig.appKey.isNotEmpty()) {
-                        // 使用手动配置（注意：OPPO推送还需要appSecret，这里从配置文件获取）
-                        autoInitialize()
-                        Log.d(TAG, "使用手动OPPO推送配置初始化")
-                    } else {
-                        // 自动从oppo-services.json读取配置
-                        autoInitialize()
-                        Log.d(TAG, "自动从oppo-services.json读取配置初始化")
-                    }
-                }
+                // 让接收器持有服务实例，便于通过接收器回调成功/失败
+                OppoPushReceiver.setService(this)
+                // 延迟初始化：在注册或获取Token时再进行
+                Log.d(TAG, "OPPO推送服务实例已创建（延迟初始化）")
             }
             tcpConnection = DooPushTCPConnection().apply {
                 delegate = tcpConnectionDelegate

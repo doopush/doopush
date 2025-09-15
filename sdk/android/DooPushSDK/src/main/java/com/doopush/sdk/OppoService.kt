@@ -2,6 +2,8 @@ package com.doopush.sdk
 
 import android.content.Context
 import android.util.Log
+import android.os.Handler
+import android.os.Looper
 import com.doopush.sdk.models.DooPushError
 import org.json.JSONObject
 import java.io.InputStream
@@ -48,6 +50,8 @@ class OppoService(private val context: Context) {
 
     // 用于缓存注册结果的回调
     private var tokenCallback: TokenCallback? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var pollingRunnable: Runnable? = null
 
     // 缓存的配置信息
     private var cachedAppId: String? = null
@@ -64,7 +68,7 @@ class OppoService(private val context: Context) {
         return if (config != null) {
             initialize(config.first, config.second, config.third)
         } else {
-            Log.w(TAG, "无法从oppo-services.json读取配置，OPPO推送初始化跳过")
+            Log.w(TAG, "未读取到oppo-services.json，跳过OPPO初始化")
             false
         }
     }
@@ -85,14 +89,14 @@ class OppoService(private val context: Context) {
             val appSecret = jsonObject.optString("app_secret", "")
 
             if (appId.isNotEmpty() && appKey.isNotEmpty() && appSecret.isNotEmpty()) {
-                Log.d(TAG, "从oppo-services.json读取配置成功: AppId=$appId")
+                Log.d(TAG, "OPPO配置读取成功: AppId=$appId")
                 Triple(appId, appKey, appSecret)
             } else {
                 Log.w(TAG, "oppo-services.json中缺少必要配置")
                 null
             }
         } catch (e: Exception) {
-            Log.d(TAG, "oppo-services.json文件不存在或读取失败")
+            Log.d(TAG, "读取oppo-services.json失败")
             null
         }
     }
@@ -107,7 +111,7 @@ class OppoService(private val context: Context) {
      */
     fun initialize(appId: String, appKey: String, appSecret: String): Boolean {
         if (!isOppoPushAvailable()) {
-            Log.w(TAG, "OPPO推送SDK不可用")
+            Log.w(TAG, "OPPO SDK 未集成")
             return false
         }
 
@@ -116,16 +120,12 @@ class OppoService(private val context: Context) {
             val heytapPushManagerClass = Class.forName("com.heytap.msp.push.HeytapPushManager")
             val iCallBackResultServiceClass = Class.forName("com.heytap.msp.push.callback.ICallBackResultService")
             
-            // 初始化HeytapPushManager
-            val initMethod = heytapPushManagerClass.getMethod("init", Context::class.java, Boolean::class.java)
+            // 初始化HeytapPushManager（第二个参数为原始boolean类型）
+            val initMethod = heytapPushManagerClass.getMethod("init", Context::class.java, java.lang.Boolean.TYPE)
             initMethod.invoke(null, context, true) // true for debug mode
 
-            // 注册推送服务
-            val registerMethod = heytapPushManagerClass.getMethod("register", 
-                Context::class.java, String::class.java, String::class.java, String::class.java, iCallBackResultServiceClass)
-
-            // 创建回调对象的代理
-            val callbackProxy = java.lang.reflect.Proxy.newProxyInstance(
+            // 创建回调对象（完全在SDK内部，通过动态代理实现接口）
+            val callbackObject = java.lang.reflect.Proxy.newProxyInstance(
                 iCallBackResultServiceClass.classLoader,
                 arrayOf(iCallBackResultServiceClass)
             ) { _, method, args ->
@@ -146,12 +146,42 @@ class OppoService(private val context: Context) {
                 null
             }
 
-            registerMethod.invoke(null, context, appId, appKey, appSecret, callbackProxy)
+            // 注册推送服务
+            // 优先尝试 4 参签名：register(Context, appKey, appSecret, ICallBackResultService)
+            // 兼容兜底 5 参(JSON) 重载：register(Context, appKey, appSecret, JSONObject, ICallBackResultService)
+            try {
+                val register4Params = arrayOf(
+                    Context::class.java,
+                    String::class.java,
+                    String::class.java,
+                    iCallBackResultServiceClass
+                )
+                val register4 = heytapPushManagerClass.getMethod("register", *register4Params)
+                register4.invoke(null, context, appKey, appSecret, callbackObject)
+            } catch (e: NoSuchMethodException) {
+                // 尝试带 JSONObject 的重载
+                val jsonClass = Class.forName("org.json.JSONObject")
+                val register5Params = arrayOf(
+                    Context::class.java,
+                    String::class.java,
+                    String::class.java,
+                    jsonClass,
+                    iCallBackResultServiceClass
+                )
+                val register5 = heytapPushManagerClass.getMethod("register", *register5Params)
+                val emptyJson = org.json.JSONObject()
+                register5.invoke(null, context, appKey, appSecret, emptyJson, callbackObject)
+            }
             
             cachedAppId = appId
             cachedAppKey = appKey
             cachedAppSecret = appSecret
-            Log.d(TAG, "OPPO推送初始化成功: AppId=$appId")
+            Log.d(TAG, "OPPO初始化成功: AppId=$appId")
+
+            // 若存在等待中的回调，启动一次轮询，避免某些机型不回调 onRegister
+            if (tokenCallback != null) {
+                startPollingForRegisterId(timeoutMs = 30000L)
+            }
             true
 
         } catch (e: Exception) {
@@ -161,15 +191,47 @@ class OppoService(private val context: Context) {
     }
 
     /**
+     * 启动定时轮询获取 RegisterId，避免部分设备不触发回调
+     */
+    private fun startPollingForRegisterId(timeoutMs: Long) {
+        stopPolling()
+        val startAt = System.currentTimeMillis()
+        pollingRunnable = object : Runnable {
+            override fun run() {
+                val regId = getRegId()
+                if (!regId.isNullOrEmpty()) {
+                    handleRegisterCallback(0, regId)
+                    stopPolling()
+                    return
+                }
+                val elapsed = System.currentTimeMillis() - startAt
+                if (elapsed < timeoutMs) {
+                    mainHandler.postDelayed(this, 1000L)
+                } else {
+                    Log.e(TAG, "OPPO RegisterId 轮询超时")
+                    handleRegisterCallback(-1, null)
+                    stopPolling()
+                }
+            }
+        }
+        mainHandler.postDelayed(pollingRunnable!!, 1000L)
+    }
+
+    private fun stopPolling() {
+        pollingRunnable?.let { mainHandler.removeCallbacks(it) }
+        pollingRunnable = null
+    }
+
+    /**
      * 处理注册回调
      */
     private fun handleRegisterCallback(code: Int, regid: String?) {
         if (code == 0 && !regid.isNullOrEmpty()) {
-            Log.d(TAG, "OPPO推送注册成功: ${regid.take(12)}...")
+            Log.d(TAG, "OPPO注册成功: ${regid.take(12)}...")
             tokenCallback?.onSuccess(regid)
             tokenCallback = null
         } else {
-            val errorMsg = "OPPO推送注册失败，错误码: $code, regid: $regid"
+            val errorMsg = "OPPO注册失败: code=$code regid=$regid"
             Log.e(TAG, errorMsg)
             tokenCallback?.onError(DooPushError.oppoRegisterFailed(errorMsg))
             tokenCallback = null

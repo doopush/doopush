@@ -112,14 +112,8 @@ dependencies {
     // DooPush SDK 本地依赖
     implementation project(':doopush-sdk')
     
-    // 本地 aar 文件依赖（请根据实际文件名进行修改）
-    // 格式：implementation(name: 'aar文件名(不含.aar扩展名)', ext: 'aar')
-    // 示例：
-    // implementation(name: 'oppo-push-sdk', ext: 'aar')
-    // implementation(name: 'vivo-push-sdk', ext: 'aar')
-    
     // 批量加载 libs 目录中的所有 aar 文件（可选方案）
-     implementation fileTree(dir: 'libs', include: ['*.aar'])
+    // implementation fileTree(dir: 'libs', include: ['*.aar'])
     
     // Android 核心库
     implementation 'androidx.core:core-ktx:1.12.0'
@@ -147,13 +141,19 @@ dependencies {
     
     // 小米推送
     implementation 'com.umeng.umsdk:xiaomi-push:6.0.1'
+
+    // OPPO 推送
+    implementation 'com.umeng.umsdk:oppo-push:3.5.3'
     
     // 权限请求
     implementation 'com.github.permissions-dispatcher:permissionsdispatcher:4.9.2'
     kapt 'com.github.permissions-dispatcher:permissionsdispatcher-processor:4.9.2'
-    
-    // JSON 处理
+
+    // JSON 解析
     implementation 'com.google.code.gson:gson:2.10.1'
+
+    // 用于 Base64/二进制编解码
+    implementation 'commons-codec:commons-codec:1.15'
     
     // 日期时间处理
     implementation 'org.jetbrains.kotlinx:kotlinx-datetime:0.5.0'

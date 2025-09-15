@@ -74,3 +74,6 @@
 # OPPO推送
 -keep public class * extends android.app.Service
 -keep class com.heytap.msp.** { *;}
+-keep class com.heytap.mcssdk.** { *; }
+-dontwarn com.heytap.msp.**
+-dontwarn com.heytap.mcssdk.**

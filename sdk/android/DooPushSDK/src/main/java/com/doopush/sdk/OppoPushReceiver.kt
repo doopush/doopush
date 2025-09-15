@@ -35,7 +35,7 @@ class OppoPushReceiver {
                 Class.forName("com.heytap.msp.push.callback.ICallBackResultService")
                 true
             } catch (e: ClassNotFoundException) {
-                Log.d(TAG, "OPPO推送接收器不可用")
+                Log.d(TAG, "OPPO接收器不可用")
                 false
             }
         }
@@ -48,36 +48,35 @@ class OppoPushReceiver {
          */
         fun onRegister(context: Context, registerId: String?) {
             try {
-                Log.d(TAG, "收到OPPO推送注册结果")
-                
+                Log.d(TAG, "收到OPPO注册结果")
                 if (!registerId.isNullOrEmpty()) {
-                    Log.d(TAG, "OPPO推送注册成功: ${registerId.substring(0, 12)}...")
+                    Log.d(TAG, "OPPO注册成功: ${registerId.substring(0, 12)}...")
                     globalOppoService?.handleRegisterSuccess(registerId)
                 } else {
-                    // 尝试直接从OPPO SDK获取RegisterId
-                    Log.d(TAG, "RegisterId为空，尝试从HeytapPushManager直接获取")
+                    // 尝试直接从 OPPO SDK 获取 RegisterId
+                    Log.d(TAG, "RegisterId为空，尝试从HeytapPushManager获取")
                     val cachedRegisterId = getRegisterIdFromHeytapPushManager()
                     
                     if (!cachedRegisterId.isNullOrEmpty()) {
-                        Log.d(TAG, "从HeytapPushManager获取RegisterId成功")
+                        Log.d(TAG, "直接获取RegisterId成功")
                         globalOppoService?.handleRegisterSuccess(cachedRegisterId)
                     } else {
-                        // 等待一小段时间后再次尝试获取，有时候RegisterId需要一点时间生成
+                        // 有些机型需要等待一小段时间
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                             val delayedRegisterId = getRegisterIdFromHeytapPushManager()
                             if (!delayedRegisterId.isNullOrEmpty()) {
-                                Log.d(TAG, "延迟获取OPPO推送RegisterId成功")
+                                Log.d(TAG, "延迟获取RegisterId成功")
                                 globalOppoService?.handleRegisterSuccess(delayedRegisterId)
                             } else {
-                                Log.e(TAG, "OPPO推送注册失败: 无法获取RegisterId")
+                                Log.e(TAG, "OPPO注册失败: 无法获取RegisterId")
                                 globalOppoService?.handleRegisterError("无法获取RegisterId")
                             }
-                        }, 1000) // 延迟1秒
+                        }, 1000)
                     }
                 }
                 
             } catch (e: Exception) {
-                Log.e(TAG, "处理OPPO推送注册结果时发生异常", e)
+                Log.e(TAG, "处理OPPO注册结果异常", e)
                 globalOppoService?.handleRegisterError("处理注册结果异常: ${e.message}")
             }
         }
@@ -91,10 +90,10 @@ class OppoPushReceiver {
          */
         fun onUnRegister(context: Context, errorCode: Int, errorMsg: String?) {
             try {
-                Log.e(TAG, "OPPO推送注册失败: errorCode=$errorCode, errorMsg=$errorMsg")
+                Log.e(TAG, "OPPO注册失败: code=$errorCode, msg=$errorMsg")
                 globalOppoService?.handleRegisterError("注册失败: $errorCode - $errorMsg")
             } catch (e: Exception) {
-                Log.e(TAG, "处理OPPO推送注册失败时发生异常", e)
+                Log.e(TAG, "处理OPPO注册失败异常", e)
                 globalOppoService?.handleRegisterError("处理注册失败异常: ${e.message}")
             }
         }
@@ -107,10 +106,10 @@ class OppoPushReceiver {
                 val heytapPushManagerClass = Class.forName("com.heytap.msp.push.HeytapPushManager")
                 val getRegisterIdMethod = heytapPushManagerClass.getMethod("getRegisterID")
                 val registerId = getRegisterIdMethod.invoke(null) as? String
-                Log.d(TAG, "从HeytapPushManager获取RegisterId: ${if (registerId.isNullOrEmpty()) "null" else "success"}")
+                Log.d(TAG, "获取RegisterId: ${if (registerId.isNullOrEmpty()) "null" else "success"}")
                 registerId
             } catch (e: Exception) {
-                Log.d(TAG, "从HeytapPushManager获取RegisterId失败", e)
+                Log.d(TAG, "获取RegisterId失败", e)
                 null
             }
         }
@@ -124,7 +123,7 @@ class OppoPushReceiver {
          */
         fun onReceiveMessage(context: Context, messageType: Int, messageData: String?) {
             try {
-                Log.d(TAG, "收到OPPO推送消息，类型: $messageType")
+                Log.d(TAG, "收到OPPO消息 type=$messageType")
                 
                 val pushMessage = parsePushMessage(messageType, messageData)
                 if (pushMessage != null) {
@@ -136,11 +135,11 @@ class OppoPushReceiver {
                     // 上报统计数据
                     reportMessageReceived(pushMessage)
                 } else {
-                    Log.w(TAG, "解析OPPO推送消息失败")
+                    Log.w(TAG, "解析OPPO消息失败")
                 }
                 
             } catch (e: Exception) {
-                Log.e(TAG, "处理OPPO推送消息时发生异常", e)
+                Log.e(TAG, "处理OPPO消息异常", e)
             }
         }
         
@@ -153,7 +152,7 @@ class OppoPushReceiver {
          */
         fun onNotificationMessageClicked(context: Context, messageType: Int, messageData: String?) {
             try {
-                Log.d(TAG, "OPPO推送通知栏消息被点击，类型: $messageType")
+                Log.d(TAG, "OPPO通知被点击 type=$messageType")
                 
                 val pushMessage = parsePushMessage(messageType, messageData)
                 if (pushMessage != null) {
@@ -174,11 +173,11 @@ class OppoPushReceiver {
                     // 上报点击统计
                     reportNotificationClick(pushMessage)
                 } else {
-                    Log.w(TAG, "解析OPPO推送点击消息失败")
+                    Log.w(TAG, "解析OPPO点击消息失败")
                 }
                 
             } catch (e: Exception) {
-                Log.e(TAG, "处理OPPO推送通知点击时发生异常", e)
+                Log.e(TAG, "处理OPPO通知点击异常", e)
             }
         }
         
@@ -191,18 +190,18 @@ class OppoPushReceiver {
          */
         fun onNotificationMessageArrived(context: Context, messageType: Int, messageData: String?) {
             try {
-                Log.d(TAG, "OPPO推送通知栏消息到达，类型: $messageType")
+                Log.d(TAG, "OPPO通知到达 type=$messageType")
                 
                 val pushMessage = parsePushMessage(messageType, messageData)
                 if (pushMessage != null) {
                     // 上报消息到达统计
                     reportMessageArrived(pushMessage)
                 } else {
-                    Log.w(TAG, "解析OPPO推送到达消息失败")
+                    Log.w(TAG, "解析OPPO到达消息失败")
                 }
                 
             } catch (e: Exception) {
-                Log.e(TAG, "处理OPPO推送通知到达时发生异常", e)
+                Log.e(TAG, "处理OPPO通知到达异常", e)
             }
         }
         
@@ -215,7 +214,7 @@ class OppoPushReceiver {
         private fun parsePushMessage(messageType: Int, messageData: String?): PushMessage? {
             return try {
                 if (messageData.isNullOrEmpty()) {
-                    Log.w(TAG, "OPPO推送消息数据为空")
+                    Log.w(TAG, "OPPO消息数据为空")
                     return null
                 }
                 

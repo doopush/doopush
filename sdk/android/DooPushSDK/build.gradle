@@ -60,6 +60,9 @@ dependencies {
 
     // JSON 解析
     implementation 'com.google.code.gson:gson:2.10.1'
+
+    // 用于 Base64/二进制编解码
+    implementation 'commons-codec:commons-codec:1.15'
     
     // 华为 HMS Push（可选依赖）
     compileOnly 'com.huawei.hms:push:6.11.0.300'
