@@ -70,14 +70,12 @@ cd sdk/android/DooPushSDKExample
 
 ```json
 {
-  "app_id": "your_oppo_app_id",
   "app_key": "your_oppo_app_key",
   "app_secret": "your_oppo_app_secret"
 }
 ```
 
 **配置说明：**
-- `app_id`: OPPO开发者平台的应用ID
 - `app_key`: OPPO开发者平台的应用Key  
 - `app_secret`: OPPO开发者平台的应用Secret（服务端推送必需）
 
@@ -91,7 +89,7 @@ cd sdk/android/DooPushSDKExample
 - OPPO手机 (ColorOS)
 - OnePlus手机 (OxygenOS/ColorOS)
 
-**注意：** 与华为和小米不同，OPPO推送需要三个参数（app_id、app_key、app_secret），其中app_secret主要用于服务端API认证。
+**注意：** 客户端侧集成 OPPO 推送仅需 `app_key` 与 `app_secret`；`app_secret` 主要用于服务端API认证，客户端不会上传。
 
 #### 推送服务配置
 

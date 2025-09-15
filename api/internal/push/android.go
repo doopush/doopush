@@ -3,14 +3,18 @@ package push
 import (
 	"bytes"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/doopush/doopush/api/internal/models"
@@ -19,9 +23,11 @@ import (
 
 // AndroidProvider Android推送服务提供者
 type AndroidProvider struct {
-	channel    string
-	config     AndroidProviderConfig
-	httpClient *http.Client
+	channel        string
+	config         AndroidProviderConfig
+	httpClient     *http.Client
+	oppoAuthClient *OppoAuthClient // OPPO认证客户端
+	authMutex      sync.Mutex      // 认证互斥锁
 }
 
 // AndroidConfig Android 推送配置结构
@@ -68,7 +74,7 @@ func NewAndroidProviderWithConfig(channel string, config AndroidConfig) *Android
 		}
 	}
 
-	return &AndroidProvider{
+	provider := &AndroidProvider{
 		channel: channel,
 		config: AndroidProviderConfig{
 			ServiceAccountKey: config.ServiceAccountKey,
@@ -81,6 +87,16 @@ func NewAndroidProviderWithConfig(channel string, config AndroidConfig) *Android
 			Timeout: 30 * time.Second,
 		},
 	}
+
+	// 为OPPO推送初始化认证客户端
+	if channel == "oppo" && config.AppKey != "" && config.AppSecret != "" {
+		provider.oppoAuthClient = &OppoAuthClient{
+			appKey:       config.AppKey,
+			masterSecret: config.AppSecret,
+		}
+	}
+
+	return provider
 }
 
 // extractProjectIDFromServiceAccount 从服务账号密钥JSON中提取项目ID
@@ -297,28 +313,69 @@ type FirebaseServiceAccount struct {
 
 // 小米推送相关数据结构
 
-// OppoMessage OPPO推送消息结构
-type OppoMessage struct {
-	AppID            string                 `json:"app_id"`                // OPPO应用ID
-	AppKey           string                 `json:"app_key"`               // OPPO应用Key
-	TargetType       int                    `json:"target_type"`           // 目标类型：2=注册ID
-	TargetValue      string                 `json:"target_value"`          // 设备Token
-	Title            string                 `json:"title"`                 // 通知标题
-	Content          string                 `json:"content"`               // 通知内容
-	ClickActionType  int                    `json:"click_action_type"`     // 点击行为类型：0=无，1=打开应用，2=打开链接，3=启动指定页面
-	ClickActionValue string                 `json:"click_action_value"`    // 点击行为值
-	CustomData       map[string]interface{} `json:"custom_data,omitempty"` // 自定义数据
-	OfflineTtl       int                    `json:"offline_ttl"`           // 离线消息存活时间(秒)
-	PushTimeType     int                    `json:"push_time_type"`        // 推送时间类型：0=立即，1=定时
-	TimeStamp        int64                  `json:"time_stamp,omitempty"`  // 定时推送时间戳(秒)
+// OPPO推送常量
+const (
+	oppoHost    = "https://api.push.oppomobile.com"
+	oppoAuthURL = "/server/v1/auth"
+	oppoSendURL = "/server/v1/message/notification/unicast"
+)
+
+// OppoAuthClient OPPO认证客户端（单例模式管理token）
+type OppoAuthClient struct {
+	appKey            string
+	masterSecret      string
+	authToken         string
+	authTokenExpireAt int64
 }
 
-// OppoResponse OPPO推送API响应结构
-type OppoResponse struct {
-	Code      int                    `json:"code"`                // 响应码：0=成功
-	Message   string                 `json:"message"`             // 响应消息
-	Data      map[string]interface{} `json:"data,omitempty"`      // 响应数据
-	MessageID string                 `json:"messageId,omitempty"` // 消息ID
+// OppoMessage OPPO推送消息结构（对应官方SendReq）
+type OppoMessage struct {
+	TargetType           int               `json:"target_type,omitempty"`  // 目标类型 2: registration_id  5:别名
+	TargetValue          string            `json:"target_value,omitempty"` // 推送目标用户: registration_id或alias
+	Notification         *OppoNotification `json:"notification,omitempty"` // 通知栏消息
+	VerifyRegistrationId bool              `json:"verify_registration_id"` // 消息到达客户端后是否校验registration_id
+}
+
+// OppoNotification OPPO通知栏消息结构
+type OppoNotification struct {
+	AppMessageID     string `json:"app_message_id,omitempty"`    // App开发者自定义消息Id，主要用于消息去重
+	Style            int    `json:"style,omitempty"`             // 通知栏样式 1. 标准样式 2. 长文本样式 3. 大图样式
+	Title            string `json:"title,omitempty"`             // 设置在通知栏展示的通知栏标题
+	SubTitle         string `json:"sub_title,omitempty"`         // 子标题
+	Content          string `json:"content,omitempty"`           // 设置在通知栏展示的通知的正文内容
+	ClickActionType  int    `json:"click_action_type,omitempty"` // 点击通知栏后触发的动作类型
+	ActionParameters string `json:"action_parameters,omitempty"` // 跳转动作参数（JSON格式）
+	OffLine          bool   `json:"off_line"`                    // 是否是离线消息
+	OffLineTTL       int    `json:"off_line_ttl,omitempty"`      // 离线消息的存活时间，单位是秒
+	ChannelID        string `json:"channel_id,omitempty"`        // 指定下发的通道ID
+	Category         string `json:"category,omitempty"`          // 通道类别名
+	NotifyLevel      int    `json:"notify_level,omitempty"`      // 通知栏消息提醒等级
+}
+
+// OppoAuthRequest OPPO认证请求结构
+type OppoAuthRequest struct {
+	AppKey    string `json:"app_key,omitempty"`   // OPPO PUSH发放给合法应用的AppKey
+	Sign      string `json:"sign,omitempty"`      // 加密签名
+	Timestamp string `json:"timestamp,omitempty"` // 当前时间的unix时间戳
+}
+
+// OppoAuthResponse OPPO认证响应结构
+type OppoAuthResponse struct {
+	Code    int    `json:"code"`    // 返回码
+	Message string `json:"message"` // 错误详细信息
+	Data    struct {
+		AuthToken  string `json:"auth_token"`  // 权限令牌
+		CreateTime int64  `json:"create_time"` // 时间毫秒数
+	} `json:"data"` // 返回值
+}
+
+// OppoSendResponse OPPO推送响应结构
+type OppoSendResponse struct {
+	Code    int    `json:"code"`    // 返回码
+	Message string `json:"message"` // 错误详细信息
+	Data    struct {
+		MessageID string `json:"messageId"` // 消息 ID
+	} `json:"data"` // 返回值
 }
 
 // XiaomiMessage 小米推送消息结构
@@ -854,65 +911,91 @@ func (a *AndroidProvider) sendHuaweiMessage(accessToken string, message *HuaweiM
 }
 
 // buildXiaomiMessage 构建小米推送消息
+
+// getOppoAuthToken 获取OPPO认证token
+func (a *AndroidProvider) getOppoAuthToken() (string, error) {
+	if a.oppoAuthClient == nil {
+		return "", fmt.Errorf("OPPO认证客户端未初始化")
+	}
+
+	a.authMutex.Lock()
+	defer a.authMutex.Unlock()
+
+	// 检查token是否仍然有效（提前5分钟刷新）
+	now := time.Now().UnixNano() / int64(time.Millisecond)
+	if a.oppoAuthClient.authToken != "" && a.oppoAuthClient.authTokenExpireAt > now+5*60*1000 {
+		return a.oppoAuthClient.authToken, nil
+	}
+
+	// 构建认证签名
+	timestamp := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
+	signString := a.oppoAuthClient.appKey + timestamp + a.oppoAuthClient.masterSecret
+	shaByte := sha256.Sum256([]byte(signString))
+	sign := hex.EncodeToString(shaByte[:])
+
+	// 构建认证请求
+	authReq := OppoAuthRequest{
+		AppKey:    a.oppoAuthClient.appKey,
+		Sign:      sign,
+		Timestamp: timestamp,
+	}
+
+	// 将请求参数转换为form data
+	params := url.Values{}
+	params.Add("app_key", authReq.AppKey)
+	params.Add("sign", authReq.Sign)
+	params.Add("timestamp", authReq.Timestamp)
+
+	// 发送认证请求
+	authURL := oppoHost + oppoAuthURL
+	req, err := http.NewRequest("POST", authURL, strings.NewReader(params.Encode()))
+	if err != nil {
+		return "", fmt.Errorf("创建OPPO认证请求失败: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("OPPO认证请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("读取OPPO认证响应失败: %v", err)
+	}
+
+	// 解析认证响应
+	var authResp OppoAuthResponse
+	if err := json.Unmarshal(body, &authResp); err != nil {
+		return "", fmt.Errorf("解析OPPO认证响应失败: %v, 原始响应: %s", err, string(body))
+	}
+
+	// 检查认证结果
+	if resp.StatusCode != http.StatusOK || authResp.Code != 0 || authResp.Data.AuthToken == "" {
+		return "", fmt.Errorf("OPPO认证失败: status=%d, code=%d, message=%s, body=%s",
+			resp.StatusCode, authResp.Code, authResp.Message, string(body))
+	}
+
+	// 保存认证token，设置过期时间为1小时后
+	a.oppoAuthClient.authToken = authResp.Data.AuthToken
+	a.oppoAuthClient.authTokenExpireAt = now + 60*60*1000
+
+	return a.oppoAuthClient.authToken, nil
+}
+
 // buildOppoMessage 构建OPPO推送消息
 func (a *AndroidProvider) buildOppoMessage(device *models.Device, pushLog *models.PushLog) *OppoMessage {
-	// 构建基本消息结构
-	message := &OppoMessage{
-		AppID:            a.config.AppID,
-		AppKey:           a.config.AppKey,
-		TargetType:       2,            // 2=注册ID
-		TargetValue:      device.Token, // 设备Token
-		Title:            pushLog.Title,
-		Content:          pushLog.Content,
-		ClickActionType:  1,     // 1=打开应用
-		ClickActionValue: "",    // 默认空，打开主页
-		OfflineTtl:       86400, // 离线消息存活时间24小时(秒)
-		PushTimeType:     0,     // 0=立即推送
-		TimeStamp:        0,     // 立即推送时为0
-		CustomData:       make(map[string]interface{}),
-	}
-
 	// 解析OPPO特有参数
-	clickActionType := 1
-	clickActionValue := ""
-	offlineTtl := 86400
-	pushTimeType := 0
-	var timeStamp int64 = 0
+	category := ""      // OPPO消息分类
+	notifyLevel := 2    // OPPO提醒等级，默认为2（通知栏+锁屏）
+	channelID := ""     // 通道ID
+	offLine := true     // 默认启用离线消息
+	offLineTTL := 86400 // 默认离线消息存活24小时
 
-	// 从pushLog.Payload中解析OPPO特有参数
-	if pushLog.Payload != "" && pushLog.Payload != "{}" {
-		var payloadMap map[string]interface{}
-		if err := json.Unmarshal([]byte(pushLog.Payload), &payloadMap); err == nil {
-			if oppoData, ok := payloadMap["oppo"].(map[string]interface{}); ok {
-				if cat, ok := oppoData["click_action_type"].(float64); ok {
-					clickActionType = int(cat)
-				}
-				if cav, ok := oppoData["click_action_value"].(string); ok {
-					clickActionValue = cav
-				}
-				if ttl, ok := oppoData["offline_ttl"].(float64); ok {
-					offlineTtl = int(ttl)
-				}
-				if ptt, ok := oppoData["push_time_type"].(float64); ok {
-					pushTimeType = int(ptt)
-				}
-				if ts, ok := oppoData["time_stamp"].(float64); ok {
-					timeStamp = int64(ts)
-				}
-			}
-		}
-	}
-
-	message.ClickActionType = clickActionType
-	message.ClickActionValue = clickActionValue
-	message.OfflineTtl = offlineTtl
-	message.PushTimeType = pushTimeType
-	message.TimeStamp = timeStamp
-
-	// 构建自定义数据字段，包含统一标识字段
+	// 构建自定义数据用于action_parameters
 	customData := make(map[string]interface{})
-
-	// 添加统计标识字段，保持与其他推送服务一致
 	customData["badge"] = pushLog.Badge
 	customData["push_log_id"] = pushLog.ID
 	if pushLog.DedupKey != "" {
@@ -920,20 +1003,68 @@ func (a *AndroidProvider) buildOppoMessage(device *models.Device, pushLog *model
 	}
 	customData["dp_source"] = "doopush"
 
-	// 解析并合并自定义数据到CustomData字段
+	// 从pushLog.Payload中解析OPPO特有参数和自定义数据
 	if pushLog.Payload != "" && pushLog.Payload != "{}" {
-		var payloadData map[string]interface{}
-		if err := json.Unmarshal([]byte(pushLog.Payload), &payloadData); err == nil {
-			// 合并自定义数据，但不覆盖统一标识字段和OPPO特有字段
-			for k, v := range payloadData {
-				if k != "push_log_id" && k != "dp_source" && k != "badge" && k != "oppo" {
+		var payloadMap map[string]interface{}
+		if err := json.Unmarshal([]byte(pushLog.Payload), &payloadMap); err == nil {
+			// 解析OPPO特有参数
+			if oppoData, ok := payloadMap["oppo"].(map[string]interface{}); ok {
+				if categoryStr, ok := oppoData["category"].(string); ok && categoryStr != "" {
+					category = categoryStr
+				}
+				if notifyLevelFloat, ok := oppoData["notify_level"].(float64); ok {
+					notifyLevel = int(notifyLevelFloat)
+				}
+				if channelIDStr, ok := oppoData["channel_id"].(string); ok && channelIDStr != "" {
+					channelID = channelIDStr
+				}
+				if offLineBool, ok := oppoData["off_line"].(bool); ok {
+					offLine = offLineBool
+				}
+				if offLineTTLFloat, ok := oppoData["off_line_ttl"].(float64); ok {
+					offLineTTL = int(offLineTTLFloat)
+				}
+			}
+
+			// 合并其他自定义数据
+			for k, v := range payloadMap {
+				if k != "push_log_id" && k != "dp_source" && k != "badge" && k != "oppo" && k != "dedup_key" {
 					customData[k] = v
 				}
 			}
 		}
 	}
 
-	message.CustomData = customData
+	// 将自定义数据序列化为JSON字符串，用于action_parameters
+	actionParameters := ""
+	if len(customData) > 0 {
+		if paramsJSON, err := json.Marshal(customData); err == nil {
+			actionParameters = string(paramsJSON)
+		}
+	}
+
+	// 构建OPPO通知消息
+	notification := &OppoNotification{
+		AppMessageID:     fmt.Sprintf("dp_%d_%d", pushLog.ID, time.Now().Unix()), // 使用推送日志ID和时间戳作为消息去重ID
+		Style:            1,                                                      // 标准样式
+		Title:            pushLog.Title,
+		Content:          pushLog.Content,
+		ClickActionType:  0,                // 启动应用
+		ActionParameters: actionParameters, // 自定义数据作为跳转参数
+		OffLine:          offLine,
+		OffLineTTL:       offLineTTL,
+		ChannelID:        channelID,
+		Category:         category,
+		NotifyLevel:      notifyLevel,
+	}
+
+	// 构建OPPO推送消息
+	message := &OppoMessage{
+		TargetType:           2,            // 2 = registration_id
+		TargetValue:          device.Token, // 设备Token
+		Notification:         notification,
+		VerifyRegistrationId: false, // 不验证registration_id，提高成功率
+	}
 
 	return message
 }
@@ -1113,8 +1244,11 @@ func (a *AndroidProvider) sendXiaomiMessage(message *XiaomiMessage, device *mode
 
 // sendOppoMessage 发送OPPO推送消息，返回OPPO错误码、错误消息、消息ID和错误
 func (a *AndroidProvider) sendOppoMessage(message *OppoMessage, device *models.Device) (string, string, string, error) {
-	// OPPO推送API endpoint
-	pushURL := "https://api.heytapmobi.com/application/v3/message/send"
+	// 获取认证token
+	authToken, err := a.getOppoAuthToken()
+	if err != nil {
+		return "", "", "", fmt.Errorf("获取OPPO认证token失败: %v", err)
+	}
 
 	// 序列化消息为JSON
 	messageJSON, err := json.Marshal(message)
@@ -1122,16 +1256,22 @@ func (a *AndroidProvider) sendOppoMessage(message *OppoMessage, device *models.D
 		return "", "", "", fmt.Errorf("序列化OPPO推送消息失败: %v", err)
 	}
 
+	// 构建推送API URL
+	pushURL := oppoHost + oppoSendURL
+
+	// 构建form data参数
+	params := url.Values{}
+	params.Add("message", string(messageJSON))
+	params.Add("auth_token", authToken)
+
 	// 创建HTTP请求
-	req, err := http.NewRequest("POST", pushURL, bytes.NewBuffer(messageJSON))
+	req, err := http.NewRequest("POST", pushURL, strings.NewReader(params.Encode()))
 	if err != nil {
 		return "", "", "", fmt.Errorf("创建OPPO推送请求失败: %v", err)
 	}
 
 	// 设置请求头
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	// OPPO推送使用Master Secret作为认证，通过AuthToken头传递
-	req.Header.Set("AuthToken", fmt.Sprintf("%s:%s", message.AppKey, a.config.AppSecret))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	// 发送请求
 	resp, err := a.httpClient.Do(req)
@@ -1147,33 +1287,25 @@ func (a *AndroidProvider) sendOppoMessage(message *OppoMessage, device *models.D
 	}
 
 	// 解析OPPO响应
-	var oppoResp OppoResponse
+	var oppoResp OppoSendResponse
 	if err := json.Unmarshal(body, &oppoResp); err != nil {
 		return "", "", "", fmt.Errorf("解析OPPO推送响应失败: %v, 原始响应: %s", err, string(body))
 	}
 
 	// 检查OPPO的响应结果
-	if oppoResp.Code != 0 {
+	if resp.StatusCode != http.StatusOK || oppoResp.Code != 0 {
 		errorMsg := oppoResp.Message
 		if errorMsg == "" {
 			errorMsg = "未知错误"
 		}
-		return fmt.Sprintf("%d", oppoResp.Code), errorMsg, "", fmt.Errorf("OPPO推送失败，错误码: %d, 错误信息: %s",
-			oppoResp.Code, errorMsg)
+		return fmt.Sprintf("%d", oppoResp.Code), errorMsg, "", fmt.Errorf("OPPO推送失败: status=%d, code=%d, message=%s, body=%s",
+			resp.StatusCode, oppoResp.Code, errorMsg, string(body))
 	}
 
 	// 成功时返回消息ID
-	messageID := oppoResp.MessageID
+	messageID := oppoResp.Data.MessageID
 	if messageID == "" {
-		// 尝试从Data字段中获取消息ID
-		if dataMap, ok := oppoResp.Data["messageId"]; ok {
-			if msgID, ok := dataMap.(string); ok {
-				messageID = msgID
-			}
-		}
-		if messageID == "" {
-			messageID = "unknown"
-		}
+		messageID = "unknown"
 	}
 
 	return "0", "", messageID, nil

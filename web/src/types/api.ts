@@ -441,6 +441,7 @@ export interface FCMPushConfig {
 }
 
 // 华为推送配置
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface HuaweiPushConfig extends AndroidPushBaseConfig {
   // 华为只需要 app_id 和 app_secret
 }
@@ -501,9 +502,8 @@ export interface XiaomiPushParams {
 }
 
 export interface OppoPushParams {
-  click_action_type?: 0 | 1 | 2 | 3  // 0=无行为 1=打开应用 2=打开链接 3=打开指定页面
-  click_action_value?: string         // 点击行为对应的值
-  offline_ttl?: number               // 离线消息存活时间(秒)
-  push_time_type?: 0 | 1             // 0=立即推送 1=定时推送
-  time_stamp?: number                // 定时推送时间戳(秒)
+  // OPPO推送新消息分类系统（官方支持的2个参数）
+  category?: 'IM' | 'ACCOUNT' | 'DEVICE_REMINDER' | 'ORDER' | 'TODO' | 'SUBSCRIPTION' |  // 通讯与服务类
+             'NEWS' | 'CONTENT' | 'MARKETING' | 'SOCIAL'                                    // 内容与营销类
+  notify_level?: 1 | 2 | 16          // 1=通知栏 2=通知栏+锁屏 16=通知栏+锁屏+横幅+震动+铃声
 }

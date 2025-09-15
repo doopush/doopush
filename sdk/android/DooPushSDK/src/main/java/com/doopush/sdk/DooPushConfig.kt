@@ -96,12 +96,10 @@ data class DooPushConfig(
     }
     
     /**
-     * OPPO推送配置类
-     * @param appId OPPO应用ID，如果为空则会从 oppo-services.json 自动读取
+     * OPPO推送配置类（客户端仅需 appKey，可从 oppo-services.json 自动读取）
      * @param appKey OPPO应用Key，如果为空则会从 oppo-services.json 自动读取
      */
     data class OppoConfig(
-        val appId: String = "",
         val appKey: String = ""
     ) {
         fun isValid(): Boolean {
@@ -109,17 +107,12 @@ data class DooPushConfig(
         }
         
         fun getSummary(): String {
-            val appIdInfo = if (appId.isNotEmpty()) {
-                "AppID=$appId"
-            } else {
-                "AppID=auto(从oppo-services.json读取)"
-            }
             val appKeyInfo = if (appKey.isNotEmpty()) {
                 "AppKey=${appKey.take(8)}..."
             } else {
                 "AppKey=auto(从oppo-services.json读取)"
             }
-            return "OPPO推送配置: $appIdInfo, $appKeyInfo"
+            return "OPPO推送配置: $appKeyInfo"
         }
     }
     

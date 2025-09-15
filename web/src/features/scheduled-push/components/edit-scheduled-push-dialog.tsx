@@ -65,6 +65,12 @@ const editScheduledPushSchema = z.object({
       channel_id: z.string().optional(),
       pass_through: z.number().int().min(0).max(1).optional(),
     }).optional(),
+    // OPPO推送特有参数（新消息分类系统）
+    oppo: z.object({
+      category: z.enum(['IM', 'ACCOUNT', 'DEVICE_REMINDER', 'ORDER', 'TODO', 'SUBSCRIPTION', 
+                        'NEWS', 'CONTENT', 'MARKETING', 'SOCIAL']).optional(),
+      notify_level: z.union([z.literal(1), z.literal(2), z.literal(16)]).optional(),
+    }).optional(),
   }).optional(),
   badge: z.number().int('角标必须是整数').min(1, '角标数量必须大于等于1').optional(),
   scheduled_at: z.string().min(1, '请选择执行时间').refine((val) => {
@@ -755,6 +761,109 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                   </Select>
                                   <FormDescription>
                                     选择消息传递方式
+                                  </FormDescription>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        {/* OPPO推送优化 */}
+                        <div className='space-y-4'>
+                          <div className='flex items-center gap-2 pb-2 border-b'>
+                            <span className='text-green-600'>📱</span>
+                            <h6 className='font-medium'>OPPO推送优化</h6>
+                          </div>
+                          <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                            <FormField
+                              control={form.control}
+                              name="payload.oppo.category"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className='flex items-center gap-1'>
+                                    消息分类 (category)
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        <div className='space-y-2 text-sm max-w-xs'>
+                                          <p><strong>通讯与服务类：</strong></p>
+                                          <p>• <strong>IM</strong>: 聊天消息、通话</p>
+                                          <p>• <strong>ACCOUNT</strong>: 账号资产变化</p>
+                                          <p>• <strong>ORDER</strong>: 订单物流状态</p>
+                                          <p>• <strong>TODO</strong>: 日程待办</p>
+                                          <p><strong>内容与营销类：</strong></p>
+                                          <p>• <strong>MARKETING</strong>: 平台活动</p>
+                                          <p>• <strong>CONTENT</strong>: 内容推荐</p>
+                                          <p>• <strong>NEWS</strong>: 新闻资讯</p>
+                                          <p>• <strong>SOCIAL</strong>: 社交动态</p>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </FormLabel>
+                                  <Select value={field.value || ''} onValueChange={(value) => field.onChange(value || undefined)}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="选择消息分类" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <div className="px-2 py-1 text-xs font-medium text-muted-foreground">通讯与服务类</div>
+                                      <SelectItem value="IM">IM - 即时聊天通话</SelectItem>
+                                      <SelectItem value="ACCOUNT">ACCOUNT - 账号资产变化</SelectItem>
+                                      <SelectItem value="DEVICE_REMINDER">DEVICE_REMINDER - 设备提醒</SelectItem>
+                                      <SelectItem value="ORDER">ORDER - 订单物流状态</SelectItem>
+                                      <SelectItem value="TODO">TODO - 日程待办</SelectItem>
+                                      <SelectItem value="SUBSCRIPTION">SUBSCRIPTION - 个人订阅</SelectItem>
+                                      <div className="px-2 py-1 text-xs font-medium text-muted-foreground">内容与营销类</div>
+                                      <SelectItem value="NEWS">NEWS - 新闻资讯</SelectItem>
+                                      <SelectItem value="CONTENT">CONTENT - 内容推荐</SelectItem>
+                                      <SelectItem value="MARKETING">MARKETING - 平台活动</SelectItem>
+                                      <SelectItem value="SOCIAL">SOCIAL - 社交动态</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormDescription>
+                                    选择适合的消息分类以获得最佳推送体验
+                                  </FormDescription>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="payload.oppo.notify_level"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className='flex items-center gap-1'>
+                                    提醒等级 (notify_level)
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        <div className='space-y-1 text-sm'>
+                                          <p><strong>1</strong>: 仅通知栏显示</p>
+                                          <p><strong>2</strong>: 通知栏 + 锁屏显示（默认）</p>
+                                          <p><strong>16</strong>: 强提醒（横幅+震动+铃声，需申请权限）</p>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </FormLabel>
+                                  <Select value={field.value?.toString() || '2'} onValueChange={(value) => field.onChange(parseInt(value))}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="1">1 - 仅通知栏</SelectItem>
+                                      <SelectItem value="2">2 - 通知栏+锁屏 (推荐)</SelectItem>
+                                      <SelectItem value="16">16 - 强提醒 (需申请权限)</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormDescription>
+                                    选择消息的提醒强度
                                   </FormDescription>
                                 </FormItem>
                               )}

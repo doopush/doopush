@@ -53,8 +53,7 @@ class OppoService(private val context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pollingRunnable: Runnable? = null
 
-    // 缓存的配置信息
-    private var cachedAppId: String? = null
+    // 缓存的配置信息（OPPO客户端不需要 app_id）
     private var cachedAppKey: String? = null
     private var cachedAppSecret: String? = null
 
@@ -66,7 +65,7 @@ class OppoService(private val context: Context) {
     fun autoInitialize(): Boolean {
         val config = loadOppoConfigFromAssets()
         return if (config != null) {
-            initialize(config.first, config.second, config.third)
+            initialize(config.first, config.second)
         } else {
             Log.w(TAG, "未读取到oppo-services.json，跳过OPPO初始化")
             false
@@ -76,23 +75,23 @@ class OppoService(private val context: Context) {
     /**
      * 从assets目录读取oppo-services.json配置
      *
-     * @return Triple<appId, appKey, appSecret> 或 null
+     * @return Pair<appKey, appSecret> 或 null
      */
-    private fun loadOppoConfigFromAssets(): Triple<String, String, String>? {
+    private fun loadOppoConfigFromAssets(): Pair<String, String>? {
         return try {
             val inputStream: InputStream = context.assets.open("oppo-services.json")
             val jsonString = inputStream.bufferedReader().use { it.readText() }
             val jsonObject = JSONObject(jsonString)
 
-            val appId = jsonObject.optString("app_id", "")
+            // OPPO 客户端仅需要 app_key 与 app_secret
             val appKey = jsonObject.optString("app_key", "")
             val appSecret = jsonObject.optString("app_secret", "")
 
-            if (appId.isNotEmpty() && appKey.isNotEmpty() && appSecret.isNotEmpty()) {
-                Log.d(TAG, "OPPO配置读取成功: AppId=$appId")
-                Triple(appId, appKey, appSecret)
+            if (appKey.isNotEmpty() && appSecret.isNotEmpty()) {
+                Log.d(TAG, "OPPO配置读取成功: app_key/app_secret 就绪")
+                Pair(appKey, appSecret)
             } else {
-                Log.w(TAG, "oppo-services.json中缺少必要配置")
+                Log.w(TAG, "oppo-services.json中缺少必要配置: 需要 app_key 与 app_secret")
                 null
             }
         } catch (e: Exception) {
@@ -104,12 +103,11 @@ class OppoService(private val context: Context) {
     /**
      * 初始化OPPO推送
      *
-     * @param appId OPPO应用ID
      * @param appKey OPPO应用Key
      * @param appSecret OPPO应用Secret
      * @return 是否初始化成功
      */
-    fun initialize(appId: String, appKey: String, appSecret: String): Boolean {
+    fun initialize(appKey: String, appSecret: String): Boolean {
         if (!isOppoPushAvailable()) {
             Log.w(TAG, "OPPO SDK 未集成")
             return false
@@ -173,10 +171,9 @@ class OppoService(private val context: Context) {
                 register5.invoke(null, context, appKey, appSecret, emptyJson, callbackObject)
             }
             
-            cachedAppId = appId
             cachedAppKey = appKey
             cachedAppSecret = appSecret
-            Log.d(TAG, "OPPO初始化成功: AppId=$appId")
+            Log.d(TAG, "OPPO初始化成功")
 
             // 若存在等待中的回调，启动一次轮询，避免某些机型不回调 onRegister
             if (tokenCallback != null) {
@@ -244,7 +241,7 @@ class OppoService(private val context: Context) {
      * @param callback token获取回调
      */
     fun getToken(callback: TokenCallback) {
-        if (cachedAppId != null && cachedAppKey != null && cachedAppSecret != null) {
+        if (cachedAppKey != null && cachedAppSecret != null) {
             // 尝试获取已缓存的token
             val cachedToken = getRegId()
             if (!cachedToken.isNullOrEmpty()) {
@@ -253,12 +250,12 @@ class OppoService(private val context: Context) {
             } else {
                 // 如果没有缓存token，重新初始化以触发注册回调
                 this.tokenCallback = callback // 缓存回调
-                initialize(cachedAppId!!, cachedAppKey!!, cachedAppSecret!!)
+                initialize(cachedAppKey!!, cachedAppSecret!!)
             }
         } else {
             // 尝试自动初始化
             val success = autoInitialize()
-            if (success && cachedAppId != null && cachedAppKey != null && cachedAppSecret != null) {
+            if (success && cachedAppKey != null && cachedAppSecret != null) {
                 // 自动初始化成功后，再次尝试获取token
                 getToken(callback)
             } else {
