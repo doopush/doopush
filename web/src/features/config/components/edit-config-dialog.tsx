@@ -45,8 +45,7 @@ const editConfigSchema = z.object({
   // Android 其他厂商字段
   app_id: z.string().optional(),      // 华为/小米/OPPO/VIVO/荣耀/三星
   app_key: z.string().optional(),     // 小米/OPPO/VIVO/荣耀/三星
-  app_secret: z.string().optional(),  // 华为/小米/VIVO/荣耀/三星
-  app_secret: z.string().optional(), // OPPO
+  app_secret: z.string().optional(),  // 华为/小米/OPPO/VIVO/荣耀/三星
 })
 
 type EditConfigFormData = z.infer<typeof editConfigSchema>
@@ -76,7 +75,6 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
       app_id: '',
       app_key: '',
       app_secret: '',
-      app_secret: '',
     },
   })
 
@@ -97,7 +95,6 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
           service_account_key: '',
           app_id: '',
           app_key: '',
-          app_secret: '',
           app_secret: '',
         })
         

@@ -106,7 +106,6 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
       app_id: '',
       app_key: '',
       app_secret: '',
-      app_secret: '',
     },
   })
 
@@ -125,7 +124,6 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
         service_account_key: '',
         app_id: '',
         app_key: '',
-        app_secret: '',
         app_secret: '',
       })
     }
