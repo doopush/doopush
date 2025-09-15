@@ -78,6 +78,36 @@ https://doopush.com/api/v1
 | `target` | object | 推送目标配置 | 见下方说明 |
 | `schedule_time` | string | 定时发送时间（ISO 8601格式） | `"2024-12-31T10:00:00Z"` |
 
+#### 推送目标配置 (target)
+
+| 参数 | 类型 | 描述 | 示例 |
+|------|------|------|------|
+| `type` | string | 目标类型：`all`, `devices`, `tags`, `groups` | `"devices"` |
+| `device_ids` | array | 设备ID数组（当type为devices时） | `[1, 2, 3]` |
+| `tag_ids` | array | 标签ID数组（当type为tags时） | `[1, 2]` |
+| `tags` | array | 设备标签筛选（新版本推荐） | 见标签筛选说明 |
+| `group_ids` | array | 分组ID数组（当type为groups时） | `[1, 2]` |
+| `platform` | string | 平台筛选：`ios`, `android` | `"android"` |
+| `channel` | string | 推送通道筛选 | `"fcm"`, `"huawei"`, `"xiaomi"`, `"oppo"` |
+
+#### 标签筛选 (tags)
+
+| 参数 | 类型 | 描述 | 示例 |
+|------|------|------|------|
+| `tag_name` | string | 标签名称 | `"user_type"` |
+| `tag_value` | string | 标签值（可选） | `"vip"` |
+
+#### Android 推送通道说明
+
+Android 平台支持多种推送通道，系统会根据设备品牌智能选择最优通道：
+
+| 通道 | 适用设备 | 描述 |
+|------|----------|------|
+| `fcm` | 所有Android设备 | Google Firebase Cloud Messaging，默认通道 |
+| `huawei` | 华为设备 | 华为移动服务HMS Push，华为设备专用 |
+| `xiaomi` | 小米设备 | 小米推送服务，小米/Redmi设备专用 |
+| `oppo` | OPPO设备 | OPPO推送服务，OPPO/OnePlus设备专用 |
+
 #### 载荷参数 (payload)
 
 | 参数 | 类型 | 描述 | 示例 |
@@ -88,6 +118,7 @@ https://doopush.com/api/v1
 
 ### 请求示例
 
+#### 基础广播推送
 ```bash
 curl -X POST "https://doopush.com/api/v1/apps/123/push" \
      -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
@@ -102,8 +133,69 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
          "data": "{\"feature_id\":\"new_feature_v2\"}"
        },
        "target": {
-         "type": "broadcast",
+         "type": "all",
          "platform": "ios"
+       }
+     }'
+```
+
+#### Android 厂商推送示例
+```bash
+# 向所有华为设备推送
+curl -X POST "https://doopush.com/api/v1/apps/123/push" \
+     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "title": "华为用户专享优惠",
+       "content": "华为用户专享活动，限时优惠等您来抢！",
+       "payload": {
+         "action": "open_page",
+         "url": "https://example.com/huawei-special"
+       },
+       "target": {
+         "type": "all",
+         "platform": "android",
+         "channel": "huawei"
+       }
+     }'
+
+# 向指定设备组推送（自动选择推送通道）
+curl -X POST "https://doopush.com/api/v1/apps/123/push" \
+     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "title": "VIP用户消息",
+       "content": "您的VIP权益即将到期，请及时续费",
+       "payload": {
+         "action": "open_page",
+         "url": "https://example.com/vip-renewal"
+       },
+       "target": {
+         "type": "tags",
+         "tags": [
+           {
+             "tag_name": "user_level", 
+             "tag_value": "vip"
+           }
+         ],
+         "platform": "android"
+       }
+     }'
+
+# 向特定设备列表推送
+curl -X POST "https://doopush.com/api/v1/apps/123/push" \
+     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "title": "订单状态更新",
+       "content": "您的订单状态已更新，请查看详情",
+       "payload": {
+         "action": "open_page",
+         "url": "https://example.com/orders"
+       },
+       "target": {
+         "type": "devices",
+         "device_ids": [101, 102, 103]
        }
      }'
 ```
@@ -298,8 +390,8 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/batch" \
   "title": "系统公告",
   "content": "系统维护通知",
   "badge": 1,
-  "platform": "ios",
-  "vendor": "huawei",
+  "platform": "android",
+  "channel": "huawei",
   "payload": {
     "action": "open_page",
     "url": "https://example.com/announcement",
@@ -323,7 +415,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/batch" \
 |------|------|------|------|
 | `badge` | integer | iOS角标数量 | `1` |
 | `platform` | string | 指定平台：`ios`, `android` | `"ios"` |
-| `vendor` | string | 指定厂商：`huawei`, `xiaomi`, `oppo`, `vivo` 等 | `"huawei"` |
+| `channel` | string | 指定推送通道：`fcm`, `huawei`, `xiaomi`, `oppo` | `"huawei"` |
 | `payload` | object | 自定义载荷 | 见载荷参数说明 |
 
 ### 请求示例

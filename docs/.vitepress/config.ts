@@ -56,7 +56,7 @@ export default withMermaid(
             text: 'SDK 接入',
             items: [
               { text: 'iOS 集成', link: '/sdk/ios-integration' },
-              { text: 'Android (开发中)', link: '/sdk/android-coming' }
+              { text: 'Android 集成', link: '/sdk/android-integration' }
             ]
           }
         ]
