@@ -48,19 +48,20 @@ jobs:
         run: |
           echo "🔍 开始提取版本号..."
 
-          if [ -f "build.gradle" ]; then
-            echo "✅ 找到 build.gradle 文件"
+          BUILD_GRADLE_PATH="lib/build.gradle"
+          if [ -f "$BUILD_GRADLE_PATH" ]; then
+            echo "✅ 找到 $BUILD_GRADLE_PATH 文件"
 
             # 显示版本相关行用于调试
             echo "📋 build.gradle 版本行:"
-            grep -n "version\|SDK_VERSION" build.gradle || echo "未找到 version 行"
+            grep -n "version\|SDK_VERSION" "$BUILD_GRADLE_PATH" || echo "未找到 version 行"
 
             # 优先从 publishing.version 提取版本号
-            VERSION=$(grep -E "^\s*version\s*=\s*['\"][^'\"]+['\"]" build.gradle | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1)
+            VERSION=$(grep -E "^\s*version\s*=\s*['\"][^'\"]+['\"]" "$BUILD_GRADLE_PATH" | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1)
             
             # 如果没找到，尝试从 SDK_VERSION 提取
             if [ -z "$VERSION" ]; then
-              VERSION=$(grep -E "SDK_VERSION.*['\"][^'\"]*['\"]" build.gradle | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1)
+              VERSION=$(grep -E "SDK_VERSION.*['\"][^'\"]*['\"]" "$BUILD_GRADLE_PATH" | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1)
             fi
 
             if [ ! -z "$VERSION" ]; then
@@ -69,11 +70,11 @@ jobs:
             else
               echo "❌ 未能提取版本号"
               echo "📋 build.gradle 文件内容预览:"
-              head -30 build.gradle
+              head -30 "$BUILD_GRADLE_PATH"
               exit 1
             fi
           else
-            echo "❌ 找不到 build.gradle 文件"
+            echo "❌ 找不到 $BUILD_GRADLE_PATH 文件"
             echo "📁 当前目录内容:"
             ls -la
             exit 1
@@ -123,7 +124,7 @@ jobs:
           ./gradlew clean
           
           # 构建 Release AAR
-          if ./gradlew assembleRelease; then
+          if ./gradlew :lib:assembleRelease; then
             echo "✅ AAR 构建成功"
           else
             echo "❌ AAR 构建失败"
@@ -132,7 +133,7 @@ jobs:
           
       - name: Verify AAR
         run: |
-          AAR_PATH="build/outputs/aar"
+          AAR_PATH="lib/build/outputs/aar"
           if [ -d "$AAR_PATH" ]; then
             echo "✅ AAR 构建成功"
             echo "📊 AAR 文件信息:"
@@ -179,42 +180,13 @@ jobs:
           
           ### 📦 集成方式
           
-          #### Gradle 集成
-          \`\`\`gradle
-          dependencies {
-              implementation 'com.doopush:doopush-sdk:${VERSION}'
-          }
-          \`\`\`
+          下载 \`DooPushSDK.aar\` 文件，集成到您的 Android 项目中。
           
-          #### 手动集成
-          1. 下载 \`DooPushSDK.aar\`
-          2. 放置到 app/libs 目录
-          3. 在 app/build.gradle 中添加：
-          \`\`\`gradle
-          dependencies {
-              implementation files('libs/DooPushSDK.aar')
-          }
-          \`\`\`
-          
-          ### 🔧 权限配置
-          \`\`\`xml
-          <uses-permission android:name="android.permission.INTERNET" />
-          <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-          <uses-permission android:name="android.permission.WAKE_LOCK" />
-          \`\`\`
-          
-          ### 🏭 厂商推送支持
-          - 华为 HMS Push
-          - 小米推送
-          - OPPO推送
-          - VIVO推送
-          - 荣耀推送
-          - 三星推送
-          - FCM (Google)
+          详细集成步骤、厂商推送支持和配置说明请查看完整的 [Android 集成指南](https://doopush.com/docs/sdk/android-integration.html)。
           
           ### 🔗 相关链接
           - [文档](https://doopush.com/docs)
-          - [集成指南](https://doopush.com/docs/sdk/android-integration)
+          - [集成指南](https://doopush.com/docs/sdk/android-integration.html)
           - [示例项目](https://github.com/doopush/doopush/tree/main/sdk/android/DooPushSDKExample)
           EOF
           
@@ -246,8 +218,8 @@ jobs:
             --notes-file "$RELEASE_NOTES_FILE" \
             --draft=false \
             --prerelease=false \
-            "build/outputs/aar/${{ env.AAR_NAME }}.aar" \
-            "build.gradle"
+            "lib/build/outputs/aar/${{ env.AAR_NAME }}.aar" \
+            "lib/build.gradle"
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

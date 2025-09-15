@@ -53,12 +53,17 @@ allprojects {
 }
 ```
 
-在 app 模块的 `build.gradle` 中添加：
+#### 方式一：使用发布的AAR包（推荐）
+
+1. 访问 [DooPush Android SDK Releases](https://github.com/doopush/doopush-android-sdk/releases)
+2. 下载最新版本的 `DooPushSDK.aar` 文件
+3. 将AAR文件放置到你的应用模块的 `libs` 目录下（如：`app/libs/`）
+4. 在 app 模块的 `build.gradle` 中添加：
 
 ```kotlin
 dependencies {
-    // DooPush SDK
-    implementation project(':doopush-sdk')
+    // DooPush SDK - 使用本地AAR文件
+    implementation files('libs/DooPushSDK.aar')
     
     // 必需：Firebase Cloud Messaging
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
@@ -72,6 +77,29 @@ dependencies {
     
     // 可选：OPPO推送 （OPPO设备）
     implementation 'com.umeng.umsdk:oppo-push:3.5.3'
+}
+```
+
+#### 方式二：源码集成（开发调试）
+
+如果你需要修改SDK源码或进行深度定制，可以直接集成源码：
+
+1. 将 DooPush SDK 源码添加到你的项目中
+2. 在 `settings.gradle` 中添加模块引用：
+
+```kotlin
+include ':lib'
+project(':lib').projectDir = new File('path/to/doopush-sdk/lib')
+```
+
+3. 在 app 模块的 `build.gradle` 中添加：
+
+```kotlin
+dependencies {
+    // DooPush SDK - 源码模块
+    implementation project(':lib')
+    
+    // 其他依赖同上...
 }
 ```
 

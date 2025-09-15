@@ -22,7 +22,7 @@ echo_error() {
 
 # 项目配置
 PROJECT_NAME="DooPushSDK"
-OUTPUT_DIR="build/outputs/aar"
+OUTPUT_DIR="lib/build/outputs/aar"
 
 echo_info "开始构建 $PROJECT_NAME AAR..."
 
@@ -39,7 +39,7 @@ echo_info "清理之前的构建..."
 ./gradlew clean
 
 echo_info "开始构建 Release AAR..."
-./gradlew assembleRelease
+./gradlew :lib:assembleRelease
 
 # 检查构建是否成功
 if [ ! -d "$OUTPUT_DIR" ]; then

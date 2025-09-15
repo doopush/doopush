@@ -17,9 +17,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DooPushSDKExample"
-include ':app'
-
-// 引用 DooPushSDK 模块
+rootProject.name = "DooPushSDK"
 include ':lib'
-project(':lib').projectDir = new File('../DooPushSDK/lib')

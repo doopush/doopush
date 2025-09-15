@@ -110,7 +110,7 @@ kotlin {
 
 dependencies {
     // DooPush SDK 本地依赖
-    implementation project(':doopush-sdk')
+    implementation project(':lib')
     
     // 批量加载 libs 目录中的所有 aar 文件（可选方案）
     // implementation fileTree(dir: 'libs', include: ['*.aar'])
