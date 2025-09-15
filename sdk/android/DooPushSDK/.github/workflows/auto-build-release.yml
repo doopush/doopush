@@ -1,0 +1,266 @@
+name: Auto Build and Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  AAR_NAME: DooPushSDK
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 允许创建标签和发布
+      packages: write
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史记录用于版本检测
+          
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            build
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/build.gradle', '**/gradle.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+            
+      - name: Extract version from build.gradle
+        id: version
+        run: |
+          echo "🔍 开始提取版本号..."
+
+          if [ -f "build.gradle" ]; then
+            echo "✅ 找到 build.gradle 文件"
+
+            # 显示版本相关行用于调试
+            echo "📋 build.gradle 版本行:"
+            grep -n "version\|SDK_VERSION" build.gradle || echo "未找到 version 行"
+
+            # 优先从 publishing.version 提取版本号
+            VERSION=$(grep -E "^\s*version\s*=\s*['\"][^'\"]+['\"]" build.gradle | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1)
+            
+            # 如果没找到，尝试从 SDK_VERSION 提取
+            if [ -z "$VERSION" ]; then
+              VERSION=$(grep -E "SDK_VERSION.*['\"][^'\"]*['\"]" build.gradle | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1)
+            fi
+
+            if [ ! -z "$VERSION" ]; then
+              echo "✅ 检测到版本: $VERSION"
+              echo "version=$VERSION" >> $GITHUB_OUTPUT
+            else
+              echo "❌ 未能提取版本号"
+              echo "📋 build.gradle 文件内容预览:"
+              head -30 build.gradle
+              exit 1
+            fi
+          else
+            echo "❌ 找不到 build.gradle 文件"
+            echo "📁 当前目录内容:"
+            ls -la
+            exit 1
+          fi
+          
+      - name: Check if release exists
+        id: check_release
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ 版本 v$VERSION 的 Release 已存在，将删除后重新发布"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ 版本 v$VERSION 是新版本，将创建 Release"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean up existing release and tag
+        if: steps.check_release.outputs.exists == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "🧹 清理现有版本: v$VERSION"
+
+          # 删除现有的 Release
+          echo "删除 Release..."
+          gh release delete "v$VERSION" --yes || echo "Release 删除失败或不存在"
+
+          # 删除本地和远程标签
+          echo "删除 Git 标签..."
+          git tag -d "v$VERSION" 2>/dev/null || echo "本地标签不存在"
+          git push origin :refs/tags/"v$VERSION" 2>/dev/null || echo "远程标签删除失败或不存在"
+
+          echo "✅ 清理完成，继续发布新版本"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Grant execute permission to gradlew
+        run: chmod +x gradlew
+        
+      - name: Build AAR
+        run: |
+          echo "🚀 开始构建 AAR..."
+          
+          # 清理之前的构建
+          ./gradlew clean
+          
+          # 构建 Release AAR
+          if ./gradlew assembleRelease; then
+            echo "✅ AAR 构建成功"
+          else
+            echo "❌ AAR 构建失败"
+            exit 1
+          fi
+          
+      - name: Verify AAR
+        run: |
+          AAR_PATH="build/outputs/aar"
+          if [ -d "$AAR_PATH" ]; then
+            echo "✅ AAR 构建成功"
+            echo "📊 AAR 文件信息:"
+            ls -la "$AAR_PATH"
+            
+            # 查找 release AAR 文件
+            RELEASE_AAR=$(find "$AAR_PATH" -name "*-release.aar" | head -1)
+            if [ ! -z "$RELEASE_AAR" ]; then
+              echo "📦 找到 Release AAR: $RELEASE_AAR"
+              # 重命名为统一格式
+              cp "$RELEASE_AAR" "$AAR_PATH/${AAR_NAME}.aar"
+              echo "📦 重命名为: ${AAR_NAME}.aar"
+            else
+              echo "❌ 未找到 Release AAR 文件"
+              exit 1
+            fi
+          else
+            echo "❌ AAR 构建失败"
+            exit 1
+          fi
+          
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # 获取最近的提交记录
+          if git tag | grep -q "v"; then
+            LAST_TAG=$(git tag | grep "^v" | sort -V | tail -1)
+            COMMITS=$(git log --oneline --no-merges "${LAST_TAG}..HEAD" | head -10)
+          else
+            COMMITS=$(git log --oneline --no-merges | head -10)
+          fi
+          
+          # 生成发布说明
+          cat > release_notes.md << EOF
+          ## DooPushSDK v${VERSION}
+          
+          ### 📱 Android SDK 信息
+          - **最低支持**: Android API 21 (5.0)+
+          - **编译版本**: Android API 34
+          - **Java 版本**: 8+
+          - **Kotlin 版本**: 1.8+
+          
+          ### 📦 集成方式
+          
+          #### Gradle 集成
+          \`\`\`gradle
+          dependencies {
+              implementation 'com.doopush:doopush-sdk:${VERSION}'
+          }
+          \`\`\`
+          
+          #### 手动集成
+          1. 下载 \`DooPushSDK.aar\`
+          2. 放置到 app/libs 目录
+          3. 在 app/build.gradle 中添加：
+          \`\`\`gradle
+          dependencies {
+              implementation files('libs/DooPushSDK.aar')
+          }
+          \`\`\`
+          
+          ### 🔧 权限配置
+          \`\`\`xml
+          <uses-permission android:name="android.permission.INTERNET" />
+          <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+          <uses-permission android:name="android.permission.WAKE_LOCK" />
+          \`\`\`
+          
+          ### 🏭 厂商推送支持
+          - 华为 HMS Push
+          - 小米推送
+          - OPPO推送
+          - VIVO推送
+          - 荣耀推送
+          - 三星推送
+          - FCM (Google)
+          
+          ### 🔗 相关链接
+          - [文档](https://doopush.com/docs)
+          - [集成指南](https://doopush.com/docs/sdk/android-integration)
+          - [示例项目](https://github.com/doopush/doopush/tree/main/sdk/android/DooPushSDKExample)
+          EOF
+          
+          echo "release_notes_file=release_notes.md" >> $GITHUB_OUTPUT
+          
+      - name: Create Git Tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "🏷️ 创建 Git 标签: v$VERSION"
+          git config user.name "DooPush Bot"
+          git config user.email "bot@doopush.com"
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+          echo "✅ Git 标签创建成功"
+
+      - name: Create GitHub Release
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          RELEASE_NOTES_FILE="${{ steps.release_notes.outputs.release_notes_file }}"
+
+          echo "🎉 创建 Release: DooPushSDK v$VERSION"
+
+          # 等待一秒确保标签已同步
+          sleep 2
+
+          # 使用 GitHub CLI 创建 release 并上传文件
+          gh release create "v$VERSION" \
+            --title "DooPushSDK v$VERSION" \
+            --notes-file "$RELEASE_NOTES_FILE" \
+            --draft=false \
+            --prerelease=false \
+            "build/outputs/aar/${{ env.AAR_NAME }}.aar" \
+            "build.gradle"
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Summary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [ "${{ steps.check_release.outputs.exists }}" = "true" ]; then
+            echo "🔄 DooPushSDK v$VERSION 重新发布成功!"
+            echo "📦 删除了旧版本，创建了新版本"
+          else
+            echo "🎉 DooPushSDK v$VERSION 新版本发布成功!"
+          fi
+          echo "📦 Release URL: https://github.com/doopush/doopush-android-sdk/releases/tag/v$VERSION"
+          echo "📱 AAR 文件: DooPushSDK.aar"
+          echo "📄 Build 文件: build.gradle"
