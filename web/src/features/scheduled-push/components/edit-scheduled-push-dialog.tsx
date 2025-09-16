@@ -70,6 +70,7 @@ const editScheduledPushSchema = z.object({
       category: z.enum(['IM', 'ACCOUNT', 'DEVICE_REMINDER', 'ORDER', 'TODO', 'SUBSCRIPTION', 
                         'NEWS', 'CONTENT', 'MARKETING', 'SOCIAL']).optional(),
       notify_level: z.union([z.literal(1), z.literal(2), z.literal(16)]).optional(),
+      channel_id: z.string().optional(),
     }).optional(),
   }).optional(),
   badge: z.number().int('角标必须是整数').min(1, '角标数量必须大于等于1').optional(),
@@ -118,6 +119,11 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
         xiaomi: {
           channel_id: '',
           pass_through: 0,
+        },
+        oppo: {
+          category: undefined,
+          notify_level: 2,
+          channel_id: '',
         },
       },
       badge: 1,
@@ -179,6 +185,11 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
           channel_id: '',
           pass_through: 0,
         },
+        oppo: {
+          category: undefined,
+          notify_level: 2 as const,
+          channel_id: '',
+        },
       }
       
       if (push.payload) {
@@ -195,6 +206,11 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
             xiaomi: {
               channel_id: payloadData.xiaomi?.channel_id || '',
               pass_through: payloadData.xiaomi?.pass_through || 0,
+            },
+            oppo: {
+              category: payloadData.oppo?.category || undefined,
+              notify_level: payloadData.oppo?.notify_level || 2,
+              channel_id: payloadData.oppo?.channel_id || '',
             },
           }
         } catch (error) {
@@ -391,7 +407,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
 
       // 转换payload格式
       let finalPayload = ''
-      if (data.payload && (data.payload.action || data.payload.url || data.payload.data || data.payload.huawei || data.payload.xiaomi)) {
+      if (data.payload && (data.payload.action || data.payload.url || data.payload.data || data.payload.huawei || data.payload.xiaomi || data.payload.oppo)) {
         finalPayload = JSON.stringify(data.payload)
       }
 
@@ -616,12 +632,12 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       <TooltipTrigger>
                                         <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                                       </TooltipTrigger>
-                                      <TooltipContent side="top">
-                                        <div className='space-y-1 text-sm'>
-                                          <p><strong>NORMAL</strong>: 服务与通讯类消息，不受频控限制</p>
-                                          <p><strong>LOW</strong>: 资讯营销类消息，受频控限制</p>
-                                        </div>
-                                      </TooltipContent>
+                                        <TooltipContent side="top">
+                                          <div className='space-y-1 text-sm'>
+                                            <p><strong>NORMAL</strong>: 服务与通讯类消息，不受频控限制（推荐使用）</p>
+                                            <p><strong>LOW</strong>: 资讯营销类消息，受频控限制</p>
+                                          </div>
+                                        </TooltipContent>
                                     </Tooltip>
                                   </FormLabel>
                                   <Select value={field.value} onValueChange={field.onChange}>
@@ -634,10 +650,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       <SelectItem value="NORMAL">NORMAL (推荐)</SelectItem>
                                       <SelectItem value="LOW">LOW</SelectItem>
                                     </SelectContent>
-                                  </Select>
-                                  <FormDescription>
-                                    NORMAL级消息不受频控限制，推荐使用
-                                  </FormDescription>
+                                    </Select>
                                 </FormItem>
                               )}
                             />
@@ -653,15 +666,17 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       <TooltipTrigger>
                                         <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                                       </TooltipTrigger>
-                                      <TooltipContent side="top">
-                                        <div className='space-y-1 text-sm'>
-                                          <p><strong>IM</strong>: 即时通讯</p>
-                                          <p><strong>VOIP</strong>: 语音通话</p>
-                                          <p><strong>TRAVEL</strong>: 旅游服务</p>
-                                          <p><strong>NEWS</strong>: 新闻资讯</p>
-                                          <p>需要先在华为开发者后台申请对应权益</p>
-                                        </div>
-                                      </TooltipContent>
+                                        <TooltipContent side="top">
+                                          <div className='space-y-1 text-sm'>
+                                            <p><strong>IM</strong>: 即时通讯</p>
+                                            <p><strong>VOIP</strong>: 语音通话</p>
+                                            <p><strong>TRAVEL</strong>: 旅游服务</p>
+                                            <p><strong>NEWS</strong>: 新闻资讯</p>
+                                            <p><strong>FINANCE</strong>: 金融服务</p>
+                                            <p><strong>SOCIAL</strong>: 社交应用</p>
+                                            <p className="text-amber-600">需要先在华为开发者后台申请对应权益</p>
+                                          </div>
+                                        </TooltipContent>
                                     </Tooltip>
                                   </FormLabel>
                                   <Select value={field.value} onValueChange={field.onChange}>
@@ -678,10 +693,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       <SelectItem value="FINANCE">FINANCE</SelectItem>
                                       <SelectItem value="SOCIAL">SOCIAL</SelectItem>
                                     </SelectContent>
-                                  </Select>
-                                  <FormDescription>
-                                    选择对应的业务分类，需要先在华为后台申请权益
-                                  </FormDescription>
+                                    </Select>
                                 </FormItem>
                               )}
                             />
@@ -706,14 +718,15 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       <TooltipTrigger>
                                         <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                                       </TooltipTrigger>
-                                      <TooltipContent side="top">
-                                        <div className='space-y-1 text-sm'>
-                                          <p><strong>默认通道</strong>: 单设备单日1条限制</p>
-                                          <p><strong>公信消息</strong>: 单设备单日5-8条限制（需申请）</p>
-                                          <p><strong>私信消息</strong>: 不限量（需申请）</p>
-                                          <p>不填写则使用默认通道</p>
-                                        </div>
-                                      </TooltipContent>
+                                        <TooltipContent side="top">
+                                          <div className='space-y-1 text-sm'>
+                                            <p><strong>默认通道</strong>: 单设备单日1条限制</p>
+                                            <p><strong>公信消息</strong>: 单设备单日5-8条限制（需申请）</p>
+                                            <p><strong>私信消息</strong>: 不限量（需申请）</p>
+                                            <p className="text-blue-600">指定推送通道ID，用于突破默认通道的数量限制</p>
+                                            <p>不填写则使用默认通道</p>
+                                          </div>
+                                        </TooltipContent>
                                     </Tooltip>
                                   </FormLabel>
                                   <FormControl>
@@ -721,10 +734,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       placeholder="例如：private_msg_channel"
                                       {...field} 
                                     />
-                                  </FormControl>
-                                  <FormDescription>
-                                    指定推送通道ID，用于突破默认通道的数量限制
-                                  </FormDescription>
+                                    </FormControl>
                                 </FormItem>
                               )}
                             />
@@ -740,12 +750,12 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       <TooltipTrigger>
                                         <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                                       </TooltipTrigger>
-                                      <TooltipContent side="top">
-                                        <div className='space-y-1 text-sm'>
-                                          <p><strong>0</strong>: 通知消息（显示在通知栏）</p>
-                                          <p><strong>1</strong>: 透传消息（直接传递给应用）</p>
-                                        </div>
-                                      </TooltipContent>
+                                        <TooltipContent side="top">
+                                          <div className='space-y-1 text-sm'>
+                                            <p><strong>0</strong>: 通知消息（显示在通知栏，推荐使用）</p>
+                                            <p><strong>1</strong>: 透传消息（直接传递给应用）</p>
+                                          </div>
+                                        </TooltipContent>
                                     </Tooltip>
                                   </FormLabel>
                                   <Select value={field.value?.toString() || '0'} onValueChange={(value) => field.onChange(parseInt(value))}>
@@ -758,10 +768,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       <SelectItem value="0">通知消息 (推荐)</SelectItem>
                                       <SelectItem value="1">透传消息</SelectItem>
                                     </SelectContent>
-                                  </Select>
-                                  <FormDescription>
-                                    选择消息传递方式
-                                  </FormDescription>
+                                    </Select>
                                 </FormItem>
                               )}
                             />
@@ -774,7 +781,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                             <span className='text-green-600'>📱</span>
                             <h6 className='font-medium'>OPPO推送优化</h6>
                           </div>
-                          <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                          <div className='grid items-start grid-cols-1 md:grid-cols-3 gap-4'>
                             <FormField
                               control={form.control}
                               name="payload.oppo.category"
@@ -786,20 +793,21 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       <TooltipTrigger>
                                         <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                                       </TooltipTrigger>
-                                      <TooltipContent side="top">
-                                        <div className='space-y-2 text-sm max-w-xs'>
-                                          <p><strong>通讯与服务类：</strong></p>
-                                          <p>• <strong>IM</strong>: 聊天消息、通话</p>
-                                          <p>• <strong>ACCOUNT</strong>: 账号资产变化</p>
-                                          <p>• <strong>ORDER</strong>: 订单物流状态</p>
-                                          <p>• <strong>TODO</strong>: 日程待办</p>
-                                          <p><strong>内容与营销类：</strong></p>
-                                          <p>• <strong>MARKETING</strong>: 平台活动</p>
-                                          <p>• <strong>CONTENT</strong>: 内容推荐</p>
-                                          <p>• <strong>NEWS</strong>: 新闻资讯</p>
-                                          <p>• <strong>SOCIAL</strong>: 社交动态</p>
-                                        </div>
-                                      </TooltipContent>
+                                        <TooltipContent side="top">
+                                          <div className='space-y-2 text-sm max-w-xs'>
+                                            <p><strong>通讯与服务类：</strong></p>
+                                            <p>• <strong>IM</strong>: 聊天消息、通话</p>
+                                            <p>• <strong>ACCOUNT</strong>: 账号资产变化</p>
+                                            <p>• <strong>ORDER</strong>: 订单物流状态</p>
+                                            <p>• <strong>TODO</strong>: 日程待办</p>
+                                            <p><strong>内容与营销类：</strong></p>
+                                            <p>• <strong>MARKETING</strong>: 平台活动</p>
+                                            <p>• <strong>CONTENT</strong>: 内容推荐</p>
+                                            <p>• <strong>NEWS</strong>: 新闻资讯</p>
+                                            <p>• <strong>SOCIAL</strong>: 社交动态</p>
+                                            <p className="text-green-600">选择适合的消息分类以获得最佳推送体验</p>
+                                          </div>
+                                        </TooltipContent>
                                     </Tooltip>
                                   </FormLabel>
                                   <Select value={field.value || ''} onValueChange={(value) => field.onChange(value || undefined)}>
@@ -822,10 +830,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       <SelectItem value="MARKETING">MARKETING - 平台活动</SelectItem>
                                       <SelectItem value="SOCIAL">SOCIAL - 社交动态</SelectItem>
                                     </SelectContent>
-                                  </Select>
-                                  <FormDescription>
-                                    选择适合的消息分类以获得最佳推送体验
-                                  </FormDescription>
+                                    </Select>
                                 </FormItem>
                               )}
                             />
@@ -841,13 +846,13 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       <TooltipTrigger>
                                         <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                                       </TooltipTrigger>
-                                      <TooltipContent side="top">
-                                        <div className='space-y-1 text-sm'>
-                                          <p><strong>1</strong>: 仅通知栏显示</p>
-                                          <p><strong>2</strong>: 通知栏 + 锁屏显示（默认）</p>
-                                          <p><strong>16</strong>: 强提醒（横幅+震动+铃声，需申请权限）</p>
-                                        </div>
-                                      </TooltipContent>
+                                        <TooltipContent side="top">
+                                          <div className='space-y-1 text-sm'>
+                                            <p><strong>1</strong>: 仅通知栏显示</p>
+                                            <p><strong>2</strong>: 通知栏 + 锁屏显示（推荐默认）</p>
+                                            <p><strong>16</strong>: 强提醒（横幅+震动+铃声，需申请权限）</p>
+                                          </div>
+                                        </TooltipContent>
                                     </Tooltip>
                                   </FormLabel>
                                   <Select value={field.value?.toString() || '2'} onValueChange={(value) => field.onChange(parseInt(value))}>
@@ -861,10 +866,39 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
                                       <SelectItem value="2">2 - 通知栏+锁屏 (推荐)</SelectItem>
                                       <SelectItem value="16">16 - 强提醒 (需申请权限)</SelectItem>
                                     </SelectContent>
-                                  </Select>
-                                  <FormDescription>
-                                    选择消息的提醒强度
-                                  </FormDescription>
+                                    </Select>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="payload.oppo.channel_id"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className='flex items-center gap-1'>
+                                    通道ID (channel_id)
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        <div className='space-y-1 text-sm max-w-sm'>
+                                          <p><strong>指定下发的通道ID</strong></p>
+                                          <p>• 自定义通知渠道的唯一标识</p>
+                                          <p>• 用于控制推送消息的展示方式和优先级</p>
+                                          <p>• 需要与应用端创建的NotificationChannel的ID对应</p>
+                                          <p>• 留空则使用默认通道</p>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="例如：high_priority_channel"
+                                      {...field} 
+                                    />
+                                    </FormControl>
                                 </FormItem>
                               )}
                             />

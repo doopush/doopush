@@ -90,6 +90,7 @@ const pushFormSchema = z.object({
       category: z.enum(['IM', 'ACCOUNT', 'DEVICE_REMINDER', 'ORDER', 'TODO', 'SUBSCRIPTION', 
                         'NEWS', 'CONTENT', 'MARKETING', 'SOCIAL']).optional(),
       notify_level: z.union([z.literal(1), z.literal(2), z.literal(16)]).optional(),
+      channel_id: z.string().optional(),
     }).optional(),
   }).optional(),
   target_type: z.enum(['single', 'batch', 'tags', 'broadcast', 'groups']).refine(val => val, {
@@ -143,6 +144,7 @@ export default function PushSend() {
         oppo: {
           category: undefined,
           notify_level: 2,
+          channel_id: '',
         },
       },
       target_type: 'single',
@@ -664,7 +666,7 @@ export default function PushSend() {
                                               </TooltipTrigger>
                                               <TooltipContent side="top">
                                                 <div className='space-y-1 text-sm'>
-                                                  <p><strong>NORMAL</strong>: 服务与通讯类消息，不受频控限制</p>
+                                                  <p><strong>NORMAL</strong>: 服务与通讯类消息，不受频控限制（推荐使用）</p>
                                                   <p><strong>LOW</strong>: 资讯营销类消息，受频控限制</p>
                                                 </div>
                                               </TooltipContent>
@@ -681,9 +683,6 @@ export default function PushSend() {
                                               <SelectItem value="LOW">LOW</SelectItem>
                                             </SelectContent>
                                           </Select>
-                                          <FormDescription>
-                                            NORMAL级消息不受频控限制，推荐使用
-                                          </FormDescription>
                                         </FormItem>
                                       )}
                                     />
@@ -705,7 +704,9 @@ export default function PushSend() {
                                                   <p><strong>VOIP</strong>: 语音通话</p>
                                                   <p><strong>TRAVEL</strong>: 旅游服务</p>
                                                   <p><strong>NEWS</strong>: 新闻资讯</p>
-                                                  <p>需要先在华为开发者后台申请对应权益</p>
+                                                  <p><strong>FINANCE</strong>: 金融服务</p>
+                                                  <p><strong>SOCIAL</strong>: 社交应用</p>
+                                                  <p className="text-amber-600">需要先在华为开发者后台申请对应权益</p>
                                                 </div>
                                               </TooltipContent>
                                             </Tooltip>
@@ -725,9 +726,6 @@ export default function PushSend() {
                                               <SelectItem value="SOCIAL">SOCIAL</SelectItem>
                                             </SelectContent>
                                           </Select>
-                                          <FormDescription>
-                                            选择对应的业务分类，需要先在华为后台申请权益
-                                          </FormDescription>
                                         </FormItem>
                                       )}
                                     />
@@ -757,6 +755,7 @@ export default function PushSend() {
                                                   <p><strong>默认通道</strong>: 单设备单日1条限制</p>
                                                   <p><strong>公信消息</strong>: 单设备单日5-8条限制（需申请）</p>
                                                   <p><strong>私信消息</strong>: 不限量（需申请）</p>
+                                                  <p className="text-blue-600">指定推送通道ID，用于突破默认通道的数量限制</p>
                                                   <p>不填写则使用默认通道</p>
                                                 </div>
                                               </TooltipContent>
@@ -768,9 +767,6 @@ export default function PushSend() {
                                               {...field} 
                                             />
                                           </FormControl>
-                                          <FormDescription>
-                                            指定推送通道ID，用于突破默认通道的数量限制
-                                          </FormDescription>
                                         </FormItem>
                                       )}
                                     />
@@ -788,7 +784,7 @@ export default function PushSend() {
                                               </TooltipTrigger>
                                               <TooltipContent side="top">
                                                 <div className='space-y-1 text-sm'>
-                                                  <p><strong>0</strong>: 通知消息（显示在通知栏）</p>
+                                                  <p><strong>0</strong>: 通知消息（显示在通知栏，推荐使用）</p>
                                                   <p><strong>1</strong>: 透传消息（直接传递给应用）</p>
                                                 </div>
                                               </TooltipContent>
@@ -805,9 +801,6 @@ export default function PushSend() {
                                               <SelectItem value="1">透传消息</SelectItem>
                                             </SelectContent>
                                           </Select>
-                                          <FormDescription>
-                                            选择消息传递方式
-                                          </FormDescription>
                                         </FormItem>
                                       )}
                                     />
@@ -820,7 +813,7 @@ export default function PushSend() {
                                     <span className='text-green-600'>📱</span>
                                     <h6 className='font-medium'>OPPO推送优化</h6>
                                   </div>
-                                  <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                                  <div className='grid items-start grid-cols-1 md:grid-cols-3 gap-4'>
                                     <FormField
                                       control={form.control}
                                       name="payload.oppo.category"
@@ -844,6 +837,7 @@ export default function PushSend() {
                                                   <p>• <strong>CONTENT</strong>: 内容推荐</p>
                                                   <p>• <strong>NEWS</strong>: 新闻资讯</p>
                                                   <p>• <strong>SOCIAL</strong>: 社交动态</p>
+                                                  <p className="text-green-600">选择适合的消息分类以获得最佳推送体验</p>
                                                 </div>
                                               </TooltipContent>
                                             </Tooltip>
@@ -869,9 +863,6 @@ export default function PushSend() {
                                               <SelectItem value="SOCIAL">SOCIAL - 社交动态</SelectItem>
                                             </SelectContent>
                                           </Select>
-                                          <FormDescription>
-                                            选择适合的消息分类以获得最佳推送体验
-                                          </FormDescription>
                                         </FormItem>
                                       )}
                                     />
@@ -890,7 +881,7 @@ export default function PushSend() {
                                               <TooltipContent side="top">
                                                 <div className='space-y-1 text-sm'>
                                                   <p><strong>1</strong>: 仅通知栏显示</p>
-                                                  <p><strong>2</strong>: 通知栏 + 锁屏显示（默认）</p>
+                                                  <p><strong>2</strong>: 通知栏 + 锁屏显示（推荐默认）</p>
                                                   <p><strong>16</strong>: 强提醒（横幅+震动+铃声，需申请权限）</p>
                                                 </div>
                                               </TooltipContent>
@@ -908,9 +899,38 @@ export default function PushSend() {
                                               <SelectItem value="16">16 - 强提醒 (需申请权限)</SelectItem>
                                             </SelectContent>
                                           </Select>
-                                          <FormDescription>
-                                            选择消息的提醒强度
-                                          </FormDescription>
+                                        </FormItem>
+                                      )}
+                                    />
+
+                                    <FormField
+                                      control={form.control}
+                                      name="payload.oppo.channel_id"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className='flex items-center gap-1'>
+                                            通道ID (channel_id)
+                                            <Tooltip>
+                                              <TooltipTrigger>
+                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top">
+                                                <div className='space-y-1 text-sm max-w-sm'>
+                                                  <p><strong>指定下发的通道ID</strong></p>
+                                                  <p>• 自定义通知渠道的唯一标识</p>
+                                                  <p>• 用于控制推送消息的展示方式和优先级</p>
+                                                  <p>• 需要与应用端创建的NotificationChannel的ID对应</p>
+                                                  <p>• 留空则使用默认通道</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </FormLabel>
+                                          <FormControl>
+                                            <Input 
+                                              placeholder="例如：high_priority_channel"
+                                              {...field} 
+                                            />
+                                          </FormControl>
                                         </FormItem>
                                       )}
                                     />
