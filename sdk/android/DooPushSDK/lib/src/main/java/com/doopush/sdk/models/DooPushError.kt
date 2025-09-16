@@ -70,6 +70,14 @@ data class DooPushError(
         const val OPPO_CONFIG_INVALID = 3305
         const val OPPO_PUSH_ERROR = 3306
         
+        // VIVO推送相关错误码
+        const val VIVO_NOT_AVAILABLE = 3401
+        const val VIVO_INIT_FAILED = 3402
+        const val VIVO_TOKEN_FETCH_FAILED = 3403
+        const val VIVO_REGISTER_FAILED = 3404
+        const val VIVO_CONFIG_INVALID = 3405
+        const val VIVO_PUSH_ERROR = 3406
+        
         // 权限相关错误码
         const val PERMISSION_DENIED = 4001
         const val NOTIFICATION_PERMISSION_DENIED = 4002
@@ -341,6 +349,72 @@ data class DooPushError(
             return DooPushError(
                 code = OPPO_PUSH_ERROR,
                 message = "OPPO推送操作失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建VIVO推送不可用错误
+         */
+        fun vivoNotAvailable(): DooPushError {
+            return DooPushError(
+                code = VIVO_NOT_AVAILABLE,
+                message = "VIVO推送服务不可用，可能是设备不支持或SDK未集成"
+            )
+        }
+        
+        /**
+         * 创建VIVO推送初始化失败错误
+         */
+        fun vivoInitFailed(details: String? = null): DooPushError {
+            return DooPushError(
+                code = VIVO_INIT_FAILED,
+                message = "VIVO推送初始化失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建VIVO推送Token获取失败错误
+         */
+        fun vivoTokenFailed(cause: Throwable? = null): DooPushError {
+            return DooPushError(
+                code = VIVO_TOKEN_FETCH_FAILED,
+                message = "VIVO推送Token获取失败",
+                details = cause?.message,
+                cause = cause
+            )
+        }
+        
+        /**
+         * 创建VIVO推送注册失败错误
+         */
+        fun vivoRegisterFailed(details: String? = null): DooPushError {
+            return DooPushError(
+                code = VIVO_REGISTER_FAILED,
+                message = "VIVO推送注册失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建VIVO推送配置无效错误
+         */
+        fun vivoConfigInvalid(details: String? = null): DooPushError {
+            return DooPushError(
+                code = VIVO_CONFIG_INVALID,
+                message = "VIVO推送配置无效",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建VIVO推送操作错误
+         */
+        fun vivoPushError(details: String? = null): DooPushError {
+            return DooPushError(
+                code = VIVO_PUSH_ERROR,
+                message = "VIVO推送操作失败",
                 details = details
             )
         }

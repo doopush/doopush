@@ -507,3 +507,13 @@ export interface OppoPushParams {
              'NEWS' | 'CONTENT' | 'MARKETING' | 'SOCIAL'                                    // 内容与营销类
   notify_level?: 1 | 2 | 16          // 1=通知栏 2=通知栏+锁屏 16=通知栏+锁屏+横幅+震动+铃声
 }
+
+export interface VivoPushParams {
+  classification?: 0 | 1               // 消息分类: 0=运营消息, 1=系统消息
+  notify_type?: 1 | 2                  // 通知类型: 1=通知栏, 2=透传
+  skip_type?: 1 | 2 | 3                // 跳转类型: 1=打开应用, 2=打开URL, 3=自定义
+  skip_content?: string                 // 跳转内容
+  network_type?: -1 | 1                // 网络类型: -1=不限制, 1=WiFi
+  time_to_live?: number                 // 离线保存时长(秒)
+  client_custom_map?: Record<string, string>  // 自定义透传参数
+}

@@ -70,7 +70,8 @@ tasks.register('copyConfigFile') {
     def filesToCopy = [
         'doopush-services.json',
         'xiaomi-services.json',
-        'oppo-services.json'
+        'oppo-services.json',
+        'vivo-services.json'
     ]
     def targetDir = file('src/main/assets')
 
@@ -144,6 +145,9 @@ dependencies {
 
     // OPPO 推送
     implementation 'com.umeng.umsdk:oppo-push:3.5.3'
+
+    // VIVO 推送
+    implementation 'com.umeng.umsdk:vivo-push:4.0.6.0'
     
     // 权限请求
     implementation 'com.github.permissions-dispatcher:permissionsdispatcher:4.9.2'

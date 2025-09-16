@@ -70,6 +70,12 @@ dependencies {
     // 小米推送（可选依赖）
     compileOnly 'com.umeng.umsdk:xiaomi-push:6.0.1'
 
+    // OPPO 推送（可选依赖）
+    compileOnly 'com.umeng.umsdk:oppo-push:3.5.3'
+
+    // VIVO 推送（可选依赖）
+    compileOnly 'com.umeng.umsdk:vivo-push:4.0.6.0'
+
     // 测试依赖
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.mockito:mockito-core:5.8.0'
@@ -93,7 +99,7 @@ afterEvaluate {
                 pom {
                     name = 'DooPush Android SDK'
                     description = 'Android SDK for DooPush push notification service'
-                    url = 'https://github.com/doopush/android-sdk'
+                    url = 'https://github.com/doopush/doopush-android-sdk'
                     
                     licenses {
                         license {

@@ -661,6 +661,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         val isHMSAvailable = dooPushManager.isHMSAvailable()
         val isXiaomiAvailable = dooPushManager.isXiaomiAvailable()
         val isOppoAvailable = dooPushManager.isOppoAvailable()
+        val isVivoAvailable = dooPushManager.isVivoAvailable()
         
         val statusText = StringBuilder()
         statusText.append("推送服务可用性状态：\n\n")
@@ -675,6 +676,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         statusText.append("- 华为 HMS Push：${if (isHMSAvailable) "✓ 可用" else "✗ 不可用"}\n")
         statusText.append("- 小米推送：${if (isXiaomiAvailable) "✓ 可用" else "✗ 不可用"}\n")
         statusText.append("- OPPO推送：${if (isOppoAvailable) "✓ 可用" else "✗ 不可用"}\n")
+        statusText.append("- VIVO推送：${if (isVivoAvailable) "✓ 可用" else "✗ 不可用"}\n")
         
         statusText.append("\n支持的服务：\n")
         vendorInfo.supportedServices.forEach { service ->

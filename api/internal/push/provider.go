@@ -122,6 +122,8 @@ func (m *PushManager) createAndroidProvider(app *models.App, channel string) (Pu
 		return m.createXiaomiProvider(androidConfig)
 	case "oppo":
 		return m.createOppoProvider(androidConfig)
+	case "vivo":
+		return m.createVivoProvider(androidConfig)
 	default:
 		return nil, fmt.Errorf("暂不支持的 Android 推送通道: %s", channel)
 	}
@@ -185,6 +187,20 @@ func (m *PushManager) createOppoProvider(config AndroidConfig) (PushProvider, er
 		return nil, fmt.Errorf("OPPO推送配置缺少 app_secret")
 	}
 	return NewAndroidProviderWithConfig("oppo", config), nil
+}
+
+// createVivoProvider 创建VIVO推送提供者
+func (m *PushManager) createVivoProvider(config AndroidConfig) (PushProvider, error) {
+	if config.AppID == "" {
+		return nil, fmt.Errorf("VIVO推送配置缺少 app_id")
+	}
+	if config.AppKey == "" {
+		return nil, fmt.Errorf("VIVO推送配置缺少 app_key")
+	}
+	if config.AppSecret == "" {
+		return nil, fmt.Errorf("VIVO推送配置缺少 app_secret")
+	}
+	return NewAndroidProviderWithConfig("vivo", config), nil
 }
 
 // SendPush 统一推送接口
@@ -357,6 +373,18 @@ func (m *PushManager) validateAndroidConfig(channel, configJSON string) error {
 		}
 		return nil
 
+	case "vivo":
+		if androidConfig.AppID == "" {
+			return fmt.Errorf("VIVO推送配置缺少 app_id")
+		}
+		if androidConfig.AppKey == "" {
+			return fmt.Errorf("VIVO推送配置缺少 app_key")
+		}
+		if androidConfig.AppSecret == "" {
+			return fmt.Errorf("VIVO推送配置缺少 app_secret")
+		}
+		return nil
+
 	default:
 		return fmt.Errorf("暂不支持的 Android 推送通道: %s", channel)
 	}
@@ -421,6 +449,8 @@ func (m *PushManager) TestConfigWithDevice(appID uint, title, content, platform,
 			provider, err = m.createXiaomiProvider(androidConfig)
 		case "oppo":
 			provider, err = m.createOppoProvider(androidConfig)
+		case "vivo":
+			provider, err = m.createVivoProvider(androidConfig)
 		default:
 			return &models.PushResult{
 				Success:      false,

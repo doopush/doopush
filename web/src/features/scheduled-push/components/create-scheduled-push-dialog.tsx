@@ -71,6 +71,16 @@ const createScheduledPushSchema = z.object({
       notify_level: z.union([z.literal(1), z.literal(2), z.literal(16)]).optional(),
       channel_id: z.string().optional(),
     }).optional(),
+    // VIVO推送特有参数
+    vivo: z.object({
+      classification: z.union([z.literal(0), z.literal(1)]).optional(),
+      notify_type: z.union([z.literal(1), z.literal(2)]).optional(),
+      skip_type: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+      skip_content: z.string().optional(),
+      network_type: z.union([z.literal(-1), z.literal(1)]).optional(),
+      time_to_live: z.number().int().min(1).max(86400 * 7).optional(),
+      client_custom_map: z.record(z.string()).optional(),
+    }).optional(),
   }).optional(),
   badge: z.number().int('角标必须是整数').min(1, '角标数量必须大于等于1').optional(),
   scheduled_at: z.string().min(1, '请选择执行时间').refine((val) => {
@@ -124,6 +134,15 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
           notify_level: 2,
           channel_id: '',
         },
+        vivo: {
+          classification: 0,
+          notify_type: 1,
+          skip_type: 1,
+          skip_content: '',
+          network_type: -1,
+          time_to_live: 86400,
+          client_custom_map: {},
+        },
       },
       badge: 1,
       scheduled_at: '',
@@ -146,7 +165,7 @@ export function CreateScheduledPushDialog({ open, onOpenChange, onSuccess }: Cre
       
       // 转换payload格式
       let finalPayload = ''
-      if (data.payload && (data.payload.action || data.payload.url || data.payload.data || data.payload.huawei || data.payload.xiaomi || data.payload.oppo)) {
+      if (data.payload && (data.payload.action || data.payload.url || data.payload.data || data.payload.huawei || data.payload.xiaomi || data.payload.oppo || data.payload.vivo)) {
         finalPayload = JSON.stringify(data.payload)
       }
       

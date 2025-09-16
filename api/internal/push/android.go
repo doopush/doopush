@@ -2,6 +2,7 @@ package push
 
 import (
 	"bytes"
+	"crypto/md5"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -27,6 +28,7 @@ type AndroidProvider struct {
 	config         AndroidProviderConfig
 	httpClient     *http.Client
 	oppoAuthClient *OppoAuthClient // OPPO认证客户端
+	vivoAuthClient *VivoAuthClient // VIVO认证客户端
 	authMutex      sync.Mutex      // 认证互斥锁
 }
 
@@ -93,6 +95,15 @@ func NewAndroidProviderWithConfig(channel string, config AndroidConfig) *Android
 		provider.oppoAuthClient = &OppoAuthClient{
 			appKey:       config.AppKey,
 			masterSecret: config.AppSecret,
+		}
+	}
+
+	// 为VIVO推送初始化认证客户端
+	if channel == "vivo" && config.AppID != "" && config.AppKey != "" && config.AppSecret != "" {
+		provider.vivoAuthClient = &VivoAuthClient{
+			appID:     config.AppID,
+			appKey:    config.AppKey,
+			appSecret: config.AppSecret,
 		}
 	}
 
@@ -320,6 +331,13 @@ const (
 	oppoSendURL = "/server/v1/message/notification/unicast"
 )
 
+// VIVO推送常量
+const (
+	vivoHost    = "https://api-push.vivo.com.cn"
+	vivoAuthURL = "/message/auth"
+	vivoSendURL = "/message/send"
+)
+
 // OppoAuthClient OPPO认证客户端（单例模式管理token）
 type OppoAuthClient struct {
 	appKey            string
@@ -376,6 +394,53 @@ type OppoSendResponse struct {
 	Data    struct {
 		MessageID string `json:"messageId"` // 消息 ID
 	} `json:"data"` // 返回值
+}
+
+// VivoAuthClient VIVO认证客户端
+type VivoAuthClient struct {
+	appID             string
+	appKey            string
+	appSecret         string
+	authToken         string
+	authTokenExpireAt int64
+}
+
+// VivoMessage VIVO推送消息结构
+type VivoMessage struct {
+	RegID           string            `json:"regId"`                     // 目标设备注册ID
+	Title           string            `json:"title"`                     // 通知标题
+	Content         string            `json:"content"`                   // 通知内容
+	NotifyType      int               `json:"notifyType"`                // 通知类型: 1=通知栏, 2=透传
+	TimeToLive      int               `json:"timeToLive"`                // 离线保存时长(秒)
+	SkipType        int               `json:"skipType"`                  // 跳转类型: 1=打开应用, 2=打开URL, 3=自定义
+	SkipContent     string            `json:"skipContent,omitempty"`     // 跳转内容
+	NetworkType     int               `json:"networkType"`               // 网络类型: -1=不限制, 1=WiFi
+	Classification  int               `json:"classification"`            // 消息分类: 0=运营消息, 1=系统消息
+	RequestID       string            `json:"requestId"`                 // 请求ID，用于去重
+	ClientCustomMap map[string]string `json:"clientCustomMap,omitempty"` // 自定义透传参数
+}
+
+// VivoAuthRequest VIVO认证请求结构
+type VivoAuthRequest struct {
+	AppID     string `json:"appId"`     // VIVO应用ID
+	AppKey    string `json:"appKey"`    // VIVO应用Key
+	Timestamp int64  `json:"timestamp"` // 时间戳（毫秒）
+	Sign      string `json:"sign"`      // MD5签名
+}
+
+// VivoAuthResponse VIVO认证响应结构
+type VivoAuthResponse struct {
+	Result    int    `json:"result"`    // 返回码：0=成功
+	Desc      string `json:"desc"`      // 描述信息
+	AuthToken string `json:"authToken"` // 认证token
+	ValidTime int64  `json:"validTime"` // token有效期（毫秒）
+}
+
+// VivoSendResponse VIVO推送响应结构
+type VivoSendResponse struct {
+	Result int    `json:"result"` // 返回码：0=成功
+	Desc   string `json:"desc"`   // 描述信息
+	TaskID string `json:"taskId"` // 任务ID
 }
 
 // XiaomiMessage 小米推送消息结构
@@ -985,6 +1050,86 @@ func (a *AndroidProvider) getOppoAuthToken() (string, error) {
 	return a.oppoAuthClient.authToken, nil
 }
 
+// getVivoAuthToken 获取VIVO认证token
+func (a *AndroidProvider) getVivoAuthToken() (string, error) {
+	if a.vivoAuthClient == nil {
+		return "", fmt.Errorf("VIVO认证客户端未初始化")
+	}
+
+	a.authMutex.Lock()
+	defer a.authMutex.Unlock()
+
+	// 检查token是否仍然有效（提前5分钟刷新）
+	now := time.Now().UnixNano() / int64(time.Millisecond)
+	if a.vivoAuthClient.authToken != "" && a.vivoAuthClient.authTokenExpireAt > now+5*60*1000 {
+		return a.vivoAuthClient.authToken, nil
+	}
+
+	// 构建认证签名（VIVO使用MD5签名）
+	timestamp := now
+	signString := a.vivoAuthClient.appID + a.vivoAuthClient.appKey + strconv.FormatInt(timestamp, 10) + a.vivoAuthClient.appSecret
+	h := md5.New()
+	h.Write([]byte(signString))
+	sign := hex.EncodeToString(h.Sum(nil))
+
+	// 构建认证请求
+	authReq := VivoAuthRequest{
+		AppID:     a.vivoAuthClient.appID,
+		AppKey:    a.vivoAuthClient.appKey,
+		Timestamp: timestamp,
+		Sign:      sign,
+	}
+
+	// 将请求参数转换为JSON
+	requestJSON, err := json.Marshal(authReq)
+	if err != nil {
+		return "", fmt.Errorf("序列化VIVO认证请求失败: %v", err)
+	}
+
+	// 发送认证请求
+	authURL := vivoHost + vivoAuthURL
+	req, err := http.NewRequest("POST", authURL, bytes.NewBuffer(requestJSON))
+	if err != nil {
+		return "", fmt.Errorf("创建VIVO认证请求失败: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("VIVO认证请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("读取VIVO认证响应失败: %v", err)
+	}
+
+	// 解析认证响应
+	var authResp VivoAuthResponse
+	if err := json.Unmarshal(body, &authResp); err != nil {
+		return "", fmt.Errorf("解析VIVO认证响应失败: %v, 原始响应: %s", err, string(body))
+	}
+
+	// 检查认证结果（VIVO的成功码是0）
+	if resp.StatusCode != http.StatusOK || authResp.Result != 0 || authResp.AuthToken == "" {
+		return "", fmt.Errorf("VIVO认证失败: status=%d, result=%d, desc=%s, body=%s",
+			resp.StatusCode, authResp.Result, authResp.Desc, string(body))
+	}
+
+	// 保存认证token，设置过期时间（VIVO返回的ValidTime是毫秒时间戳）
+	a.vivoAuthClient.authToken = authResp.AuthToken
+	if authResp.ValidTime > 0 {
+		a.vivoAuthClient.authTokenExpireAt = authResp.ValidTime
+	} else {
+		// 如果没有返回过期时间，默认设置为1小时后
+		a.vivoAuthClient.authTokenExpireAt = now + 60*60*1000
+	}
+
+	return a.vivoAuthClient.authToken, nil
+}
+
 // buildOppoMessage 构建OPPO推送消息
 func (a *AndroidProvider) buildOppoMessage(device *models.Device, pushLog *models.PushLog) *OppoMessage {
 	// 解析OPPO特有参数
@@ -1064,6 +1209,87 @@ func (a *AndroidProvider) buildOppoMessage(device *models.Device, pushLog *model
 		TargetValue:          device.Token, // 设备Token
 		Notification:         notification,
 		VerifyRegistrationId: false, // 不验证registration_id，提高成功率
+	}
+
+	return message
+}
+
+// buildVivoMessage 构建VIVO推送消息
+func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *models.PushLog) *VivoMessage {
+	// 解析VIVO特有参数
+	notifyType := 1     // 通知类型，默认为1（通知栏）
+	timeToLive := 86400 // 离线保存时长，默认24小时（秒）
+	skipType := 1       // 跳转类型，默认为1（打开应用）
+	skipContent := ""   // 跳转内容
+	networkType := -1   // 网络类型，默认为-1（不限制）
+	classification := 0 // 消息分类，默认为0（运营消息）
+
+	// 构建自定义数据
+	customData := make(map[string]string)
+	customData["badge"] = fmt.Sprintf("%d", pushLog.Badge)
+	customData["push_log_id"] = fmt.Sprintf("%d", pushLog.ID)
+	if pushLog.DedupKey != "" {
+		customData["dedup_key"] = pushLog.DedupKey
+	}
+	customData["dp_source"] = "doopush"
+
+	// 从pushLog.Payload中解析VIVO特有参数和自定义数据
+	if pushLog.Payload != "" && pushLog.Payload != "{}" {
+		var payloadMap map[string]interface{}
+		if err := json.Unmarshal([]byte(pushLog.Payload), &payloadMap); err == nil {
+			// 解析VIVO特有参数
+			if vivoData, ok := payloadMap["vivo"].(map[string]interface{}); ok {
+				if classificationFloat, ok := vivoData["classification"].(float64); ok {
+					classification = int(classificationFloat)
+				}
+				if notifyTypeFloat, ok := vivoData["notify_type"].(float64); ok {
+					notifyType = int(notifyTypeFloat)
+				}
+				if skipTypeFloat, ok := vivoData["skip_type"].(float64); ok {
+					skipType = int(skipTypeFloat)
+				}
+				if skipContentStr, ok := vivoData["skip_content"].(string); ok && skipContentStr != "" {
+					skipContent = skipContentStr
+				}
+				if networkTypeFloat, ok := vivoData["network_type"].(float64); ok {
+					networkType = int(networkTypeFloat)
+				}
+				if timeToLiveFloat, ok := vivoData["time_to_live"].(float64); ok {
+					timeToLive = int(timeToLiveFloat)
+				}
+				if clientCustomMapData, ok := vivoData["client_custom_map"].(map[string]interface{}); ok {
+					for k, v := range clientCustomMapData {
+						if strValue := fmt.Sprintf("%v", v); strValue != "" {
+							customData[k] = strValue
+						}
+					}
+				}
+			}
+
+			// 合并其他自定义数据，但不覆盖统一标识字段和VIVO特有字段
+			for k, v := range payloadMap {
+				if k != "push_log_id" && k != "dp_source" && k != "badge" && k != "vivo" {
+					if strValue := fmt.Sprintf("%v", v); strValue != "" {
+						customData[k] = strValue
+					}
+				}
+			}
+		}
+	}
+
+	// 构建VIVO推送消息
+	message := &VivoMessage{
+		RegID:           device.Token,
+		Title:           pushLog.Title,
+		Content:         pushLog.Content,
+		NotifyType:      notifyType,
+		TimeToLive:      timeToLive,
+		SkipType:        skipType,
+		SkipContent:     skipContent,
+		NetworkType:     networkType,
+		Classification:  classification,
+		RequestID:       fmt.Sprintf("dp_%d_%d", pushLog.ID, time.Now().Unix()), // 使用推送日志ID和时间戳作为请求ID
+		ClientCustomMap: customData,
 	}
 
 	return message
@@ -1311,6 +1537,138 @@ func (a *AndroidProvider) sendOppoMessage(message *OppoMessage, device *models.D
 	return "0", "", messageID, nil
 }
 
+// sendVivoMessage 发送VIVO推送消息，返回VIVO错误码、错误消息、任务ID和错误
+func (a *AndroidProvider) sendVivoMessage(message *VivoMessage, device *models.Device) (string, string, string, error) {
+	// 获取认证token
+	authToken, err := a.getVivoAuthToken()
+	if err != nil {
+		return "", "", "", fmt.Errorf("获取VIVO认证token失败: %v", err)
+	}
+
+	// 构建请求参数
+	requestData := make(map[string]interface{})
+	// 将VivoMessage的字段直接作为请求参数
+	requestData["regId"] = message.RegID
+	requestData["title"] = message.Title
+	requestData["content"] = message.Content
+	requestData["notifyType"] = message.NotifyType
+	requestData["timeToLive"] = message.TimeToLive
+	requestData["skipType"] = message.SkipType
+	if message.SkipContent != "" {
+		requestData["skipContent"] = message.SkipContent
+	}
+	requestData["networkType"] = message.NetworkType
+	requestData["classification"] = message.Classification
+	requestData["requestId"] = message.RequestID
+	if len(message.ClientCustomMap) > 0 {
+		requestData["clientCustomMap"] = message.ClientCustomMap
+	}
+
+	// 添加认证token
+	requestData["authToken"] = authToken
+
+	// 序列化请求数据为JSON
+	requestJSON, err := json.Marshal(requestData)
+	if err != nil {
+		return "", "", "", fmt.Errorf("序列化VIVO推送请求失败: %v", err)
+	}
+
+	// 构建推送API URL
+	pushURL := vivoHost + vivoSendURL
+
+	// 创建HTTP请求
+	req, err := http.NewRequest("POST", pushURL, bytes.NewBuffer(requestJSON))
+	if err != nil {
+		return "", "", "", fmt.Errorf("创建VIVO推送请求失败: %v", err)
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/json")
+
+	// 发送请求
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return "", "", "", fmt.Errorf("VIVO推送请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// 读取响应
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", "", fmt.Errorf("读取VIVO推送响应失败: %v", err)
+	}
+
+	// 解析VIVO响应
+	var vivoResp VivoSendResponse
+	if err := json.Unmarshal(body, &vivoResp); err != nil {
+		return "", "", "", fmt.Errorf("解析VIVO推送响应失败: %v, 原始响应: %s", err, string(body))
+	}
+
+	// 检查VIVO的响应结果（VIVO的成功码是0）
+	if resp.StatusCode != http.StatusOK || vivoResp.Result != 0 {
+		errorMsg := vivoResp.Desc
+		if errorMsg == "" {
+			errorMsg = "未知错误"
+		}
+		return fmt.Sprintf("%d", vivoResp.Result), errorMsg, "", fmt.Errorf("VIVO推送失败: status=%d, result=%d, desc=%s, body=%s",
+			resp.StatusCode, vivoResp.Result, errorMsg, string(body))
+	}
+
+	// 成功时返回任务ID
+	taskID := vivoResp.TaskID
+	if taskID == "" {
+		taskID = "unknown"
+	}
+
+	return "0", "", taskID, nil
+}
+
+// mapVivoError 映射VIVO错误到统一错误码
+func (a *AndroidProvider) mapVivoError(result *models.PushResult, vivoResult string, vivoMsg string) {
+	resultCode := vivoResult
+	if resultCode == "0" {
+		// 成功，不应该调用此函数
+		result.Success = true
+		return
+	}
+
+	// 将字符串转换为数字进行映射
+	switch resultCode {
+	case "10004", "10101", "10102", "10103":
+		// 参数错误类
+		result.ErrorCode = "INVALID_PARAMETER"
+		result.ErrorMessage = fmt.Sprintf("参数错误: %s", vivoMsg)
+	case "10301", "10302":
+		// 认证错误类
+		result.ErrorCode = "AUTHENTICATION_ERROR"
+		result.ErrorMessage = fmt.Sprintf("认证失败: %s", vivoMsg)
+	case "30001":
+		// Token无效
+		result.ErrorCode = "INVALID_TOKEN"
+		result.ErrorMessage = fmt.Sprintf("设备Token无效: %s", vivoMsg)
+	case "30002":
+		// 应用未找到
+		result.ErrorCode = "INVALID_APPLICATION"
+		result.ErrorMessage = fmt.Sprintf("应用未找到: %s", vivoMsg)
+	case "40000", "40001", "40002":
+		// 服务器错误类
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = fmt.Sprintf("VIVO服务器错误: %s", vivoMsg)
+	case "50000", "50001":
+		// 限流错误类
+		result.ErrorCode = "RATE_LIMIT_EXCEEDED"
+		result.ErrorMessage = fmt.Sprintf("推送频率过高: %s", vivoMsg)
+	default:
+		// 未知错误
+		result.ErrorCode = "UNKNOWN_ERROR"
+		if vivoMsg != "" {
+			result.ErrorMessage = fmt.Sprintf("VIVO推送失败: 错误码=%s, 错误信息=%s", resultCode, vivoMsg)
+		} else {
+			result.ErrorMessage = fmt.Sprintf("VIVO推送失败: 错误码=%s", resultCode)
+		}
+	}
+}
+
 // mapXiaomiError 映射小米错误到统一错误码
 func (a *AndroidProvider) mapXiaomiError(result *models.PushResult, xiaomiResult string, xiaomiMsg string) {
 	switch xiaomiResult {
@@ -1453,14 +1811,32 @@ func (a *AndroidProvider) sendOPPO(device *models.Device, pushLog *models.PushLo
 
 // sendVIVO 发送VIVO推送
 func (a *AndroidProvider) sendVIVO(device *models.Device, pushLog *models.PushLog) *models.PushResult {
-	return &models.PushResult{
+	result := &models.PushResult{
 		AppID:        pushLog.AppID,
 		PushLogID:    pushLog.ID,
 		Success:      false,
-		ErrorCode:    "NOT_IMPLEMENTED",
-		ErrorMessage: "VIVO推送功能暂未实现，请使用FCM或华为推送",
 		ResponseData: "{}",
 	}
+
+	// 构建VIVO推送消息
+	message := a.buildVivoMessage(device, pushLog)
+
+	// 发送推送消息
+	vivoResult, vivoMsg, taskID, err := a.sendVivoMessage(message, device)
+	if err != nil {
+		// 检查是否是网络错误
+		if vivoResult == "" {
+			return a.createNetworkError(pushLog, err)
+		}
+		// 使用VIVO错误映射
+		a.mapVivoError(result, vivoResult, vivoMsg)
+		return result
+	}
+
+	result.Success = true
+	result.ResponseData = fmt.Sprintf(`{"task_id":"%s"}`, taskID)
+
+	return result
 }
 
 // 统一错误处理和错误码映射

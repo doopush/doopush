@@ -92,6 +92,16 @@ const pushFormSchema = z.object({
       notify_level: z.union([z.literal(1), z.literal(2), z.literal(16)]).optional(),
       channel_id: z.string().optional(),
     }).optional(),
+    // VIVO推送特有参数
+    vivo: z.object({
+      classification: z.union([z.literal(0), z.literal(1)]).optional(),
+      notify_type: z.union([z.literal(1), z.literal(2)]).optional(),
+      skip_type: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+      skip_content: z.string().optional(),
+      network_type: z.union([z.literal(-1), z.literal(1)]).optional(),
+      time_to_live: z.number().int().min(1).max(86400 * 7).optional(),
+      client_custom_map: z.record(z.string()).optional(),
+    }).optional(),
   }).optional(),
   target_type: z.enum(['single', 'batch', 'tags', 'broadcast', 'groups']).refine(val => val, {
     message: '请选择推送类型',
@@ -145,6 +155,15 @@ export default function PushSend() {
           category: undefined,
           notify_level: 2,
           channel_id: '',
+        },
+        vivo: {
+          classification: 0,
+          notify_type: 1,
+          skip_type: 1,
+          skip_content: '',
+          network_type: -1,
+          time_to_live: 86400,
+          client_custom_map: {},
         },
       },
       target_type: 'single',
@@ -219,7 +238,7 @@ export default function PushSend() {
       if (data.schedule_time) {
         // 转换payload格式
         let payloadString = ''
-        if (data.payload && (data.payload.action || data.payload.url || data.payload.data || data.payload.huawei)) {
+        if (data.payload && (data.payload.action || data.payload.url || data.payload.data || data.payload.huawei || data.payload.xiaomi || data.payload.oppo || data.payload.vivo)) {
           payloadString = JSON.stringify(data.payload)
         }
         
@@ -929,6 +948,197 @@ export default function PushSend() {
                                             <Input 
                                               placeholder="例如：high_priority_channel"
                                               {...field} 
+                                            />
+                                          </FormControl>
+                                        </FormItem>
+                                      )}
+                                    />
+                                  </div>
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+
+                            {/* VIVO推送优化 */}
+                            <AccordionItem value="vivo-optimization">
+                              <AccordionTrigger className="text-sm">
+                                <div className='flex items-center gap-2'>
+                                  <span className='text-blue-600'>📱</span>
+                                  <span>VIVO推送优化</span>
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent>
+                                <div className='space-y-4'>
+                                  <div className='flex items-center gap-2 pb-2 border-b'>
+                                    <span className='text-blue-600'>📱</span>
+                                    <h6 className='font-medium'>VIVO推送优化</h6>
+                                  </div>
+                                  <div className='grid items-start grid-cols-1 md:grid-cols-3 gap-4'>
+                                    <FormField
+                                      control={form.control}
+                                      name="payload.vivo.classification"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className='flex items-center gap-1'>
+                                            消息分类 (classification)
+                                            <Tooltip>
+                                              <TooltipTrigger>
+                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top">
+                                                <div className='space-y-1 text-sm'>
+                                                  <p><strong>0</strong>: 运营消息（营销推广类）</p>
+                                                  <p><strong>1</strong>: 系统消息（重要通知类，推荐）</p>
+                                                  <p className="text-blue-600">系统消息享有更高的推送优先级</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </FormLabel>
+                                          <Select value={field.value?.toString() || '0'} onValueChange={(value) => field.onChange(parseInt(value))}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              <SelectItem value="0">0 - 运营消息</SelectItem>
+                                              <SelectItem value="1">1 - 系统消息 (推荐)</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </FormItem>
+                                      )}
+                                    />
+
+                                    <FormField
+                                      control={form.control}
+                                      name="payload.vivo.notify_type"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className='flex items-center gap-1'>
+                                            通知类型 (notify_type)
+                                            <Tooltip>
+                                              <TooltipTrigger>
+                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top">
+                                                <div className='space-y-1 text-sm'>
+                                                  <p><strong>1</strong>: 通知栏消息（显示在通知栏，推荐）</p>
+                                                  <p><strong>2</strong>: 透传消息（直接传递给应用）</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </FormLabel>
+                                          <Select value={field.value?.toString() || '1'} onValueChange={(value) => field.onChange(parseInt(value))}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              <SelectItem value="1">1 - 通知栏消息 (推荐)</SelectItem>
+                                              <SelectItem value="2">2 - 透传消息</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </FormItem>
+                                      )}
+                                    />
+
+                                    <FormField
+                                      control={form.control}
+                                      name="payload.vivo.skip_type"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className='flex items-center gap-1'>
+                                            跳转类型 (skip_type)
+                                            <Tooltip>
+                                              <TooltipTrigger>
+                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top">
+                                                <div className='space-y-1 text-sm'>
+                                                  <p><strong>1</strong>: 打开应用（推荐默认）</p>
+                                                  <p><strong>2</strong>: 打开URL</p>
+                                                  <p><strong>3</strong>: 自定义行为</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </FormLabel>
+                                          <Select value={field.value?.toString() || '1'} onValueChange={(value) => field.onChange(parseInt(value))}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              <SelectItem value="1">1 - 打开应用 (推荐)</SelectItem>
+                                              <SelectItem value="2">2 - 打开URL</SelectItem>
+                                              <SelectItem value="3">3 - 自定义行为</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </FormItem>
+                                      )}
+                                    />
+                                  </div>
+
+                                  <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                                    <FormField
+                                      control={form.control}
+                                      name="payload.vivo.skip_content"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className='flex items-center gap-1'>
+                                            跳转内容 (skip_content)
+                                            <Tooltip>
+                                              <TooltipTrigger>
+                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top">
+                                                <div className='space-y-1 text-sm max-w-sm'>
+                                                  <p>当跳转类型为2(打开URL)或3(自定义)时填写</p>
+                                                  <p>• 类型2: 填写完整URL地址</p>
+                                                  <p>• 类型3: 填写自定义参数</p>
+                                                  <p>• 类型1: 可留空</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </FormLabel>
+                                          <FormControl>
+                                            <Input 
+                                              placeholder="URL地址或自定义参数"
+                                              {...field} 
+                                            />
+                                          </FormControl>
+                                        </FormItem>
+                                      )}
+                                    />
+
+                                    <FormField
+                                      control={form.control}
+                                      name="payload.vivo.time_to_live"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className='flex items-center gap-1'>
+                                            离线保存时长 (秒)
+                                            <Tooltip>
+                                              <TooltipTrigger>
+                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top">
+                                                <div className='space-y-1 text-sm'>
+                                                  <p>设备离线时消息的保存时长</p>
+                                                  <p>范围: 1秒 - 7天(604800秒)</p>
+                                                  <p>默认: 86400秒 (24小时)</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </FormLabel>
+                                          <FormControl>
+                                            <Input 
+                                              type="number"
+                                              placeholder="86400"
+                                              min={1}
+                                              max={604800}
+                                              {...field}
+                                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                                             />
                                           </FormControl>
                                         </FormItem>

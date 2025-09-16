@@ -41,7 +41,12 @@ data class DooPushConfig(
     /**
      * OPPO推送配置 (可选)
      */
-    val oppoConfig: OppoConfig? = null
+    val oppoConfig: OppoConfig? = null,
+    
+    /**
+     * VIVO推送配置 (可选)
+     */
+    val vivoConfig: VivoConfig? = null
     
 ) {
     
@@ -116,6 +121,34 @@ data class DooPushConfig(
         }
     }
     
+    /**
+     * VIVO推送配置类（客户端需要 appId 和 apiKey，可从 vivo-services.json 自动读取）
+     * @param appId VIVO应用ID，如果为空则会从 vivo-services.json 自动读取
+     * @param apiKey VIVO应用ApiKey，如果为空则会从 vivo-services.json 自动读取
+     */
+    data class VivoConfig(
+        val appId: String = "",
+        val apiKey: String = ""
+    ) {
+        fun isValid(): Boolean {
+            return true
+        }
+        
+        fun getSummary(): String {
+            val appIdInfo = if (appId.isNotEmpty()) {
+                "AppId=$appId"
+            } else {
+                "AppId=auto(从vivo-services.json读取)"
+            }
+            val apiKeyInfo = if (apiKey.isNotEmpty()) {
+                "ApiKey=${apiKey.take(8)}..."
+            } else {
+                "ApiKey=auto(从vivo-services.json读取)"
+            }
+            return "VIVO推送配置: $appIdInfo, $apiKeyInfo"
+        }
+    }
+    
     companion object {
         
         /**
@@ -148,6 +181,7 @@ data class DooPushConfig(
          * @param hmsConfig HMS推送配置 (可选)
          * @param xiaomiConfig 小米推送配置 (可选)
          * @param oppoConfig OPPO推送配置 (可选)
+         * @param vivoConfig VIVO推送配置 (可选)
          * @return 配置实例
          * @throws DooPushConfigException 配置参数无效时抛出
          */
@@ -158,7 +192,8 @@ data class DooPushConfig(
             baseURL: String = DEFAULT_BASE_URL,
             hmsConfig: HMSConfig? = null,
             xiaomiConfig: XiaomiConfig? = null,
-            oppoConfig: OppoConfig? = null
+            oppoConfig: OppoConfig? = null,
+            vivoConfig: VivoConfig? = null
         ): DooPushConfig {
             val config = DooPushConfig(
                 appId = appId.trim(),
@@ -166,7 +201,8 @@ data class DooPushConfig(
                 baseURL = baseURL.trim().trimEnd('/'),
                 hmsConfig = hmsConfig,
                 xiaomiConfig = xiaomiConfig,
-                oppoConfig = oppoConfig
+                oppoConfig = oppoConfig,
+                vivoConfig = vivoConfig
             )
             
             config.validate()
@@ -307,6 +343,7 @@ data class DooPushConfig(
         val hmsInfo = hmsConfig?.getSummary() ?: "HMS配置: 未配置"
         val xiaomiInfo = xiaomiConfig?.getSummary() ?: "小米推送配置: 未配置"
         val oppoInfo = oppoConfig?.getSummary() ?: "OPPO推送配置: 未配置"
+        val vivoInfo = vivoConfig?.getSummary() ?: "VIVO推送配置: 未配置"
         
         return """
             |DooPush配置:
@@ -317,6 +354,7 @@ data class DooPushConfig(
             |  $hmsInfo
             |  $xiaomiInfo
             |  $oppoInfo
+            |  $vivoInfo
         """.trimMargin()
     }
     
@@ -339,6 +377,13 @@ data class DooPushConfig(
      */
     fun hasOppoConfig(): Boolean {
         return oppoConfig != null && oppoConfig.isValid()
+    }
+    
+    /**
+     * 检查是否配置了VIVO推送
+     */
+    fun hasVivoConfig(): Boolean {
+        return vivoConfig != null && vivoConfig.isValid()
     }
     
     override fun toString(): String {

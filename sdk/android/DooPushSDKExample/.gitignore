@@ -91,6 +91,7 @@ google-services.json
 agconnect-services.json
 xiaomi-services.json
 oppo-services.json
+vivo-services.json
 
 # 临时文件
 *.tmp

@@ -236,6 +236,13 @@ object DooPushDeviceVendor {
      */
     private fun isVivoPushAvailable(context: Context): Boolean {
         return try {
+            // 检查是否为VIVO或iQOO设备
+            val vendorInfo = getDeviceVendorInfo()
+            if (vendorInfo.preferredService != PushService.VIVO) {
+                return false
+            }
+            
+            // 检查VIVO推送SDK是否可用
             Class.forName("com.vivo.push.PushClient")
             true
         } catch (e: ClassNotFoundException) {
