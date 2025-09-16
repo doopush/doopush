@@ -1564,9 +1564,6 @@ func (a *AndroidProvider) sendVivoMessage(message *VivoMessage, device *models.D
 		requestData["clientCustomMap"] = message.ClientCustomMap
 	}
 
-	// 添加认证token
-	requestData["authToken"] = authToken
-
 	// 序列化请求数据为JSON
 	requestJSON, err := json.Marshal(requestData)
 	if err != nil {
@@ -1584,6 +1581,7 @@ func (a *AndroidProvider) sendVivoMessage(message *VivoMessage, device *models.D
 
 	// 设置请求头
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("authToken", authToken)
 
 	// 发送请求
 	resp, err := a.httpClient.Do(req)

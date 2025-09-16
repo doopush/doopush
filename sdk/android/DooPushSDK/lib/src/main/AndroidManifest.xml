@@ -60,6 +60,25 @@
             </intent-filter>
         </receiver>
 
+        <!-- VIVO 推送广播接收器 -->
+        <receiver
+            android:name=".DooPushVivoMessageReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="com.vivo.push.permission.BROADCAST_MESSAGE">
+            <intent-filter>
+                <action android:name="com.vivo.pushclient.action.RECEIVE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- VIVO 推送必需的 Manifest 配置 -->
+        <meta-data
+            android:name="com.vivo.push.app_id"
+            android:value="${DOOPUSH_VIVO_APP_ID}" />
+        <meta-data
+            android:name="com.vivo.push.api_key"
+            android:value="${DOOPUSH_VIVO_API_KEY}" />
+
         <!-- Firebase 自动初始化控制 -->
         <meta-data
             android:name="firebase_messaging_auto_init_enabled"

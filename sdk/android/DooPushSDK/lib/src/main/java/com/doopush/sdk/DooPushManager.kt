@@ -196,7 +196,7 @@ class DooPushManager private constructor() {
             
             // 创建配置
             config = DooPushConfig.create(appId, apiKey, baseURL, finalHmsConfig, finalXiaomiConfig, finalOppoConfig, finalVivoConfig)
-            
+
             // 初始化各组件
             deviceManager = DooPushDevice(applicationContext!!)
             networking = DooPushNetworking(config!!).apply {
@@ -935,7 +935,14 @@ class DooPushManager private constructor() {
             // 这里可以实现token更新逻辑，暂时省略
         }
     }
-    
+
+    /**
+     * 获取全局应用上下文 (供内部组件使用)
+     */
+    internal fun getApplicationContext(): Context? {
+        return applicationContext
+    }
+
     /**
      * 获取内部回调接口 (供DooPushNotificationHandler使用)
      */

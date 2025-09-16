@@ -1,3 +1,5 @@
+import groovy.json.JsonSlurper
+
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
@@ -22,6 +24,12 @@ android {
         // 构建配置字段
         buildConfigField "String", "APP_VERSION", "\"${versionName}\""
         buildConfigField "long", "BUILD_TIME", "${System.currentTimeMillis()}L"
+
+        // Manifest占位符（在构建时由配置文件填充）
+        manifestPlaceholders = [
+            DOOPUSH_VIVO_APP_ID: "",
+            DOOPUSH_VIVO_API_KEY: ""
+        ]
     }
 
     buildTypes {
@@ -62,6 +70,20 @@ android {
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
+    }
+}
+
+// 构建时读取 vivo-services.json 并填充 Manifest 占位符
+def vivoConfigFile = file('vivo-services.json')
+if (vivoConfigFile.exists()) {
+    try {
+        def vivoConfig = new JsonSlurper().parseText(vivoConfigFile.getText('UTF-8'))
+        def appId = (vivoConfig.app_id ?: "").toString()
+        def apiKey = (vivoConfig.api_key ?: "").toString()
+        android.defaultConfig.manifestPlaceholders["DOOPUSH_VIVO_APP_ID"] = appId
+        android.defaultConfig.manifestPlaceholders["DOOPUSH_VIVO_API_KEY"] = apiKey
+    } catch (Exception ignored) {
+        logger.warn("[DooPush] 解析 vivo-services.json 失败，VIVO 推送将无法初始化: ${ignored.message}")
     }
 }
 
