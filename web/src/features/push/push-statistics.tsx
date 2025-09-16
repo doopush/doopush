@@ -62,7 +62,7 @@ interface ChartData {
   open: number
 }
 
-interface PlatformData {
+interface PlatformData extends Record<string, string | number> {
   name: string
   value: number
   color: string
