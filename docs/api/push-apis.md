@@ -88,7 +88,7 @@ https://doopush.com/api/v1
 | `tags` | array | 设备标签筛选（新版本推荐） | 见标签筛选说明 |
 | `group_ids` | array | 分组ID数组（当type为groups时） | `[1, 2]` |
 | `platform` | string | 平台筛选：`ios`, `android` | `"android"` |
-| `channel` | string | 推送通道筛选 | `"fcm"`, `"huawei"`, `"xiaomi"`, `"oppo"` |
+| `channel` | string | 推送通道筛选 | `"fcm"`, `"huawei"`, `"xiaomi"`, `"oppo"`, `"vivo"` |
 
 #### 标签筛选 (tags)
 
@@ -107,14 +107,35 @@ Android 平台支持多种推送通道，系统会根据设备品牌智能选择
 | `huawei` | 华为设备 | 华为移动服务HMS Push，华为设备专用 |
 | `xiaomi` | 小米设备 | 小米推送服务，小米/Redmi设备专用 |
 | `oppo` | OPPO设备 | OPPO推送服务，OPPO/OnePlus设备专用 |
+| `vivo` | VIVO设备 | VIVO推送服务，VIVO/iQOO设备专用 |
 
 #### 载荷参数 (payload)
+
+**基础载荷参数**：
 
 | 参数 | 类型 | 描述 | 示例 |
 |------|------|------|------|
 | `action` | string | 动作类型 | `"open_page"`, `"open_url"` |
 | `url` | string | 跳转链接 | `"https://example.com"` |
 | `data` | string | 额外数据（JSON字符串） | `"{\"page\":\"news\",\"id\":123}"` |
+
+**Android 厂商特定参数**：
+
+为优化推送效果，支持以下厂商特定参数：
+
+| 厂商 | 参数 | 类型 | 描述 | 示例 |
+|------|------|------|------|------|
+| 华为 HMS | `huawei` | object | 华为推送参数 | `{"importance": "HIGH", "ttl": 3600}` |
+| 小米推送 | `xiaomi` | object | 小米推送参数 | `{"pass_through": 0, "notify_type": 1}` |
+| OPPO推送 | `oppo` | object | OPPO推送参数 | `{"channel_id": "important", "notify_level": 2}` |
+| VIVO推送 | `vivo` | object | VIVO推送参数 | `{"classification": 1, "notify_type": 1}` |
+
+**厂商参数详细说明**：
+
+- **华为 HMS**：`importance`（重要性）、`ttl`（存活时间）
+- **小米推送**：`pass_through`（透传模式）、`notify_type`（通知类型）、`time_to_live`（存活时间）
+- **OPPO推送**：`channel_id`（通道ID）、`category`（消息分类）、`notify_level`（通知级别）
+- **VIVO推送**：`classification`（消息分类）、`notify_type`（通知类型）、`skip_type`（跳转类型）、`time_to_live`（存活时间）
 
 ### 请求示例
 
@@ -150,12 +171,40 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
        "content": "华为用户专享活动，限时优惠等您来抢！",
        "payload": {
          "action": "open_page",
-         "url": "https://example.com/huawei-special"
+         "url": "https://example.com/huawei-special",
+         "huawei": {
+           "importance": "HIGH",
+           "ttl": 3600
+         }
        },
        "target": {
          "type": "all",
          "platform": "android",
          "channel": "huawei"
+       }
+     }'
+
+# 向所有VIVO设备推送（带厂商参数）
+curl -X POST "https://doopush.com/api/v1/apps/123/push" \
+     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "title": "VIVO用户专属通知",
+       "content": "VIVO设备优化推送，体验更佳消息送达！",
+       "payload": {
+         "action": "open_page",
+         "url": "https://example.com/vivo-special",
+         "vivo": {
+           "classification": 1,
+           "notify_type": 1,
+           "skip_type": 1,
+           "time_to_live": 3600
+         }
+       },
+       "target": {
+         "type": "all",
+         "platform": "android",
+         "channel": "vivo"
        }
      }'
 
@@ -415,7 +464,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/batch" \
 |------|------|------|------|
 | `badge` | integer | iOS角标数量 | `1` |
 | `platform` | string | 指定平台：`ios`, `android` | `"ios"` |
-| `channel` | string | 指定推送通道：`fcm`, `huawei`, `xiaomi`, `oppo` | `"huawei"` |
+| `channel` | string | 指定推送通道：`fcm`, `huawei`, `xiaomi`, `oppo`, `vivo` | `"huawei"` |
 | `payload` | object | 自定义载荷 | 见载荷参数说明 |
 
 ### 请求示例

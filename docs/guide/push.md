@@ -76,7 +76,12 @@ token1,token2,token3
 
 **配置选项**：
 - **平台筛选** - 可选择 iOS、Android 或全部平台
-- **厂商筛选** - Android 设备可按厂商筛选（华为、小米等）
+- **厂商筛选** - Android 设备可按厂商筛选：
+  - Google FCM（通用 Android 设备）
+  - 华为 HMS（华为/荣耀设备）
+  - 小米推送（小米/红米设备）
+  - OPPO推送（OPPO/OnePlus设备）
+  - VIVO推送（VIVO/iQOO设备）
 
 #### 👥 分组推送 (Groups)
 向特定设备分组发送推送通知。
@@ -114,17 +119,66 @@ token1,token2,token3
 **自定义载荷 (Payload)**：
 推送通知可携带自定义数据，用于应用内处理。
 
-**载荷字段**：
+**基础载荷字段**：
 - **action** - 动作类型（如 `open_page`、`open_url`）
 - **url** - 跳转链接（如 `https://example.com`）
 - **data** - 自定义数据（JSON 格式字符串）
 
-**载荷示例**：
+**基础载荷示例**：
 ```json
 {
   "action": "open_page",
   "url": "https://example.com/news/123",
   "data": "{\"page\":\"news\",\"id\":123}"
+}
+```
+
+#### 🤖 Android 厂商特定参数
+
+为了优化在不同 Android 厂商设备上的推送效果，DooPush 支持厂商特定的推送参数：
+
+**华为 HMS 参数**：
+- `importance` - 消息重要性等级（NORMAL/HIGH）
+- `ttl` - 消息存活时间（秒）
+- `collapse_key` - 消息分组标识
+
+**小米推送参数**：
+- `pass_through` - 透传消息模式（0/1）
+- `notify_type` - 通知栏展示类型
+- `time_to_live` - 消息存活时间（毫秒）
+
+**OPPO推送参数**：
+- `channel_id` - 通知渠道ID
+- `category` - 消息分类（MARKETING/SERVICE）
+- `notify_level` - 通知级别（1/2/16）
+
+**VIVO推送参数**：
+- `classification` - 消息分类（0运营消息/1系统消息）
+- `notify_type` - 通知类型（1/2/3/4）
+- `skip_type` - 跳转类型（1应用内/2网页/3指定页面/4Intent）
+- `time_to_live` - 消息存活时间（秒）
+
+**厂商参数示例**：
+```json
+{
+  "action": "open_page",
+  "url": "https://example.com/news/123",
+  "xiaomi": {
+    "pass_through": 0,
+    "notify_type": 1,
+    "time_to_live": 3600000
+  },
+  "oppo": {
+    "channel_id": "important",
+    "category": "SERVICE",
+    "notify_level": 2
+  },
+  "vivo": {
+    "classification": 1,
+    "notify_type": 1,
+    "skip_type": 1,
+    "time_to_live": 3600
+  }
 }
 ```
 
@@ -249,6 +303,11 @@ token1,token2,token3
 - **全部** - 显示所有平台的推送
 - **iOS** - 仅显示 iOS 平台推送
 - **Android** - 仅显示 Android 平台推送
+  - **FCM** - Google Firebase Cloud Messaging
+  - **HMS** - 华为移动服务推送
+  - **小米推送** - 小米设备专用推送
+  - **OPPO推送** - OPPO设备专用推送
+  - **VIVO推送** - VIVO设备专用推送
 
 **搜索功能**：
 - 支持按推送标题搜索
@@ -301,7 +360,8 @@ token1,token2,token3
 
 **平台对比**：
 - iOS vs Android 推送效果对比
-- 不同平台的用户行为差异
+- Android 不同厂商推送效果对比（FCM、HMS、小米、OPPO、VIVO）
+- 不同平台的用户行为差异分析
 
 ### 效果优化建议
 

@@ -9,7 +9,7 @@ DooPush Android SDK 为 Android 应用提供统一的推送通知解决方案，
 - ✅ **华为 HMS Push** - Huawei Mobile Services，华为设备专用
 - ✅ **小米推送** - 小米设备专用通道，MIUI深度优化
 - ✅ **OPPO推送** - OPPO/OnePlus设备专用，ColorOS优化
-- 📋 **VIVO推送** - VIVO/iQOO设备专用（开发计划中）
+- ✅ **VIVO推送** - VIVO/iQOO设备专用，Origin OS优化
 
 ### 🧠 智能推送路由
 - **自动厂商识别** - 根据设备品牌自动选择最优推送通道
@@ -77,6 +77,9 @@ dependencies {
     
     // 可选：OPPO推送 （OPPO设备）
     implementation 'com.umeng.umsdk:oppo-push:3.5.3'
+    
+    // 可选：VIVO推送 （VIVO设备）
+    implementation 'com.umeng.umsdk:vivo-push:4.0.6.0'
 }
 ```
 
@@ -192,6 +195,24 @@ plugins {
 ```
 
 **说明**：OPPO推送直接通过 Gradle 依赖集成，无需额外配置。
+
+#### VIVO推送配置
+
+1. 在 [VIVO开放平台](https://dev.vivo.com.cn) 创建应用
+2. 获取 AppID、AppKey 和 AppSecret
+3. 创建 `assets/vivo-services.json` 文件：
+
+```json
+{
+    "app_id": "your_vivo_app_id",
+    "api_key": "your_vivo_api_key"
+}
+```
+
+**说明**：
+- 客户端 SDK 只需要 `app_id` 和 `api_key` 两个参数
+- `app_secret` 仅在服务端推送时使用，确保客户端安全
+- 需要在 VIVO 开发者平台申请推送权限并通过审核
 
 ### 4. SDK初始化
 
@@ -353,6 +374,7 @@ val fcmAvailable = dooPushManager.isFirebaseAvailable()
 val hmsAvailable = dooPushManager.isHMSAvailable() 
 val xiaomiAvailable = dooPushManager.isXiaomiAvailable()
 val oppoAvailable = dooPushManager.isOppoAvailable()
+val vivoAvailable = dooPushManager.isVivoAvailable()
 
 Log.d("DooPush", """
     推送服务可用性:
@@ -360,6 +382,7 @@ Log.d("DooPush", """
     HMS: $hmsAvailable  
     小米: $xiaomiAvailable
     OPPO: $oppoAvailable
+    VIVO: $vivoAvailable
 """.trimIndent())
 
 // 获取支持的推送服务列表
@@ -448,7 +471,7 @@ A:
 
 #### Q: VIVO设备推送支持情况？
 A: 
-VIVO推送目前尚未实现，VIVO设备会自动fallback到FCM推送通道。VIVO推送功能在开发计划中，具体发布时间请关注项目更新。
+✅ **VIVO推送已完全支持！** VIVO/iQOO设备会自动使用VIVO推送服务，提供更好的消息送达率和电量优化。需要在VIVO开发者平台申请推送权限并配置相应参数。
 
 #### Q: 各厂商推送支持状态？
 A: 
@@ -456,7 +479,14 @@ A:
 - ✅ **华为HMS**: 完全支持，华为设备自动识别
 - ✅ **小米推送**: 完全支持，小米设备自动识别
 - ✅ **OPPO推送**: 完全支持，OPPO设备自动识别
-- 📋 **VIVO推送**: 开发计划中，目前使用FCM
+- ✅ **VIVO推送**: 完全支持，VIVO设备自动识别
+
+#### Q: VIVO设备无法接收推送？
+A: 
+1. 确保已添加 VIVO 推送依赖和 `vivo-services.json` 配置文件
+2. 在 VIVO 开发者平台申请推送权限并通过审核
+3. 检查应用包名和签名是否与 VIVO 后台配置一致
+4. 确认 `app_id` 和 `api_key` 配置正确
 
 #### Q: 角标不显示？
 A: 
@@ -471,7 +501,10 @@ A:
 adb logcat -s DooPushManager
 
 # 查看所有推送相关日志
-adb logcat | grep -i "push\|doopush\|fcm\|hms"
+adb logcat | grep -i "push\|doopush\|fcm\|hms\|oppo\|vivo"
+
+# 查看VIVO推送日志
+adb logcat -s VivoService
 ```
 
 ### 性能优化建议

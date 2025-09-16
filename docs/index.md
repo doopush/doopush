@@ -5,7 +5,7 @@ layout: home
 hero:
   name: "DooPush"
   text: "推送平台帮助文档"
-  tagline: 简单易用的推送通知管理平台，支持 iOS 和 Android 多平台推送
+  tagline: 简单易用的推送通知管理平台，支持 iOS 和 Android 多厂商智能推送
   image:
     src: /logo.svg
     alt: DooPush
@@ -20,8 +20,8 @@ hero:
 features:
   - title: 🚀 快速接入
     details: 10分钟内完成账号注册、应用创建和首次推送，简单快捷的操作流程让您快速上手
-  - title: 📱 多平台支持
-    details: 支持 iOS APNs 推送，Android SDK 正在开发中，提供统一的推送管理界面
+  - title: 📱 多厂商推送
+    details: 支持 iOS APNs、Android 多厂商推送（FCM、HMS、小米、OPPO、VIVO），智能路由，统一管理
   - title: 🛠 功能丰富
     details: 支持单推、批量推送、广播推送、定时推送，提供完整的设备管理和推送统计功能
   - title: 🔑 API 接口
@@ -41,7 +41,8 @@ features:
 1. [**快速开始**](/guide/quick-start) - 10分钟完成首次推送
 2. [**应用管理**](/guide/apps) - 创建和配置您的应用
 3. [**推送功能**](/guide/push) - 学习如何发送推送通知
-4. [**iOS SDK 接入**](/sdk/ios-integration) - 在您的应用中集成推送功能
+4. [**iOS SDK 接入**](/sdk/ios-integration) - 在 iOS 应用中集成推送功能
+5. [**Android SDK 接入**](/sdk/android-integration) - 在 Android 应用中集成推送功能
 
 ### 👨‍💻 开发者资源
 
@@ -55,7 +56,17 @@ features:
 | 平台 | 状态 | 说明 |
 |------|------|------|
 | iOS | ✅ 已支持 | 完整的 APNs 推送支持，SDK 可用 |
-| Android | 🚧 开发中 | SDK 正在开发，即将推出 |
+| Android | ✅ 已支持 | 多厂商推送支持，SDK 可用 |
+
+### 🔥 Android 多厂商推送支持
+
+| 厂商 | 状态 | 设备覆盖 |
+|------|------|----------|
+| Google FCM | ✅ 已支持 | 所有 Android 设备（默认通道）|
+| 华为 HMS | ✅ 已支持 | 华为/荣耀设备（国内外）|
+| 小米推送 | ✅ 已支持 | 小米/红米设备（MIUI 优化）|
+| OPPO推送 | ✅ 已支持 | OPPO/OnePlus 设备（ColorOS 优化）|
+| VIVO推送 | ✅ 已支持 | VIVO/iQOO 设备（Origin OS 优化）|
 
 ### 🆘 需要帮助？
 
@@ -65,4 +76,4 @@ features:
 
 ---
 
-**DooPush 是一个现代化的推送通知管理平台，致力于为开发者提供简单易用、功能强大的推送解决方案。**
+**DooPush 是一个现代化的推送通知管理平台，支持 iOS 和 Android 多厂商智能推送，致力于为开发者提供简单易用、功能强大的推送解决方案。**
