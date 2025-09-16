@@ -52,6 +52,10 @@ class VivoService(private val context: Context) {
     private var tokenCallback: TokenCallback? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pollingRunnable: Runnable? = null
+    @Volatile
+    private var pendingRegistration: Boolean = false
+    @Volatile
+    private var lastDeliveredRegId: String? = null
 
     // 缓存的配置信息（VIVO客户端需要 app_id, api_key）
     private var cachedAppId: String? = null
@@ -146,11 +150,20 @@ class VivoService(private val context: Context) {
                     "onStateChanged" -> {
                         val state = args?.get(0) as? Int ?: -1
                         Log.d(TAG, "VIVO推送开关状态: state=$state")
-                        if (state == 0) {
-                            // 推送开关成功，获取RegId
-                            getRegIdFromSDK(pushClientInstance, pushClientClass, iPushQueryActionListenerClass)
-                        } else {
-                            handleRegisterCallback(-1, null)
+                        when (state) {
+                            0 -> {
+                                // 推送开关成功，获取RegId
+                                getRegIdFromSDK(pushClientInstance, pushClientClass, iPushQueryActionListenerClass)
+                            }
+                            // 1002 等状态表示仍在处理中，这类情况继续等待异步回调
+                            1001, 1002, 1003 -> {
+                                Log.d(TAG, "VIVO推送开关正在处理，等待异步回调 state=$state")
+                                // 继续等待轮询/广播结果，不立即回调失败
+                            }
+                            else -> {
+                                // 其他状态视为失败
+                                handleRegisterCallback(state, null)
+                            }
                         }
                     }
                 }
@@ -248,14 +261,10 @@ class VivoService(private val context: Context) {
      */
     private fun handleRegisterCallback(code: Int, regid: String?) {
         if (code == 0 && !regid.isNullOrEmpty()) {
-            Log.d(TAG, "VIVO注册成功: ${regid.take(12)}...")
-            tokenCallback?.onSuccess(regid)
-            tokenCallback = null
+            deliverRegisterSuccess(regid)
         } else {
             val errorMsg = "VIVO注册失败: code=$code regid=$regid"
-            Log.e(TAG, errorMsg)
-            tokenCallback?.onError(DooPushError.vivoRegisterFailed(errorMsg))
-            tokenCallback = null
+            notifyRegisterFailure(errorMsg)
         }
     }
 
@@ -270,10 +279,13 @@ class VivoService(private val context: Context) {
             val cachedToken = getRegId()
             if (!cachedToken.isNullOrEmpty()) {
                 Log.d(TAG, "使用缓存的VIVO推送token: ${cachedToken.take(12)}...")
+                lastDeliveredRegId = cachedToken
+                pendingRegistration = false
                 callback.onSuccess(cachedToken)
             } else {
                 // 如果没有缓存token，重新初始化以触发注册回调
                 this.tokenCallback = callback // 缓存回调
+                pendingRegistration = true
                 initialize(cachedAppId!!, cachedApiKey!!)
             }
         } else {
@@ -335,20 +347,41 @@ class VivoService(private val context: Context) {
      * 处理注册成功回调（供VivoPushReceiver调用）
      */
     fun handleRegisterSuccess(regId: String) {
-        Log.d(TAG, "VIVO推送注册成功: ${regId.take(12)}...")
-        tokenCallback?.onSuccess(regId)
-        tokenCallback = null
+        deliverRegisterSuccess(regId)
     }
 
     /**
      * 处理注册失败回调（供VivoPushReceiver调用）
      */
     fun handleRegisterError(reason: String) {
-        Log.e(TAG, "VIVO推送注册失败: $reason")
-        tokenCallback?.onError(DooPushError(
-            code = DooPushError.VIVO_REGISTER_FAILED,
-            message = "VIVO推送注册失败: $reason"
-        ))
+        notifyRegisterFailure("VIVO推送注册失败: $reason")
+    }
+
+    @Synchronized
+    private fun deliverRegisterSuccess(regId: String) {
+        if (!pendingRegistration && lastDeliveredRegId == regId) {
+            Log.d(TAG, "忽略重复的VIVO注册成功回调: ${regId.take(12)}...")
+            return
+        }
+        lastDeliveredRegId = regId
+        pendingRegistration = false
+        stopPolling()
+        Log.d(TAG, "VIVO推送注册成功: ${regId.take(12)}...")
+        tokenCallback?.onSuccess(regId)
+        tokenCallback = null
+    }
+
+    @Synchronized
+    private fun notifyRegisterFailure(message: String) {
+        stopPolling()
+        if (!pendingRegistration) {
+            Log.w(TAG, "忽略重复的VIVO注册失败回调: $message")
+            return
+        }
+        pendingRegistration = false
+        lastDeliveredRegId = null
+        Log.e(TAG, message)
+        tokenCallback?.onError(DooPushError.vivoRegisterFailed(message))
         tokenCallback = null
     }
 }

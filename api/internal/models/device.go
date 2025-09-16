@@ -9,9 +9,9 @@ import (
 // Device 设备模型
 type Device struct {
 	ID            uint           `gorm:"primarykey" json:"id" example:"1"`
-	AppID         uint           `gorm:"not null;index;comment:应用ID" json:"app_id" binding:"required"`
+	AppID         uint           `gorm:"not null;index;comment:应用ID;uniqueIndex:idx_device_app_token" json:"app_id" binding:"required"`
 	Token         string         `gorm:"size:500;not null;comment:设备推送Token" json:"token" example:"device_token_here" binding:"required"`
-	TokenHash     string         `gorm:"size:64;index;not null;comment:Token哈希值" json:"-"`
+	TokenHash     string         `gorm:"size:64;index;not null;comment:Token哈希值;uniqueIndex:idx_device_app_token" json:"-"`
 	Platform      string         `gorm:"size:20;not null;comment:设备平台" json:"platform" example:"ios" binding:"required,oneof=ios android"`
 	Channel       string         `gorm:"size:20;not null;comment:推送通道" json:"channel" example:"apns" binding:"required"`
 	Brand         string         `gorm:"size:50;comment:设备品牌" json:"brand" example:"Apple"`

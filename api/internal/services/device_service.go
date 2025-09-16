@@ -8,6 +8,7 @@ import (
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
 	"github.com/doopush/doopush/api/pkg/utils"
+	"gorm.io/gorm"
 )
 
 // DeviceService 设备服务
@@ -70,8 +71,33 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 		LastSeen:   &[]time.Time{utils.TimeNow()}[0],
 	}
 
-	if err := database.DB.Preload("App").Create(device).Error; err != nil {
+	if err := database.DB.Create(device).Error; err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			// 并发场景下可能同时写入，捕获唯一索引冲突后回退到更新逻辑
+			if err := database.DB.Where("app_id = ? AND token_hash = ?", appID, tokenHash).First(&existingDevice).Error; err == nil {
+				updates := map[string]interface{}{
+					"token":       token,
+					"brand":       brand,
+					"model":       model,
+					"system_ver":  systemVer,
+					"app_version": appVersion,
+					"user_agent":  userAgent,
+					"status":      1,
+					"last_seen":   utils.TimeNow(),
+				}
+				if updErr := database.DB.Model(&existingDevice).Updates(updates).Error; updErr != nil {
+					return nil, errors.New("设备信息更新失败")
+				}
+				return &existingDevice, nil
+			}
+		}
 		return nil, errors.New("设备注册失败")
+	}
+
+	// 刚插入的设备缺少关联的App信息，这里补充加载一次
+	if err := database.DB.Preload("App").First(device, device.ID).Error; err != nil {
+		// 如果预加载失败不影响主流程，记录错误即可
+		return device, nil
 	}
 
 	return device, nil
