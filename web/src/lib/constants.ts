@@ -49,3 +49,45 @@ export const ANDROID_VENDOR_ICONS = {
   honor: '📱',
   samsung: '📱',
 } as const
+
+// Android厂商统一的消息分类 (vivo/OPPO等使用)
+export const ANDROID_MESSAGE_CATEGORY_VALUES = [
+  'IM',
+  'ACCOUNT',
+  'DEVICE_REMINDER',
+  'ORDER',
+  'TODO',
+  'SUBSCRIPTION',
+  'NEWS',
+  'CONTENT',
+  'MARKETING',
+  'SOCIAL',
+] as const
+
+export type AndroidMessageCategory = typeof ANDROID_MESSAGE_CATEGORY_VALUES[number]
+
+export const ANDROID_MESSAGE_CATEGORY_GROUPS: Array<{
+  label: string
+  options: Array<{ value: AndroidMessageCategory; label: string }>
+}> = [
+  {
+    label: '系统消息',
+    options: [
+      { value: 'IM', label: 'IM - 即时消息' },
+      { value: 'ACCOUNT', label: 'ACCOUNT - 账号与资产' },
+      { value: 'DEVICE_REMINDER', label: 'DEVICE_REMINDER - 设备提醒' },
+      { value: 'ORDER', label: 'ORDER - 订单与物流' },
+      { value: 'TODO', label: 'TODO - 日程待办' },
+      { value: 'SUBSCRIPTION', label: 'SUBSCRIPTION - 订阅提醒' },
+    ],
+  },
+  {
+    label: '运营消息',
+    options: [
+      { value: 'NEWS', label: 'NEWS - 新闻资讯' },
+      { value: 'CONTENT', label: 'CONTENT - 内容推荐' },
+      { value: 'MARKETING', label: 'MARKETING - 营销活动' },
+      { value: 'SOCIAL', label: 'SOCIAL - 社交动态' },
+    ],
+  },
+]

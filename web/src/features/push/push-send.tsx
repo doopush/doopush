@@ -31,7 +31,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
@@ -41,6 +43,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { DateTimePicker } from '@/components/date-time-picker'
@@ -63,7 +71,7 @@ import { TemplateSelector } from '@/components/template-selector'
 import { requireApp, APP_SELECTION_DESCRIPTIONS } from '@/utils/app-utils'
 import { toast } from 'sonner'
 import { useLocation } from '@tanstack/react-router'
-import { ANDROID_VENDOR_OPTIONS } from '@/lib/constants'
+import { ANDROID_VENDOR_OPTIONS, ANDROID_MESSAGE_CATEGORY_GROUPS, ANDROID_MESSAGE_CATEGORY_VALUES } from '@/lib/constants'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 // 推送表单验证规则
@@ -94,13 +102,7 @@ const pushFormSchema = z.object({
     }).optional(),
     // VIVO推送特有参数
     vivo: z.object({
-      classification: z.union([z.literal(0), z.literal(1)]).optional(),
-      notify_type: z.union([z.literal(1), z.literal(2)]).optional(),
-      skip_type: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
-      skip_content: z.string().optional(),
-      network_type: z.union([z.literal(-1), z.literal(1)]).optional(),
-      time_to_live: z.number().int().min(1).max(86400 * 7).optional(),
-      client_custom_map: z.record(z.string()).optional(),
+      category: z.enum(ANDROID_MESSAGE_CATEGORY_VALUES).optional(),
     }).optional(),
   }).optional(),
   target_type: z.enum(['single', 'batch', 'tags', 'broadcast', 'groups']).refine(val => val, {
@@ -157,13 +159,7 @@ export default function PushSend() {
           channel_id: '',
         },
         vivo: {
-          classification: 0,
-          notify_type: 1,
-          skip_type: 1,
-          skip_content: '',
-          network_type: -1,
-          time_to_live: 86400,
-          client_custom_map: {},
+          category: undefined,
         },
       },
       target_type: 'single',
@@ -207,6 +203,9 @@ export default function PushSend() {
             form.setValue('payload.huawei.importance', payload.huawei.importance || 'NORMAL')
             form.setValue('payload.huawei.category', payload.huawei.category || 'IM')
           }
+
+          // 处理 vivo 特有参数
+          form.setValue('payload.vivo.category', payload.vivo?.category || undefined)
         }
         
         // 设置为单设备推送
@@ -233,13 +232,17 @@ export default function PushSend() {
 
     try {
       setSending(true)
+      const payloadToSend = data.payload ? { ...data.payload } : undefined
+      if (payloadToSend?.vivo && !payloadToSend.vivo.category) {
+        delete payloadToSend.vivo
+      }
       
       // 如果设置了定时发送时间，创建定时推送任务
       if (data.schedule_time) {
         // 转换payload格式
         let payloadString = ''
-        if (data.payload && (data.payload.action || data.payload.url || data.payload.data || data.payload.huawei || data.payload.xiaomi || data.payload.oppo || data.payload.vivo)) {
-          payloadString = JSON.stringify(data.payload)
+        if (payloadToSend && (payloadToSend.action || payloadToSend.url || payloadToSend.data || payloadToSend.huawei || payloadToSend.xiaomi || payloadToSend.oppo || payloadToSend.vivo)) {
+          payloadString = JSON.stringify(payloadToSend)
         }
         
         // 根据推送类型生成target_config
@@ -315,7 +318,7 @@ export default function PushSend() {
               title: data.title,
               content: data.content,
               badge: data.badge,
-              payload: data.payload,
+              payload: payloadToSend,
             })
             break
             
@@ -334,7 +337,7 @@ export default function PushSend() {
               title: data.title,
               content: data.content,
               badge: data.badge,
-              payload: data.payload,
+              payload: payloadToSend,
             })
             break
           }
@@ -348,7 +351,7 @@ export default function PushSend() {
               title: data.title,
               content: data.content,
               badge: data.badge,
-              payload: data.payload,
+              payload: payloadToSend,
               target: {
                 type: 'tags',
                 tags: data.tags,
@@ -364,7 +367,7 @@ export default function PushSend() {
               title: data.title,
               content: data.content,
               badge: data.badge,
-              payload: data.payload,
+              payload: payloadToSend,
               platform: data.platform || undefined,
               vendor: data.vendor || undefined,
             })
@@ -378,7 +381,7 @@ export default function PushSend() {
               title: data.title,
               content: data.content,
               badge: data.badge,
-              payload: data.payload,
+              payload: payloadToSend,
               target: {
                 type: 'groups',
                 group_ids: data.group_ids,
@@ -665,493 +668,354 @@ export default function PushSend() {
                                 </div>
                               </AccordionTrigger>
                               <AccordionContent className='p-4 space-y-6'>
-                                {/* 华为推送优化 */}
-                                <div className='space-y-4'>
-                                  <div className='flex items-center gap-2 pb-2 border-b'>
-                                    <span className='text-orange-600'>📱</span>
-                                    <h6 className='font-medium'>华为推送优化</h6>
-                                  </div>
-                                  <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.huawei.importance"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            消息分类 (importance)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-1 text-sm'>
-                                                  <p><strong>NORMAL</strong>: 服务与通讯类消息，不受频控限制（推荐使用）</p>
-                                                  <p><strong>LOW</strong>: 资讯营销类消息，受频控限制</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <Select value={field.value} onValueChange={field.onChange}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              <SelectItem value="NORMAL">NORMAL (推荐)</SelectItem>
-                                              <SelectItem value="LOW">LOW</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </FormItem>
-                                      )}
-                                    />
+                                <Tabs defaultValue='huawei' className='gap-y-6'>
+                                  <TabsList className='flex flex-wrap gap-2'>
+                                    <TabsTrigger value='huawei'>
+                                      <span className='text-orange-600'>📱</span> 华为
+                                    </TabsTrigger>
+                                    <TabsTrigger value='xiaomi'>
+                                      <span className='text-blue-600'>📱</span> 小米
+                                    </TabsTrigger>
+                                    <TabsTrigger value='oppo'>
+                                      <span className='text-green-600'>📱</span> OPPO
+                                    </TabsTrigger>
+                                    <TabsTrigger value='vivo'>
+                                      <span className='text-blue-600'>📱</span> VIVO
+                                    </TabsTrigger>
+                                  </TabsList>
 
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.huawei.category"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            自定义分类 (category)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-1 text-sm'>
-                                                  <p><strong>IM</strong>: 即时通讯</p>
-                                                  <p><strong>VOIP</strong>: 语音通话</p>
-                                                  <p><strong>TRAVEL</strong>: 旅游服务</p>
-                                                  <p><strong>NEWS</strong>: 新闻资讯</p>
-                                                  <p><strong>FINANCE</strong>: 金融服务</p>
-                                                  <p><strong>SOCIAL</strong>: 社交应用</p>
-                                                  <p className="text-amber-600">需要先在华为开发者后台申请对应权益</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <Select value={field.value} onValueChange={field.onChange}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              <SelectItem value="IM">IM</SelectItem>
-                                              <SelectItem value="VOIP">VOIP</SelectItem>
-                                              <SelectItem value="TRAVEL">TRAVEL</SelectItem>
-                                              <SelectItem value="NEWS">NEWS</SelectItem>
-                                              <SelectItem value="FINANCE">FINANCE</SelectItem>
-                                              <SelectItem value="SOCIAL">SOCIAL</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </FormItem>
-                                      )}
-                                    />
-                                  </div>
-                                </div>
+                                  <TabsContent value='huawei'>
+                                    <div className='space-y-4'>
+                                      <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                                        <FormField
+                                          control={form.control}
+                                          name="payload.huawei.importance"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel className='flex items-center gap-1'>
+                                                消息分类 (importance)
+                                                <Tooltip>
+                                                  <TooltipTrigger>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top">
+                                                    <div className='space-y-1 text-sm'>
+                                                      <p><strong>NORMAL</strong>: 服务与通讯类消息，不受频控限制（推荐使用）</p>
+                                                      <p><strong>LOW</strong>: 资讯营销类消息，受频控限制</p>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </FormLabel>
+                                              <Select value={field.value} onValueChange={field.onChange}>
+                                                <FormControl>
+                                                  <SelectTrigger>
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                  <SelectItem value="NORMAL">NORMAL (推荐)</SelectItem>
+                                                  <SelectItem value="LOW">LOW</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </FormItem>
+                                          )}
+                                        />
 
-                                {/* 小米推送优化 */}
-                                <div className='space-y-4'>
-                                  <div className='flex items-center gap-2 pb-2 border-b'>
-                                    <span className='text-blue-600'>📱</span>
-                                    <h6 className='font-medium'>小米推送优化</h6>
-                                  </div>
-                                  <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.xiaomi.channel_id"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            推送通道 (channel_id)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-1 text-sm'>
-                                                  <p><strong>默认通道</strong>: 单设备单日1条限制</p>
-                                                  <p><strong>公信消息</strong>: 单设备单日5-8条限制（需申请）</p>
-                                                  <p><strong>私信消息</strong>: 不限量（需申请）</p>
-                                                  <p className="text-blue-600">指定推送通道ID，用于突破默认通道的数量限制</p>
-                                                  <p>不填写则使用默认通道</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <FormControl>
-                                            <Input 
-                                              placeholder="例如：private_msg_channel"
-                                              {...field} 
-                                            />
-                                          </FormControl>
-                                        </FormItem>
-                                      )}
-                                    />
+                                        <FormField
+                                          control={form.control}
+                                          name="payload.huawei.category"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel className='flex items-center gap-1'>
+                                                自定义分类 (category)
+                                                <Tooltip>
+                                                  <TooltipTrigger>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top">
+                                                    <div className='space-y-1 text-sm'>
+                                                      <p><strong>IM</strong>: 即时通讯</p>
+                                                      <p><strong>VOIP</strong>: 语音通话</p>
+                                                      <p><strong>TRAVEL</strong>: 旅游服务</p>
+                                                      <p><strong>NEWS</strong>: 新闻资讯</p>
+                                                      <p><strong>FINANCE</strong>: 金融服务</p>
+                                                      <p><strong>SOCIAL</strong>: 社交应用</p>
+                                                      <p className="text-amber-600">需要先在华为开发者后台申请对应权益</p>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </FormLabel>
+                                              <Select value={field.value} onValueChange={field.onChange}>
+                                                <FormControl>
+                                                  <SelectTrigger>
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                  <SelectItem value="IM">IM</SelectItem>
+                                                  <SelectItem value="VOIP">VOIP</SelectItem>
+                                                  <SelectItem value="TRAVEL">TRAVEL</SelectItem>
+                                                  <SelectItem value="NEWS">NEWS</SelectItem>
+                                                  <SelectItem value="FINANCE">FINANCE</SelectItem>
+                                                  <SelectItem value="SOCIAL">SOCIAL</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </FormItem>
+                                          )}
+                                        />
+                                      </div>
+                                    </div>
+                                  </TabsContent>
 
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.xiaomi.pass_through"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            消息类型 (pass_through)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-1 text-sm'>
-                                                  <p><strong>0</strong>: 通知消息（显示在通知栏，推荐使用）</p>
-                                                  <p><strong>1</strong>: 透传消息（直接传递给应用）</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <Select value={field.value?.toString() || '0'} onValueChange={(value) => field.onChange(parseInt(value))}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              <SelectItem value="0">通知消息 (推荐)</SelectItem>
-                                              <SelectItem value="1">透传消息</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </FormItem>
-                                      )}
-                                    />
-                                  </div>
-                                </div>
+                                  <TabsContent value='xiaomi'>
+                                    <div className='space-y-4'>
+                                      <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                                        <FormField
+                                          control={form.control}
+                                          name="payload.xiaomi.channel_id"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel className='flex items-center gap-1'>
+                                                推送通道 (channel_id)
+                                                <Tooltip>
+                                                  <TooltipTrigger>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top">
+                                                    <div className='space-y-1 text-sm'>
+                                                      <p><strong>默认通道</strong>: 单设备单日1条限制</p>
+                                                      <p><strong>公信消息</strong>: 单设备单日5-8条限制（需申请）</p>
+                                                      <p><strong>私信消息</strong>: 不限量（需申请）</p>
+                                                      <p className="text-blue-600">指定推送通道ID，用于突破默认通道的数量限制</p>
+                                                      <p>不填写则使用默认通道</p>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </FormLabel>
+                                              <FormControl>
+                                                <Input                                                   placeholder="例如：private_msg_channel"
+                                                  {...field}                                                 />
+                                              </FormControl>
+                                            </FormItem>
+                                          )}
+                                        />
 
-                                {/* OPPO推送优化 */}
-                                <div className='space-y-4'>
-                                  <div className='flex items-center gap-2 pb-2 border-b'>
-                                    <span className='text-green-600'>📱</span>
-                                    <h6 className='font-medium'>OPPO推送优化</h6>
-                                  </div>
-                                  <div className='grid items-start grid-cols-1 md:grid-cols-3 gap-4'>
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.oppo.category"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            消息分类 (category)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-2 text-sm max-w-xs'>
-                                                  <p><strong>通讯与服务类：</strong></p>
-                                                  <p>• <strong>IM</strong>: 聊天消息、通话</p>
-                                                  <p>• <strong>ACCOUNT</strong>: 账号资产变化</p>
-                                                  <p>• <strong>ORDER</strong>: 订单物流状态</p>
-                                                  <p>• <strong>TODO</strong>: 日程待办</p>
-                                                  <p><strong>内容与营销类：</strong></p>
-                                                  <p>• <strong>MARKETING</strong>: 平台活动</p>
-                                                  <p>• <strong>CONTENT</strong>: 内容推荐</p>
-                                                  <p>• <strong>NEWS</strong>: 新闻资讯</p>
-                                                  <p>• <strong>SOCIAL</strong>: 社交动态</p>
-                                                  <p className="text-green-600">选择适合的消息分类以获得最佳推送体验</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <Select value={field.value || ''} onValueChange={(value) => field.onChange(value || undefined)}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue placeholder="选择消息分类" />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              <div className="px-2 py-1 text-xs font-medium text-muted-foreground">通讯与服务类</div>
-                                              <SelectItem value="IM">IM - 即时聊天通话</SelectItem>
-                                              <SelectItem value="ACCOUNT">ACCOUNT - 账号资产变化</SelectItem>
-                                              <SelectItem value="DEVICE_REMINDER">DEVICE_REMINDER - 设备提醒</SelectItem>
-                                              <SelectItem value="ORDER">ORDER - 订单物流状态</SelectItem>
-                                              <SelectItem value="TODO">TODO - 日程待办</SelectItem>
-                                              <SelectItem value="SUBSCRIPTION">SUBSCRIPTION - 个人订阅</SelectItem>
-                                              <div className="px-2 py-1 text-xs font-medium text-muted-foreground">内容与营销类</div>
-                                              <SelectItem value="NEWS">NEWS - 新闻资讯</SelectItem>
-                                              <SelectItem value="CONTENT">CONTENT - 内容推荐</SelectItem>
-                                              <SelectItem value="MARKETING">MARKETING - 平台活动</SelectItem>
-                                              <SelectItem value="SOCIAL">SOCIAL - 社交动态</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </FormItem>
-                                      )}
-                                    />
+                                        <FormField
+                                          control={form.control}
+                                          name="payload.xiaomi.pass_through"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel className='flex items-center gap-1'>
+                                                消息类型 (pass_through)
+                                                <Tooltip>
+                                                  <TooltipTrigger>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top">
+                                                    <div className='space-y-1 text-sm'>
+                                                      <p><strong>0</strong>: 通知消息（显示在通知栏，推荐使用）</p>
+                                                      <p><strong>1</strong>: 透传消息（直接传递给应用）</p>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </FormLabel>
+                                              <Select value={field.value?.toString() || '0'} onValueChange={(value) => field.onChange(parseInt(value))}>
+                                                <FormControl>
+                                                  <SelectTrigger>
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                  <SelectItem value="0">通知消息 (推荐)</SelectItem>
+                                                  <SelectItem value="1">透传消息</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </FormItem>
+                                          )}
+                                        />
+                                      </div>
+                                    </div>
+                                  </TabsContent>
 
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.oppo.notify_level"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            提醒等级 (notify_level)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-1 text-sm'>
-                                                  <p><strong>1</strong>: 仅通知栏显示</p>
-                                                  <p><strong>2</strong>: 通知栏 + 锁屏显示（推荐默认）</p>
-                                                  <p><strong>16</strong>: 强提醒（横幅+震动+铃声，需申请权限）</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <Select value={field.value?.toString() || '2'} onValueChange={(value) => field.onChange(parseInt(value))}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              <SelectItem value="1">1 - 仅通知栏</SelectItem>
-                                              <SelectItem value="2">2 - 通知栏+锁屏 (推荐)</SelectItem>
-                                              <SelectItem value="16">16 - 强提醒 (需申请权限)</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </FormItem>
-                                      )}
-                                    />
+                                  <TabsContent value='oppo'>
+                                    <div className='space-y-4'>
+                                      <div className='grid items-start grid-cols-1 md:grid-cols-3 gap-4'>
+                                        <FormField
+                                          control={form.control}
+                                          name="payload.oppo.category"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel className='flex items-center gap-1'>
+                                                消息分类 (category)
+                                                <Tooltip>
+                                                  <TooltipTrigger>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top">
+                                                    <div className='space-y-2 text-sm max-w-xs'>
+                                                      <p><strong>通讯与服务类：</strong></p>
+                                                      <p>• <strong>IM</strong>: 聊天消息、通话</p>
+                                                      <p>• <strong>ACCOUNT</strong>: 账号资产变化</p>
+                                                      <p>• <strong>ORDER</strong>: 订单物流状态</p>
+                                                      <p>• <strong>TODO</strong>: 日程待办</p>
+                                                      <p>• <strong>SUBSCRIPTION</strong>: 个人订阅</p>
+                                                      <p><strong>内容与营销类：</strong></p>
+                                                      <p>• <strong>MARKETING</strong>: 平台活动</p>
+                                                      <p>• <strong>CONTENT</strong>: 内容推荐</p>
+                                                      <p>• <strong>NEWS</strong>: 新闻资讯</p>
+                                                      <p>• <strong>SOCIAL</strong>: 社交动态</p>
+                                                      <p className="text-green-600">选择适合的消息分类以获得最佳推送体验</p>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </FormLabel>
+                                              <Select value={field.value || ''} onValueChange={(value) => field.onChange(value || undefined)}>
+                                                <FormControl>
+                                                  <SelectTrigger>
+                                                    <SelectValue placeholder="选择消息分类" />
+                                                  </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">通讯与服务类</div>
+                                                  <SelectItem value="IM">IM - 即时聊天通话</SelectItem>
+                                                  <SelectItem value="ACCOUNT">ACCOUNT - 账号资产变化</SelectItem>
+                                                  <SelectItem value="DEVICE_REMINDER">DEVICE_REMINDER - 设备提醒</SelectItem>
+                                                  <SelectItem value="ORDER">ORDER - 订单物流状态</SelectItem>
+                                                  <SelectItem value="TODO">TODO - 日程待办</SelectItem>
+                                                  <SelectItem value="SUBSCRIPTION">SUBSCRIPTION - 个人订阅</SelectItem>
+                                                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">内容与营销类</div>
+                                                  <SelectItem value="NEWS">NEWS - 新闻资讯</SelectItem>
+                                                  <SelectItem value="CONTENT">CONTENT - 内容推荐</SelectItem>
+                                                  <SelectItem value="MARKETING">MARKETING - 平台活动</SelectItem>
+                                                  <SelectItem value="SOCIAL">SOCIAL - 社交动态</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </FormItem>
+                                          )}
+                                        />
 
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.oppo.channel_id"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            通道ID (channel_id)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-1 text-sm max-w-sm'>
-                                                  <p><strong>指定下发的通道ID</strong></p>
-                                                  <p>• 自定义通知渠道的唯一标识</p>
-                                                  <p>• 用于控制推送消息的展示方式和优先级</p>
-                                                  <p>• 需要与应用端创建的NotificationChannel的ID对应</p>
-                                                  <p>• 留空则使用默认通道</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <FormControl>
-                                            <Input 
-                                              placeholder="例如：high_priority_channel"
-                                              {...field} 
-                                            />
-                                          </FormControl>
-                                        </FormItem>
-                                      )}
-                                    />
-                                  </div>
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
+                                        <FormField
+                                          control={form.control}
+                                          name="payload.oppo.notify_level"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel className='flex items-center gap-1'>
+                                                提醒等级 (notify_level)
+                                                <Tooltip>
+                                                  <TooltipTrigger>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top">
+                                                    <div className='space-y-1 text-sm'>
+                                                      <p><strong>1</strong>: 仅通知栏显示</p>
+                                                      <p><strong>2</strong>: 通知栏 + 锁屏显示（推荐默认）</p>
+                                                      <p><strong>16</strong>: 强提醒（横幅+震动+铃声，需申请权限）</p>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </FormLabel>
+                                              <Select value={field.value?.toString() || '2'} onValueChange={(value) => field.onChange(parseInt(value))}>
+                                                <FormControl>
+                                                  <SelectTrigger>
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                  <SelectItem value="1">1 - 仅通知栏</SelectItem>
+                                                  <SelectItem value="2">2 - 通知栏+锁屏 (推荐)</SelectItem>
+                                                  <SelectItem value="16">16 - 强提醒 (需申请权限)</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </FormItem>
+                                          )}
+                                        />
 
-                            {/* VIVO推送优化 */}
-                            <AccordionItem value="vivo-optimization">
-                              <AccordionTrigger className="text-sm">
-                                <div className='flex items-center gap-2'>
-                                  <span className='text-blue-600'>📱</span>
-                                  <span>VIVO推送优化</span>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent>
-                                <div className='space-y-4'>
-                                  <div className='flex items-center gap-2 pb-2 border-b'>
-                                    <span className='text-blue-600'>📱</span>
-                                    <h6 className='font-medium'>VIVO推送优化</h6>
-                                  </div>
-                                  <div className='grid items-start grid-cols-1 md:grid-cols-3 gap-4'>
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.vivo.classification"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            消息分类 (classification)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-1 text-sm'>
-                                                  <p><strong>0</strong>: 运营消息（营销推广类）</p>
-                                                  <p><strong>1</strong>: 系统消息（重要通知类，推荐）</p>
-                                                  <p className="text-blue-600">系统消息享有更高的推送优先级</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <Select value={field.value?.toString() || '0'} onValueChange={(value) => field.onChange(parseInt(value))}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              <SelectItem value="0">0 - 运营消息</SelectItem>
-                                              <SelectItem value="1">1 - 系统消息 (推荐)</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </FormItem>
-                                      )}
-                                    />
+                                        <FormField
+                                          control={form.control}
+                                          name="payload.oppo.channel_id"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel className='flex items-center gap-1'>
+                                                通道ID (channel_id)
+                                                <Tooltip>
+                                                  <TooltipTrigger>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top">
+                                                    <div className='space-y-1 text-sm max-w-sm'>
+                                                      <p><strong>指定下发的通道ID</strong></p>
+                                                      <p>• 自定义通知渠道的唯一标识</p>
+                                                      <p>• 用于控制推送消息的展示方式和优先级</p>
+                                                      <p>• 需要与应用端创建的NotificationChannel的ID对应</p>
+                                                      <p>• 留空则使用默认通道</p>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </FormLabel>
+                                              <FormControl>
+                                                <Input placeholder="例如：high_priority_channel" {...field} />
+                                              </FormControl>
+                                            </FormItem>
+                                          )}
+                                        />
+                                      </div>
+                                    </div>
+                                  </TabsContent>
 
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.vivo.notify_type"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            通知类型 (notify_type)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-1 text-sm'>
-                                                  <p><strong>1</strong>: 通知栏消息（显示在通知栏，推荐）</p>
-                                                  <p><strong>2</strong>: 透传消息（直接传递给应用）</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <Select value={field.value?.toString() || '1'} onValueChange={(value) => field.onChange(parseInt(value))}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              <SelectItem value="1">1 - 通知栏消息 (推荐)</SelectItem>
-                                              <SelectItem value="2">2 - 透传消息</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </FormItem>
-                                      )}
-                                    />
-
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.vivo.skip_type"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            跳转类型 (skip_type)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-1 text-sm'>
-                                                  <p><strong>1</strong>: 打开应用（推荐默认）</p>
-                                                  <p><strong>2</strong>: 打开URL</p>
-                                                  <p><strong>3</strong>: 自定义行为</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <Select value={field.value?.toString() || '1'} onValueChange={(value) => field.onChange(parseInt(value))}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              <SelectItem value="1">1 - 打开应用 (推荐)</SelectItem>
-                                              <SelectItem value="2">2 - 打开URL</SelectItem>
-                                              <SelectItem value="3">3 - 自定义行为</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </FormItem>
-                                      )}
-                                    />
-                                  </div>
-
-                                  <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.vivo.skip_content"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            跳转内容 (skip_content)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-1 text-sm max-w-sm'>
-                                                  <p>当跳转类型为2(打开URL)或3(自定义)时填写</p>
-                                                  <p>• 类型2: 填写完整URL地址</p>
-                                                  <p>• 类型3: 填写自定义参数</p>
-                                                  <p>• 类型1: 可留空</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <FormControl>
-                                            <Input 
-                                              placeholder="URL地址或自定义参数"
-                                              {...field} 
-                                            />
-                                          </FormControl>
-                                        </FormItem>
-                                      )}
-                                    />
-
-                                    <FormField
-                                      control={form.control}
-                                      name="payload.vivo.time_to_live"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className='flex items-center gap-1'>
-                                            离线保存时长 (秒)
-                                            <Tooltip>
-                                              <TooltipTrigger>
-                                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                              </TooltipTrigger>
-                                              <TooltipContent side="top">
-                                                <div className='space-y-1 text-sm'>
-                                                  <p>设备离线时消息的保存时长</p>
-                                                  <p>范围: 1秒 - 7天(604800秒)</p>
-                                                  <p>默认: 86400秒 (24小时)</p>
-                                                </div>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </FormLabel>
-                                          <FormControl>
-                                            <Input 
-                                              type="number"
-                                              placeholder="86400"
-                                              min={1}
-                                              max={604800}
-                                              {...field}
-                                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                                            />
-                                          </FormControl>
-                                        </FormItem>
-                                      )}
-                                    />
-                                  </div>
-                                </div>
+                                  <TabsContent value='vivo'>
+                                    <div className='space-y-4'>
+                                      <FormField
+                                        control={form.control}
+                                        name="payload.vivo.category"
+                                        render={({ field }) => (
+                                          <FormItem className='md:max-w-md'>
+                                            <FormLabel className='flex items-center gap-1'>
+                                              消息分类 (category)
+                                              <Tooltip>
+                                                <TooltipTrigger>
+                                                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top">
+                                                  <div className='space-y-1 text-sm max-w-sm'>
+                                                    <p>按照 vivo 官方分类说明选择最贴近场景的类别。</p>
+                                                    <p>category 为必填参数，用于区分系统消息与运营消息细分场景。</p>
+                                                    <p className='text-blue-600'>详情参考《推送消息分类说明》。</p>
+                                                  </div>
+                                                </TooltipContent>
+                                              </Tooltip>
+                                            </FormLabel>
+                                            <Select value={field.value} onValueChange={field.onChange}>
+                                              <FormControl>
+                                                <SelectTrigger>
+                                                  <SelectValue placeholder="选择消息分类" />
+                                                </SelectTrigger>
+                                              </FormControl>
+                                              <SelectContent>
+                                                {ANDROID_MESSAGE_CATEGORY_GROUPS.map((group) => (
+                                                  <SelectGroup key={group.label}>
+                                                    <SelectLabel className='text-xs text-muted-foreground'>{group.label}</SelectLabel>
+                                                    {group.options.map((option) => (
+                                                      <SelectItem key={option.value} value={option.value}>
+                                                        {option.label}
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectGroup>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </div>
+                                  </TabsContent>
+                                </Tabs>
                               </AccordionContent>
                             </AccordionItem>
                           </Accordion>
                         </div>
 
                         {/* 目标设备配置 */}
+
                         <div className='space-y-4'>
                           <h4 className='font-medium'>目标设备</h4>
                           
