@@ -145,9 +145,9 @@ export const RecentPushes = forwardRef<RecentPushesRef>((_, ref) => {
               {getPlatformIcon(push)}
             </AvatarFallback>
           </Avatar>
-          <div className="ml-4 space-y-1 flex-1">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium leading-none">
+          <div className="ml-4 space-y-1 flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm font-medium leading-none truncate" title={push.title}>
                 {(push.status === 'failed' || push.failed_count > 0) && (
                   <Badge variant="outline" className="mr-1 text-xs text-red-600 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800">
                     失败
@@ -155,11 +155,11 @@ export const RecentPushes = forwardRef<RecentPushesRef>((_, ref) => {
                 )}
                 {push.title}
               </p>
-              <p className="text-xs text-muted-foreground" title={formatTime(push.created_at).fullTime}>
+              <p className="text-xs text-muted-foreground shrink-0" title={formatTime(push.created_at).fullTime}>
                 {formatTime(push.created_at).displayTime}
               </p>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground truncate" title={push.content}>
               {push.content.length > 40 ? `${push.content.substring(0, 40)}...` : push.content}
             </p>
           </div>
