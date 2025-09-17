@@ -22,6 +22,7 @@ graph TB
         APNs[Apple APNs]
         FCM[Google FCM]
         HMS[华为 HMS]
+        Honor[荣耀推送]
         MIUI[小米推送]
         OPPO[OPPO 推送]
         VIVO[VIVO 推送]
@@ -37,6 +38,7 @@ graph TB
     Gateway --> APNs
     Gateway --> FCM
     Gateway --> HMS
+    Gateway --> Honor
     Gateway --> MIUI
     Gateway --> OPPO
     Gateway --> VIVO
@@ -44,6 +46,7 @@ graph TB
     APNs --> iOS
     FCM --> Android
     HMS --> Android
+    Honor --> Android
     MIUI --> Android
     OPPO --> Android
     VIVO --> Android

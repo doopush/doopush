@@ -78,7 +78,8 @@ token1,token2,token3
 - **平台筛选** - 可选择 iOS、Android 或全部平台
 - **厂商筛选** - Android 设备可按厂商筛选：
   - Google FCM（通用 Android 设备）
-  - 华为 HMS（华为/荣耀设备）
+  - 华为 HMS（华为设备）
+  - 荣耀推送（荣耀设备）
   - 小米推送（小米/红米设备）
   - OPPO推送（OPPO/OnePlus设备）
   - VIVO推送（VIVO/iQOO设备）
@@ -141,6 +142,11 @@ token1,token2,token3
 - `importance` - 消息重要性等级（NORMAL/HIGH）
 - `ttl` - 消息存活时间（秒）
 - `collapse_key` - 消息分组标识
+
+**荣耀推送参数**：
+- `importance` - 消息重要性等级（NORMAL/HIGH）
+- `ttl` - 消息存活时间（秒）
+- `target_user_type` - 目标用户类型（0/1）
 
 **小米推送参数**：
 - `pass_through` - 透传消息模式（0/1）
@@ -305,6 +311,7 @@ token1,token2,token3
 - **Android** - 仅显示 Android 平台推送
   - **FCM** - Google Firebase Cloud Messaging
   - **HMS** - 华为移动服务推送
+  - **荣耀推送** - 荣耀设备专用推送
   - **小米推送** - 小米设备专用推送
   - **OPPO推送** - OPPO设备专用推送
   - **VIVO推送** - VIVO设备专用推送
@@ -360,7 +367,7 @@ token1,token2,token3
 
 **平台对比**：
 - iOS vs Android 推送效果对比
-- Android 不同厂商推送效果对比（FCM、HMS、小米、OPPO、VIVO）
+- Android 不同厂商推送效果对比（FCM、HMS、荣耀、小米、OPPO、VIVO）
 - 不同平台的用户行为差异分析
 
 ### 效果优化建议

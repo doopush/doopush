@@ -21,7 +21,7 @@ features:
   - title: 🚀 快速接入
     details: 10分钟内完成账号注册、应用创建和首次推送，简单快捷的操作流程让您快速上手
   - title: 📱 多厂商推送
-    details: 支持 iOS APNs、Android 多厂商推送（FCM、HMS、小米、OPPO、VIVO），智能路由，统一管理
+    details: 支持 iOS APNs、Android 多厂商推送（FCM、HMS、荣耀、小米、OPPO、VIVO），智能路由，统一管理
   - title: 🛠 功能丰富
     details: 支持单推、批量推送、广播推送、定时推送，提供完整的设备管理和推送统计功能
   - title: 🔑 API 接口
@@ -63,7 +63,8 @@ features:
 | 厂商 | 状态 | 设备覆盖 |
 |------|------|----------|
 | Google FCM | ✅ 已支持 | 所有 Android 设备（默认通道）|
-| 华为 HMS | ✅ 已支持 | 华为/荣耀设备（国内外）|
+| 华为 HMS | ✅ 已支持 | 华为设备（EMUI/HarmonyOS 优化）|
+| 荣耀推送 | ✅ 已支持 | 荣耀设备（Magic OS 优化）|
 | 小米推送 | ✅ 已支持 | 小米/红米设备（MIUI 优化）|
 | OPPO推送 | ✅ 已支持 | OPPO/OnePlus 设备（ColorOS 优化）|
 | VIVO推送 | ✅ 已支持 | VIVO/iQOO 设备（Origin OS 优化）|

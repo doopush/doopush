@@ -84,10 +84,10 @@ Android SDK 正在开发中，配置功能将在 SDK 完成后开放。
 **规划支持的通道**：
 - **FCM** - Firebase Cloud Messaging
 - **华为** - HMS Push Kit
+- **荣耀** - 荣耀推送
 - **小米** - 小米推送
 - **OPPO** - ColorOS 推送
 - **VIVO** - vivo 推送
-- **荣耀** - 荣耀推送
 - **三星** - Samsung Push
 
 ### 配置管理

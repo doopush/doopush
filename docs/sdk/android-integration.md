@@ -7,6 +7,7 @@ DooPush Android SDK 为 Android 应用提供统一的推送通知解决方案，
 ### 📱 多厂商推送支持
 - ✅ **Google FCM** - Firebase Cloud Messaging，海外和国内通用
 - ✅ **华为 HMS Push** - Huawei Mobile Services，华为设备专用
+- ✅ **荣耀推送** - Honor Push Service，荣耀设备专用
 - ✅ **小米推送** - 小米设备专用通道，MIUI深度优化
 - ✅ **OPPO推送** - OPPO/OnePlus设备专用，ColorOS优化
 - ✅ **VIVO推送** - VIVO/iQOO设备专用，Origin OS优化
@@ -49,6 +50,7 @@ allprojects {
         google()
         mavenCentral()
         maven { url 'https://developer.huawei.com/repo/' } // 华为仓库
+        maven { url 'https://developer.hihonor.com/repo' } // 荣耀仓库
     }
 }
 ```
@@ -71,6 +73,9 @@ dependencies {
     
     // 可选：华为 HMS Push （华为设备）
     implementation 'com.huawei.hms:push:6.11.0.300'
+    
+    // 可选：荣耀推送 （荣耀设备）
+    implementation 'com.hihonor.mcs:push:8.0.12.307'
     
     // 可选：小米推送 （小米设备）
     implementation 'com.umeng.umsdk:xiaomi-push:6.0.1'
@@ -158,13 +163,31 @@ plugins {
 
 ```kotlin
 // 项目级 build.gradle
-plugins {
-    id 'com.huawei.agconnect' version '1.9.1.301' apply false
+dependencies {
+    classpath 'com.huawei.agconnect:agcp:1.9.3.302'
 }
 
 // app 级 build.gradle
 plugins {
     id 'com.huawei.agconnect'
+}
+```
+
+#### 荣耀推送配置
+
+1. 在 [荣耀开发者服务平台](https://developer.hihonor.com) 创建应用
+2. 下载 `mcs-services.json` 文件到 `app/` 目录
+3. 添加荣耀推送插件：
+
+```kotlin
+// 项目级 build.gradle
+dependencies {
+    classpath 'com.hihonor.mcs:asplugin:2.0.1.300'
+}
+
+// app 级 build.gradle
+plugins {
+    id 'com.hihonor.mcs.asplugin'
 }
 ```
 
@@ -477,6 +500,7 @@ A:
 A: 
 - ✅ **FCM**: 完全支持，所有Android设备默认通道
 - ✅ **华为HMS**: 完全支持，华为设备自动识别
+- ✅ **荣耀推送**: 完全支持，荣耀设备自动识别
 - ✅ **小米推送**: 完全支持，小米设备自动识别
 - ✅ **OPPO推送**: 完全支持，OPPO设备自动识别
 - ✅ **VIVO推送**: 完全支持，VIVO设备自动识别
@@ -487,6 +511,27 @@ A:
 2. 在 VIVO 开发者平台申请推送权限并通过审核
 3. 检查应用包名和签名是否与 VIVO 后台配置一致
 4. 确认 `app_id` 和 `api_key` 配置正确
+
+#### Q: 荣耀设备推送支持情况？
+A: 
+✅ **荣耀推送已完全支持！** 荣耀设备会自动使用荣耀推送服务，提供针对Magic OS系统的专门优化。
+
+**配置要点：**
+1. 添加荣耀推送依赖：`com.hihonor.mcs:push:8.0.12.307`
+2. 检查配置文件 `mcs-services.json` 内容是否正确
+3. 在荣耀开发者服务平台申请推送权限并通过审核
+4. 添加荣耀推送插件：`com.hihonor.mcs.asplugin`
+
+**支持设备：**
+- 荣耀品牌所有设备（Honor独立后）
+- Magic OS系统设备
+
+#### Q: 荣耀设备无法接收推送？
+A: 
+1. 确保已添加荣耀推送依赖和 `mcs-services.json` 配置文件
+2. 在荣耀开发者服务平台申请推送权限并通过审核
+3. 检查应用包名和签名是否与荣耀后台配置一致
+4. 确保添加了荣耀推送插件
 
 #### Q: 角标不显示？
 A: 
@@ -501,10 +546,12 @@ A:
 adb logcat -s DooPushManager
 
 # 查看所有推送相关日志
-adb logcat | grep -i "push\|doopush\|fcm\|hms\|oppo\|vivo"
+adb logcat | grep -i "push\|doopush\|fcm\|hms\|honor\|oppo\|vivo"
 
-# 查看VIVO推送日志
-adb logcat -s VivoService
+# 查看特定厂商推送日志
+adb logcat -s VivoService      # VIVO推送日志
+adb logcat -s HonorService     # 荣耀推送日志
+adb logcat -s HMSService       # 华为推送日志
 ```
 
 ### 性能优化建议
