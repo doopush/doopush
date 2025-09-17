@@ -50,9 +50,11 @@ const createConfigSchema = z.object({
   // Android FCM v1 字段
   service_account_key: z.string().optional(), // FCM 服务账号密钥 JSON（包含项目ID）
   // Android 其他厂商字段
-  app_id: z.string().optional(),      // 华为/小米/OPPO/VIVO/荣耀/三星
-  app_key: z.string().optional(),     // 小米/OPPO/VIVO/荣耀/三星
-  app_secret: z.string().optional(),  // 华为/小米/OPPO/VIVO/荣耀/三星
+  app_id: z.string().optional(),        // 华为/小米/OPPO/VIVO/荣耀/三星
+  app_key: z.string().optional(),       // 小米/OPPO/VIVO/三星
+  app_secret: z.string().optional(),    // 华为/小米/OPPO/VIVO/三星
+  client_id: z.string().optional(),     // 荣耀
+  client_secret: z.string().optional(), // 荣耀
 }).refine((data) => {
   // 根据平台和通道验证必填字段
   if (data.platform === 'ios' && data.channel === 'apns') {
@@ -69,9 +71,10 @@ const createConfigSchema = z.object({
       case 'oppo':
         return data.app_id && data.app_key && data.app_secret
       case 'vivo':
-      case 'honor':
       case 'samsung':
         return data.app_id && data.app_key && data.app_secret
+      case 'honor':
+        return data.app_id && data.client_id && data.client_secret
     }
   }
   return true
@@ -106,6 +109,8 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
       app_id: '',
       app_key: '',
       app_secret: '',
+      client_id: '',
+      client_secret: '',
     },
   })
 
@@ -125,6 +130,8 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
         app_id: '',
         app_key: '',
         app_secret: '',
+        client_id: '',
+        client_secret: '',
       })
     }
   }, [open, defaultPlatform, form, currentApp?.package_name])
@@ -182,12 +189,18 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
             }
             break
           case 'vivo':
-          case 'honor':
           case 'samsung':
             configData = {
               app_id: data.app_id,
               app_key: data.app_key,
               app_secret: data.app_secret
+            }
+            break
+          case 'honor':
+            configData = {
+              app_id: data.app_id,
+              client_id: data.client_id,
+              client_secret: data.client_secret,
             }
             break
         }
@@ -567,7 +580,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                 </>
               )}
 
-              {currentPlatform === 'android' && (currentChannel === 'vivo' || currentChannel === 'honor' || currentChannel === 'samsung') && (
+              {currentPlatform === 'android' && currentChannel === 'vivo' && (
                 <>
                   <FormField
                     control={form.control}
@@ -610,6 +623,99 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       </FormItem>
                     )}
                   />
+                </>
+              )}
+
+              {currentPlatform === 'android' && currentChannel === 'samsung' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="app_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入 SAMSUNG App ID" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_key"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Key *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入 SAMSUNG App Key" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_secret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Secret *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入 SAMSUNG App Secret" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {currentPlatform === 'android' && currentChannel === 'honor' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="app_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入荣耀 App ID" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="client_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入荣耀 Client ID" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="client_secret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client Secret *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入荣耀 Client Secret" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                 </>
               )}
             </form>

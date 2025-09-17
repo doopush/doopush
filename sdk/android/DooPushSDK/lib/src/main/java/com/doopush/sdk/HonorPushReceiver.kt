@@ -30,11 +30,21 @@ class HonorPushReceiver {
          * 检查荣耀推送接收器是否可用
          */
         fun isReceiverAvailable(): Boolean {
+            return when {
+                classExists("com.hihonor.push.sdk.HonorMessageService") -> true
+                classExists("com.hihonor.mcs.push.callback.MessageCallback") -> true
+                else -> {
+                    Log.d(TAG, "荣耀接收器不可用")
+                    false
+                }
+            }
+        }
+
+        private fun classExists(className: String): Boolean {
             return try {
-                Class.forName("com.hihonor.mcs.push.callback.MessageCallback")
+                Class.forName(className)
                 true
-            } catch (e: ClassNotFoundException) {
-                Log.d(TAG, "荣耀接收器不可用")
+            } catch (_: ClassNotFoundException) {
                 false
             }
         }

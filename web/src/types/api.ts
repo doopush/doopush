@@ -432,9 +432,11 @@ export interface IOSPushConfig {
 
 // Android推送基础配置
 export interface AndroidPushBaseConfig {
-  app_id: string
-  app_key?: string      // 小米、OPPO、VIVO、荣耀、三星需要
-  app_secret: string    // 所有厂商都需要
+  app_id?: string
+  app_key?: string
+  app_secret?: string
+  client_id?: string
+  client_secret?: string
 }
 
 // FCM推送配置
@@ -445,37 +447,43 @@ export interface FCMPushConfig {
 // 华为推送配置
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface HuaweiPushConfig extends AndroidPushBaseConfig {
-  // 华为只需要 app_id 和 app_secret
+  app_id: string
+  app_secret: string
 }
 
 // 小米推送配置
 export interface XiaomiPushConfig extends AndroidPushBaseConfig {
-  // 小米需要 app_id、app_key 和 app_secret
-  app_key: string  // 小米必需
+  app_id: string
+  app_key: string
+  app_secret: string
 }
 
 // OPPO推送配置
 export interface OppoPushConfig extends AndroidPushBaseConfig {
-  // OPPO需要 app_id、app_key 和 app_secret
-  app_key: string  // OPPO必需
+  app_id: string
+  app_key: string
+  app_secret: string
 }
 
 // VIVO推送配置
 export interface VivoPushConfig extends AndroidPushBaseConfig {
-  // VIVO需要 app_id、app_key 和 app_secret
-  app_key: string  // VIVO必需
+  app_id: string
+  app_key: string
+  app_secret: string
 }
 
 // 荣耀推送配置
 export interface HonorPushConfig extends AndroidPushBaseConfig {
-  // 荣耀需要 app_id、app_key 和 app_secret
-  app_key: string  // 荣耀必需
+  app_id: string
+  client_id: string
+  client_secret: string
 }
 
 // 三星推送配置
 export interface SamsungPushConfig extends AndroidPushBaseConfig {
-  // 三星需要 app_id、app_key 和 app_secret
-  app_key: string  // 三星必需
+  app_id: string
+  app_key: string
+  app_secret: string
 }
 
 // 推送配置联合类型

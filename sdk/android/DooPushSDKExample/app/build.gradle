@@ -29,7 +29,9 @@ android {
         // Manifest占位符（在构建时由配置文件填充）
         manifestPlaceholders = [
             DOOPUSH_VIVO_APP_ID: "",
-            DOOPUSH_VIVO_API_KEY: ""
+            DOOPUSH_VIVO_API_KEY: "",
+            DOOPUSH_HONOR_APP_ID: "",
+            DOOPUSH_HONOR_DEVELOPER_ID: ""
         ]
     }
 
@@ -88,13 +90,27 @@ if (vivoConfigFile.exists()) {
     }
 }
 
+def honorConfigFile = file('mcs-services.json')
+if (honorConfigFile.exists()) {
+    try {
+        def honorConfig = new JsonSlurper().parseText(honorConfigFile.getText('UTF-8'))
+        def appId = (honorConfig.app_id ?: "").toString()
+        def developerId = (honorConfig.developer_id ?: "").toString()
+        android.defaultConfig.manifestPlaceholders["DOOPUSH_HONOR_APP_ID"] = appId
+        android.defaultConfig.manifestPlaceholders["DOOPUSH_HONOR_DEVELOPER_ID"] = developerId
+    } catch (Exception ignored) {
+        logger.warn("[DooPush] 解析 mcs-services.json 失败，荣耀推送可能无法初始化: ${ignored.message}")
+    }
+}
+
 // 自动复制配置文件任务
 tasks.register('copyConfigFile') {
     def filesToCopy = [
         'doopush-services.json',
         'xiaomi-services.json',
         'oppo-services.json',
-        'vivo-services.json'
+        'vivo-services.json',
+        'mcs-services.json'
     ]
     def targetDir = file('src/main/assets')
 

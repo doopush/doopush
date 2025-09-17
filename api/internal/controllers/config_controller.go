@@ -183,6 +183,11 @@ func (c *ConfigController) GetAppConfigs(ctx *gin.Context) {
 					configMap["app_secret"] = "[REDACTED]"
 					modified = true
 				}
+				// 荣耀等：隐藏client_secret
+				if _, exists := configMap["client_secret"]; exists {
+					configMap["client_secret"] = "[REDACTED]"
+					modified = true
+				}
 				// OPPO：隐藏master_secret
 				if _, exists := configMap["master_secret"]; exists {
 					configMap["master_secret"] = "[REDACTED]"

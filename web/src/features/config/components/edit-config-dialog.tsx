@@ -43,9 +43,11 @@ const editConfigSchema = z.object({
   // Android FCM v1 字段
   service_account_key: z.string().optional(), // FCM 服务账号密钥 JSON（包含项目ID）
   // Android 其他厂商字段
-  app_id: z.string().optional(),      // 华为/小米/OPPO/VIVO/荣耀/三星
-  app_key: z.string().optional(),     // 小米/OPPO/VIVO/荣耀/三星
-  app_secret: z.string().optional(),  // 华为/小米/OPPO/VIVO/荣耀/三星
+  app_id: z.string().optional(),        // 华为/小米/OPPO/VIVO/荣耀/三星
+  app_key: z.string().optional(),       // 小米/OPPO/VIVO/三星
+  app_secret: z.string().optional(),    // 华为/小米/OPPO/VIVO/三星
+  client_id: z.string().optional(),     // 荣耀
+  client_secret: z.string().optional(), // 荣耀
 })
 
 type EditConfigFormData = z.infer<typeof editConfigSchema>
@@ -75,6 +77,8 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
       app_id: '',
       app_key: '',
       app_secret: '',
+      client_id: '',
+      client_secret: '',
     },
   })
 
@@ -96,6 +100,8 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
           app_id: '',
           app_key: '',
           app_secret: '',
+          client_id: '',
+          client_secret: '',
         })
         
         // 检查隐藏字段的函数
@@ -135,12 +141,20 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
               checkAndSetField('app_secret', configData.app_secret)
               break
             case 'vivo':
-            case 'honor':
+              checkAndSetField('app_id', configData.app_id)
+              checkAndSetField('app_key', configData.app_key)
+              checkAndSetField('app_secret', configData.app_secret)
+              break
             case 'samsung':
               checkAndSetField('app_id', configData.app_id)
               checkAndSetField('app_key', configData.app_key)
               checkAndSetField('app_secret', configData.app_secret)
               break
+          case 'honor':
+            checkAndSetField('app_id', configData.app_id)
+            checkAndSetField('client_id', configData.client_id)
+            checkAndSetField('client_secret', configData.client_secret)
+            break
           }
         }
         
@@ -207,12 +221,24 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
             }
             break
           case 'vivo':
-          case 'honor':
+            configData = {
+              app_id: buildFieldValue('app_id', data.app_id || ''),
+              app_key: buildFieldValue('app_key', data.app_key || ''),
+              app_secret: buildFieldValue('app_secret', data.app_secret || '')
+            }
+            break
           case 'samsung':
             configData = {
               app_id: buildFieldValue('app_id', data.app_id || ''),
               app_key: buildFieldValue('app_key', data.app_key || ''),
               app_secret: buildFieldValue('app_secret', data.app_secret || '')
+            }
+            break
+          case 'honor':
+            configData = {
+              app_id: buildFieldValue('app_id', data.app_id || ''),
+              client_id: buildFieldValue('client_id', data.client_id || ''),
+              client_secret: buildFieldValue('client_secret', data.client_secret || ''),
             }
             break
         }
@@ -581,8 +607,8 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                 </>
               )}
 
-              {/* Android VIVO/荣耀/三星配置字段 */}
-              {config.platform === 'android' && (config.channel === 'vivo' || config.channel === 'honor' || config.channel === 'samsung') && (
+              {/* Android VIVO配置字段 */}
+              {config.platform === 'android' && config.channel === 'vivo' && (
                 <>
                   <FormField
                     control={form.control}
@@ -633,9 +659,121 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+                  />
                 </>
               )}
+
+              {/* Android 三星配置字段 */}
+              {config.platform === 'android' && config.channel === 'samsung' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="app_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_id', '输入 SAMSUNG App ID')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_id', 'SAMSUNG开发者平台的应用ID')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_key"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Key *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_key', '输入 SAMSUNG App Key')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_key', 'SAMSUNG开发者平台的应用密钥')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_secret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Secret *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_secret', '输入 SAMSUNG App Secret')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_secret', 'SAMSUNG开发者平台的应用密钥')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {/* Android 荣耀配置字段 */}
+              {config.platform === 'android' && config.channel === 'honor' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="app_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_id', '输入荣耀 App ID')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_id', '荣耀开发者平台的应用ID')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="client_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('client_id', '输入荣耀 Client ID')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('client_id', '荣耀推送OAuth2认证的Client ID')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+              <FormField
+                control={form.control}
+                name="client_secret"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Client Secret *</FormLabel>
+                    <FormControl>
+                      <Input placeholder={getFieldPlaceholder('client_secret', '输入荣耀 Client Secret')} {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      {getFieldDescription('client_secret', '荣耀推送OAuth2认证的Client Secret')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
             </form>
           </Form>
         </div>

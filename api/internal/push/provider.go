@@ -208,9 +208,12 @@ func (m *PushManager) createVivoProvider(config AndroidConfig) (PushProvider, er
 // createHonorProvider 创建荣耀推送提供者
 func (m *PushManager) createHonorProvider(config AndroidConfig) (PushProvider, error) {
 	if config.AppID == "" {
+		return nil, fmt.Errorf("荣耀推送配置缺少 app_id")
+	}
+	if config.ClientID == "" {
 		return nil, fmt.Errorf("荣耀推送配置缺少 client_id")
 	}
-	if config.AppSecret == "" {
+	if config.ClientSecret == "" {
 		return nil, fmt.Errorf("荣耀推送配置缺少 client_secret")
 	}
 	return NewAndroidProviderWithConfig("honor", config), nil

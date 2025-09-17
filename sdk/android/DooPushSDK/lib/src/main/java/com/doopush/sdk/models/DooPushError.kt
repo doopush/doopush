@@ -85,7 +85,8 @@ data class DooPushError(
         const val HONOR_TOKEN_FAILED = 3504
         const val HONOR_CONFIG_INVALID = 3505
         const val HONOR_SDK_ERROR = 3506
-        const val HONOR_UNKNOWN_ERROR = 3507
+        const val HONOR_APP_ID_MISSING = 3507
+        const val HONOR_UNKNOWN_ERROR = 3508
         
         // 权限相关错误码
         const val PERMISSION_DENIED = 4001

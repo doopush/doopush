@@ -155,16 +155,20 @@ data class DooPushConfig(
     }
     
     /**
-     * 荣耀推送配置类（客户端需要 clientId 和 clientSecret，可从 mcs-services.json 自动读取）
-     * @param clientId 荣耀应用客户端ID，如果为空则会从 mcs-services.json 自动读取
-     * @param clientSecret 荣耀应用客户端密钥，如果为空则会从 mcs-services.json 自动读取
+     * 荣耀推送配置
+     * @param clientId 旧版SDK需要的客户端ID，可从 mcs-services.json 自动读取
+     * @param clientSecret 旧版SDK需要的客户端密钥，可从 mcs-services.json 自动读取
+     * @param appId 新版SDK要求在 AndroidManifest 中配置的 appId，可从 mcs-services.json 自动读取
+     * @param developerId 新版SDK要求的开发者ID，可从 mcs-services.json 自动读取
      */
     data class HonorConfig(
         val clientId: String = "",
-        val clientSecret: String = ""
+        val clientSecret: String = "",
+        val appId: String = "",
+        val developerId: String = ""
     ) {
         fun isValid(): Boolean {
-            return true
+            return clientId.isNotBlank() || clientSecret.isNotBlank() || appId.isNotBlank() || developerId.isNotBlank()
         }
         
         fun getSummary(): String {
@@ -178,7 +182,17 @@ data class DooPushConfig(
             } else {
                 "ClientSecret=auto(从mcs-services.json读取)"
             }
-            return "荣耀推送配置: $clientIdInfo, $clientSecretInfo"
+            val appIdInfo = if (appId.isNotEmpty()) {
+                "AppId=${appId.takeLast(6)}"
+            } else {
+                "AppId=auto(从mcs-services.json读取/Manifest)"
+            }
+            val developerIdInfo = if (developerId.isNotEmpty()) {
+                "DeveloperId=${developerId.takeLast(6)}"
+            } else {
+                "DeveloperId=auto(从mcs-services.json读取)"
+            }
+            return "荣耀推送配置: $clientIdInfo, $clientSecretInfo, $appIdInfo, $developerIdInfo"
         }
     }
     
@@ -428,7 +442,7 @@ data class DooPushConfig(
      * 检查是否配置了荣耀推送
      */
     fun hasHonorConfig(): Boolean {
-        return honorConfig != null && honorConfig.isValid()
+        return honorConfig != null
     }
     
     override fun toString(): String {

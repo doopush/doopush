@@ -47,6 +47,14 @@
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="@string/default_notification_channel_id" />
 
+        <!-- Firebase 自动初始化控制 -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="true" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+
         <!-- 开机广播接收器（用于重新建立推送连接） -->
         <receiver
             android:name=".DooPushBootReceiver"
@@ -79,13 +87,13 @@
             android:name="com.vivo.push.api_key"
             android:value="${DOOPUSH_VIVO_API_KEY}" />
 
-        <!-- Firebase 自动初始化控制 -->
+        <!-- 荣耀推送配置占位符（新版SDK要求在Manifest中声明AppId/DeveloperId） -->
         <meta-data
-            android:name="firebase_messaging_auto_init_enabled"
-            android:value="true" />
+            android:name="com.hihonor.push.app_id"
+            android:value="${DOOPUSH_HONOR_APP_ID}" />
         <meta-data
-            android:name="firebase_analytics_collection_enabled"
-            android:value="false" />
+            android:name="com.hihonor.push.developer_id"
+            android:value="${DOOPUSH_HONOR_DEVELOPER_ID}" />
 
     </application>
 

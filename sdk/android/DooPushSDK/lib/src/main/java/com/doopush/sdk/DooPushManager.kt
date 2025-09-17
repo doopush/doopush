@@ -244,6 +244,10 @@ class DooPushManager private constructor() {
                 HonorPushReceiver.setService(this)
                 // 延迟初始化：在注册或获取Token时再进行
                 Log.d(TAG, "荣耀推送服务实例已创建（延迟初始化）")
+                configure(config?.honorConfig)
+                if (config?.honorConfig?.isValid() != true) {
+                    autoInitialize()
+                }
             }
             tcpConnection = DooPushTCPConnection().apply {
                 delegate = tcpConnectionDelegate

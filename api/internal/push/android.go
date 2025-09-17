@@ -38,10 +38,12 @@ type AndroidConfig struct {
 	// FCM v1 API 配置
 	ServiceAccountKey string `json:"service_account_key,omitempty"` // Firebase 服务账号密钥 JSON
 
-	// 华为配置
-	AppID     string `json:"app_id,omitempty"`     // 应用 ID
-	AppKey    string `json:"app_key,omitempty"`    // 应用 Key
-	AppSecret string `json:"app_secret,omitempty"` // 应用 Secret
+	// 厂商通用配置
+	AppID        string `json:"app_id,omitempty"`        // 应用 ID（华为/荣耀/小米等）
+	AppKey       string `json:"app_key,omitempty"`       // 应用 Key（小米/OPPO/VIVO等）
+	AppSecret    string `json:"app_secret,omitempty"`    // 应用 Secret（华为/小米/OPPO/VIVO等）
+	ClientID     string `json:"client_id,omitempty"`     // 客户端 ID（荣耀等）
+	ClientSecret string `json:"client_secret,omitempty"` // 客户端 Secret（荣耀等）
 }
 
 // AndroidProviderConfig Android 推送提供者配置
@@ -50,10 +52,12 @@ type AndroidProviderConfig struct {
 	ServiceAccountKey string
 	ProjectID         string
 
-	// 华为和小米配置
-	AppID     string
-	AppKey    string // 小米推送需要
-	AppSecret string
+	// 厂商通用配置
+	AppID        string
+	AppKey       string
+	AppSecret    string
+	ClientID     string
+	ClientSecret string
 }
 
 // NewAndroidProvider 创建Android推送提供者
@@ -85,6 +89,8 @@ func NewAndroidProviderWithConfig(channel string, config AndroidConfig) *Android
 			AppID:             config.AppID,
 			AppKey:            config.AppKey,
 			AppSecret:         config.AppSecret,
+			ClientID:          config.ClientID,
+			ClientSecret:      config.ClientSecret,
 		},
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -109,10 +115,10 @@ func NewAndroidProviderWithConfig(channel string, config AndroidConfig) *Android
 	}
 
 	// 为荣耀推送初始化认证客户端
-	if channel == "honor" && config.AppID != "" && config.AppSecret != "" {
+	if channel == "honor" && config.ClientID != "" && config.ClientSecret != "" {
 		provider.honorAuthClient = &HonorAuthClient{
-			clientID:     config.AppID,
-			clientSecret: config.AppSecret,
+			clientID:     config.ClientID,
+			clientSecret: config.ClientSecret,
 		}
 	}
 
