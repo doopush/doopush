@@ -28,6 +28,8 @@ android {
 
         // Manifest占位符（在构建时由配置文件填充）
         manifestPlaceholders = [
+            DOOPUSH_MI_APP_ID: "",
+            DOOPUSH_MI_APP_KEY: "",
             DOOPUSH_VIVO_APP_ID: "",
             DOOPUSH_VIVO_API_KEY: "",
             DOOPUSH_HONOR_APP_ID: "",
@@ -76,6 +78,20 @@ android {
     }
 }
 
+// 构建时读取 xiaomi-services.json 并填充 Manifest 占位符
+def xiaomiConfigFile = file('xiaomi-services.json')
+if (xiaomiConfigFile.exists()) {
+    try {
+        def xiaomiConfig = new JsonSlurper().parseText(xiaomiConfigFile.getText('UTF-8'))
+        def appId = (xiaomiConfig.app_id ?: "").toString()
+        def appKey = (xiaomiConfig.app_key ?: "").toString()
+        android.defaultConfig.manifestPlaceholders["DOOPUSH_MI_APP_ID"] = appId
+        android.defaultConfig.manifestPlaceholders["DOOPUSH_MI_APP_KEY"] = appKey
+    } catch (Exception ignored) {
+        logger.warn("[DooPush] 解析 xiaomi-services.json 失败，小米推送可能无法初始化: ${ignored.message}")
+    }
+}
+
 // 构建时读取 vivo-services.json 并填充 Manifest 占位符
 def vivoConfigFile = file('vivo-services.json')
 if (vivoConfigFile.exists()) {
@@ -105,33 +121,25 @@ if (honorConfigFile.exists()) {
 
 // 自动复制配置文件任务
 tasks.register('copyConfigFile') {
-    def filesToCopy = [
-        'doopush-services.json',
-        'xiaomi-services.json',
-        'oppo-services.json',
-        'vivo-services.json',
-        'mcs-services.json'
-    ]
     def targetDir = file('src/main/assets')
 
-    // 只有当至少有一个源文件存在时才执行
+    // 获取所有 *-services.json 文件
+    def configFiles = fileTree(dir: '.', include: '*-services.json')
+
+    // 只有当至少有一个配置文件存在时才执行
     onlyIf {
-        filesToCopy.any { file(it).exists() }
+        !configFiles.empty
     }
 
     doLast {
         // 确保目标目录存在
         targetDir.mkdirs()
 
-        filesToCopy.each { fileName ->
-            def sourceFile = file(fileName)
-            def targetFile = new File(targetDir, fileName)
-            if (sourceFile.exists()) {
-                copy {
-                    from sourceFile
-                    into targetDir
-                    include fileName
-                }
+        // 复制所有找到的配置文件
+        configFiles.each { sourceFile ->
+            copy {
+                from sourceFile
+                into targetDir
             }
         }
     }

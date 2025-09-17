@@ -79,6 +79,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- 小米推送配置 -->
+        <meta-data
+            android:name="MIPUSH_APPID"
+            android:value="${DOOPUSH_MI_APP_ID}" />
+        <meta-data
+            android:name="MIPUSH_APPKEY"
+            android:value="${DOOPUSH_MI_APP_KEY}" />
+
         <!-- VIVO 推送必需的 Manifest 配置 -->
         <meta-data
             android:name="com.vivo.push.app_id"
