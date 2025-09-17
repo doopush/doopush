@@ -15,7 +15,7 @@ data class DooPushError(
     /**
      * 错误消息
      */
-    val message: String,
+    override val message: String,
     
     /**
      * 详细错误信息 (可选)
@@ -25,8 +25,8 @@ data class DooPushError(
     /**
      * 原始异常 (可选)
      */
-    val cause: Throwable? = null
-) {
+    override val cause: Throwable? = null
+) : Throwable(message, cause) {
     
     companion object {
         // 网络相关错误码
