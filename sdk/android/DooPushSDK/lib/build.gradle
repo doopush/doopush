@@ -76,6 +76,9 @@ dependencies {
     // VIVO 推送（可选依赖）
     compileOnly 'com.umeng.umsdk:vivo-push:4.0.6.0'
 
+    // 荣耀推送（可选依赖）
+    compileOnly 'com.hihonor.mcs:push:8.0.12.307'
+
     // 测试依赖
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.mockito:mockito-core:5.8.0'

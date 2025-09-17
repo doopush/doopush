@@ -6,6 +6,7 @@ plugins {
     id 'org.jetbrains.kotlin.kapt'
     id 'com.google.gms.google-services'
     id 'com.huawei.agconnect'
+    id 'com.hihonor.mcs.asplugin'
 }
 
 android {
@@ -170,6 +171,9 @@ dependencies {
 
     // VIVO 推送
     implementation 'com.umeng.umsdk:vivo-push:4.0.6.0'
+
+    // 荣耀推送
+    implementation 'com.hihonor.mcs:push:8.0.12.307'
     
     // 权限请求
     implementation 'com.github.permissions-dispatcher:permissionsdispatcher:4.9.2'

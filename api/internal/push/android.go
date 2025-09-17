@@ -24,12 +24,13 @@ import (
 
 // AndroidProvider Android推送服务提供者
 type AndroidProvider struct {
-	channel        string
-	config         AndroidProviderConfig
-	httpClient     *http.Client
-	oppoAuthClient *OppoAuthClient // OPPO认证客户端
-	vivoAuthClient *VivoAuthClient // VIVO认证客户端
-	authMutex      sync.Mutex      // 认证互斥锁
+	channel         string
+	config          AndroidProviderConfig
+	httpClient      *http.Client
+	oppoAuthClient  *OppoAuthClient  // OPPO认证客户端
+	vivoAuthClient  *VivoAuthClient  // VIVO认证客户端
+	honorAuthClient *HonorAuthClient // 荣耀认证客户端
+	authMutex       sync.Mutex       // 认证互斥锁
 }
 
 // AndroidConfig Android 推送配置结构
@@ -104,6 +105,14 @@ func NewAndroidProviderWithConfig(channel string, config AndroidConfig) *Android
 			appID:     config.AppID,
 			appKey:    config.AppKey,
 			appSecret: config.AppSecret,
+		}
+	}
+
+	// 为荣耀推送初始化认证客户端
+	if channel == "honor" && config.AppID != "" && config.AppSecret != "" {
+		provider.honorAuthClient = &HonorAuthClient{
+			clientID:     config.AppID,
+			clientSecret: config.AppSecret,
 		}
 	}
 
@@ -405,6 +414,14 @@ type VivoAuthClient struct {
 	authTokenExpireAt int64
 }
 
+// HonorAuthClient 荣耀认证客户端
+type HonorAuthClient struct {
+	clientID      string
+	clientSecret  string
+	accessToken   string
+	tokenExpireAt int64
+}
+
 // VivoMessage VIVO推送消息结构
 type VivoMessage struct {
 	RegID           string            `json:"regId"`                     // 目标设备注册ID
@@ -436,11 +453,99 @@ type VivoAuthResponse struct {
 	ValidTime int64  `json:"validTime"` // token有效期（毫秒）
 }
 
+// HonorAuthResponse 荣耀认证响应结构
+type HonorAuthResponse struct {
+	AccessToken string `json:"access_token"` // 应用级Access Token
+	ExpiresIn   int    `json:"expires_in"`   // Access Token的剩余有效期，单位：秒
+	TokenType   string `json:"token_type"`   // 固定返回Bearer
+}
+
 // VivoSendResponse VIVO推送响应结构
 type VivoSendResponse struct {
 	Result int    `json:"result"` // 返回码：0=成功
 	Desc   string `json:"desc"`   // 描述信息
 	TaskID string `json:"taskId"` // 任务ID
+}
+
+// HonorMessageRequest 荣耀推送消息请求结构
+type HonorMessageRequest struct {
+	Data         string              `json:"data,omitempty"`
+	Notification *HonorNotification  `json:"notification,omitempty"`
+	Android      *HonorAndroidConfig `json:"android,omitempty"`
+	Token        []string            `json:"token,omitempty"`
+}
+
+// HonorNotification 荣耀推送通知结构
+type HonorNotification struct {
+	Title string `json:"title,omitempty"`
+	Body  string `json:"body,omitempty"`
+	Image string `json:"image,omitempty"`
+}
+
+// HonorAndroidConfig 荣耀 Android 特定配置
+type HonorAndroidConfig struct {
+	TTL            string                    `json:"ttl,omitempty"`
+	BiTag          string                    `json:"biTag,omitempty"`
+	Data           string                    `json:"data,omitempty"`
+	Notification   *HonorAndroidNotification `json:"notification,omitempty"`
+	TargetUserType int                       `json:"targetUserType,omitempty"`
+}
+
+// HonorAndroidNotification 荣耀 Android 通知配置
+type HonorAndroidNotification struct {
+	Title       string                  `json:"title,omitempty"`
+	Body        string                  `json:"body,omitempty"`
+	ClickAction *HonorClickAction       `json:"clickAction,omitempty"`
+	Image       string                  `json:"image,omitempty"`
+	Style       int                     `json:"style,omitempty"`
+	BigTitle    string                  `json:"bigTitle,omitempty"`
+	BigBody     string                  `json:"bigBody,omitempty"`
+	Importance  string                  `json:"importance,omitempty"`
+	When        string                  `json:"when,omitempty"`
+	Buttons     []*HonorButton          `json:"buttons,omitempty"`
+	Badge       *HonorBadgeNotification `json:"badge,omitempty"`
+	NotifyId    int                     `json:"notifyId,omitempty"`
+	Tag         string                  `json:"tag,omitempty"`
+	Group       string                  `json:"group,omitempty"`
+}
+
+// HonorClickAction 荣耀点击行为配置
+type HonorClickAction struct {
+	Type   int    `json:"type"`             // 点击行为类型：1=自定义页面 2=URL 3=打开应用
+	Intent string `json:"intent,omitempty"` // 自定义页面intent
+	URL    string `json:"url,omitempty"`    // 特定URL
+	Action string `json:"action,omitempty"` // action方式打开页面
+}
+
+// HonorButton 荣耀按钮配置
+type HonorButton struct {
+	Name       string `json:"name"`                 // 按钮名称
+	ActionType int    `json:"actionType"`           // 按钮动作类型：0=打开应用首页 1=自定义页面 2=网页
+	IntentType int    `json:"intentType,omitempty"` // 打开自定义页面方式：0=intent 1=action
+	Intent     string `json:"intent,omitempty"`     // intent或URL
+	Data       string `json:"data,omitempty"`       // 透传数据
+}
+
+// HonorBadgeNotification 荣耀角标配置
+type HonorBadgeNotification struct {
+	AddNum     int    `json:"addNum,omitempty"` // 角标累加数字
+	BadgeClass string `json:"badgeClass"`       // 应用入口Activity类全路径
+	SetNum     int    `json:"setNum,omitempty"` // 角标设置数字
+}
+
+// HonorSendResponse 荣耀推送响应结构
+type HonorSendResponse struct {
+	Code    int            `json:"code"`              // 响应码
+	Message string         `json:"message,omitempty"` // 响应信息
+	Data    *HonorSendData `json:"data,omitempty"`    // 请求返回的结果
+}
+
+// HonorSendData 荣耀推送响应数据
+type HonorSendData struct {
+	SendResult   bool     `json:"sendResult"`             // 推送消息的结果
+	RequestId    string   `json:"requestId,omitempty"`    // 请求ID
+	FailTokens   []string `json:"failTokens,omitempty"`   // 推送失败的pushTokens
+	ExpireTokens []string `json:"expireTokens,omitempty"` // 失效的pushTokens
 }
 
 // XiaomiMessage 小米推送消息结构
@@ -603,6 +708,8 @@ func (a *AndroidProvider) SendPush(device *models.Device, pushLog *models.PushLo
 		return a.sendFCM(device, pushLog)
 	case "huawei":
 		return a.sendHuawei(device, pushLog)
+	case "honor":
+		return a.sendHonor(device, pushLog)
 	case "xiaomi":
 		return a.sendXiaomi(device, pushLog)
 	case "oppo":
@@ -761,6 +868,42 @@ func (a *AndroidProvider) sendHuawei(device *models.Device, pushLog *models.Push
 		}
 		// 使用华为错误映射
 		a.mapHuaweiError(result, huaweiCode, huaweiMsg)
+		return result
+	}
+
+	result.Success = true
+	result.ResponseData = `{"message_id":"success"}`
+
+	return result
+}
+
+// sendHonor 荣耀推送主函数
+func (a *AndroidProvider) sendHonor(device *models.Device, pushLog *models.PushLog) *models.PushResult {
+	result := &models.PushResult{
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      false,
+		ResponseData: "{}",
+	}
+
+	// 获取 access token
+	accessToken, err := a.getHonorAccessToken()
+	if err != nil {
+		return a.createAuthError(pushLog, "荣耀", err)
+	}
+
+	// 构建推送消息
+	message := a.buildHonorMessage(device, pushLog)
+
+	// 发送推送
+	honorCode, honorMsg, err := a.sendHonorMessage(accessToken, message)
+	if err != nil {
+		// 检查是否是网络错误
+		if honorCode == 0 {
+			return a.createNetworkError(pushLog, err)
+		}
+		// 使用荣耀错误映射
+		a.mapHonorError(result, honorCode, honorMsg)
 		return result
 	}
 
@@ -975,6 +1118,55 @@ func (a *AndroidProvider) sendHuaweiMessage(accessToken string, message *HuaweiM
 	return huaweiResp.Code, huaweiResp.Msg, nil
 }
 
+// sendHonorMessage 发送荣耀推送消息
+func (a *AndroidProvider) sendHonorMessage(accessToken string, message *HonorMessageRequest) (int, string, error) {
+	// 荣耀推送API endpoint
+	pushURL := fmt.Sprintf("https://push-api.cloud.honor.com/api/v1/%s/sendMessage", a.config.AppID)
+
+	// 序列化消息
+	messageJSON, err := json.Marshal(message)
+	if err != nil {
+		return 0, "", fmt.Errorf("序列化荣耀推送消息失败: %v", err)
+	}
+
+	// 创建请求
+	req, err := http.NewRequest("POST", pushURL, bytes.NewBuffer(messageJSON))
+	if err != nil {
+		return 0, "", fmt.Errorf("创建荣耀推送请求失败: %v", err)
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	req.Header.Set("timestamp", fmt.Sprintf("%d", time.Now().UnixNano()/int64(time.Millisecond)))
+
+	// 发送请求
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return 0, "", fmt.Errorf("荣耀推送请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// 读取响应
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "", fmt.Errorf("读取荣耀推送响应失败: %v", err)
+	}
+
+	// 解析荣耀响应
+	var honorResp HonorSendResponse
+	if err := json.Unmarshal(body, &honorResp); err != nil {
+		return 0, "", fmt.Errorf("解析荣耀推送响应失败: %v, 原始响应: %s", err, string(body))
+	}
+
+	// 检查荣耀的响应码
+	if honorResp.Code != 200 {
+		return honorResp.Code, honorResp.Message, fmt.Errorf("荣耀推送失败，错误码: %d, 错误信息: %s", honorResp.Code, honorResp.Message)
+	}
+
+	return honorResp.Code, honorResp.Message, nil
+}
+
 // buildXiaomiMessage 构建小米推送消息
 
 // getOppoAuthToken 获取OPPO认证token
@@ -1128,6 +1320,168 @@ func (a *AndroidProvider) getVivoAuthToken() (string, error) {
 	}
 
 	return a.vivoAuthClient.authToken, nil
+}
+
+// getHonorAccessToken 获取荣耀认证token
+func (a *AndroidProvider) getHonorAccessToken() (string, error) {
+	if a.honorAuthClient == nil {
+		return "", fmt.Errorf("荣耀认证客户端未初始化")
+	}
+
+	a.authMutex.Lock()
+	defer a.authMutex.Unlock()
+
+	// 检查token是否仍然有效（提前5分钟刷新）
+	now := time.Now().Unix()
+	if a.honorAuthClient.accessToken != "" && a.honorAuthClient.tokenExpireAt > now+5*60 {
+		return a.honorAuthClient.accessToken, nil
+	}
+
+	// 构建认证请求（荣耀使用OAuth 2.0 client_credentials flow）
+	data := url.Values{}
+	data.Set("grant_type", "client_credentials")
+	data.Set("client_id", a.honorAuthClient.clientID)
+	data.Set("client_secret", a.honorAuthClient.clientSecret)
+
+	// 发送认证请求
+	authURL := "https://iam.developer.honor.com/auth/token"
+	req, err := http.NewRequest("POST", authURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return "", fmt.Errorf("创建荣耀认证请求失败: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("荣耀认证请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("读取荣耀认证响应失败: %v", err)
+	}
+
+	// 解析认证响应
+	var authResp HonorAuthResponse
+	if err := json.Unmarshal(body, &authResp); err != nil {
+		return "", fmt.Errorf("解析荣耀认证响应失败: %v, 原始响应: %s", err, string(body))
+	}
+
+	// 检查认证结果
+	if resp.StatusCode != http.StatusOK || authResp.AccessToken == "" {
+		return "", fmt.Errorf("荣耀认证失败: status=%d, body=%s", resp.StatusCode, string(body))
+	}
+
+	// 保存认证token，设置过期时间
+	a.honorAuthClient.accessToken = authResp.AccessToken
+	if authResp.ExpiresIn > 0 {
+		a.honorAuthClient.tokenExpireAt = now + int64(authResp.ExpiresIn)
+	} else {
+		// 如果没有返回过期时间，默认设置为1小时后
+		a.honorAuthClient.tokenExpireAt = now + 3600
+	}
+
+	return a.honorAuthClient.accessToken, nil
+}
+
+// buildHonorMessage 构建荣耀推送消息
+func (a *AndroidProvider) buildHonorMessage(device *models.Device, pushLog *models.PushLog) *HonorMessageRequest {
+	// 构建简单的通知内容
+	notification := &HonorNotification{
+		Title: pushLog.Title,
+		Body:  pushLog.Content,
+	}
+
+	// 解析荣耀特有参数
+	importance := "NORMAL" // 默认为服务通讯类消息
+	ttl := "86400s"        // 默认消息存活时间1天
+	targetUserType := 0    // 默认为正式消息
+
+	// 从pushLog.Payload中解析荣耀特有参数
+	if pushLog.Payload != "" && pushLog.Payload != "{}" {
+		var payloadMap map[string]interface{}
+		if err := json.Unmarshal([]byte(pushLog.Payload), &payloadMap); err == nil {
+			if honorData, ok := payloadMap["honor"].(map[string]interface{}); ok {
+				if imp, ok := honorData["importance"].(string); ok && imp != "" {
+					importance = imp
+				}
+				if t, ok := honorData["ttl"].(string); ok && t != "" {
+					ttl = t
+				}
+				if tut, ok := honorData["target_user_type"].(float64); ok {
+					targetUserType = int(tut)
+				}
+			}
+		}
+	}
+
+	// 构建自定义数据字段，包含统一标识字段
+	dataMap := make(map[string]interface{})
+
+	// 添加统计标识字段，保持与APNs和FCM一致
+	dataMap["badge"] = pushLog.Badge
+	dataMap["push_log_id"] = pushLog.ID
+	if pushLog.DedupKey != "" {
+		dataMap["dedup_key"] = pushLog.DedupKey
+	}
+	dataMap["dp_source"] = "doopush"
+
+	// 解析并合并自定义数据
+	if pushLog.Payload != "" && pushLog.Payload != "{}" {
+		var customData map[string]interface{}
+		if err := json.Unmarshal([]byte(pushLog.Payload), &customData); err == nil {
+			// 合并自定义数据，但不覆盖统一标识字段
+			for k, v := range customData {
+				if k != "push_log_id" && k != "dp_source" && k != "badge" && k != "honor" {
+					dataMap[k] = v
+				}
+			}
+		}
+	}
+
+	// 序列化数据为JSON字符串
+	dataJSON, err := json.Marshal(dataMap)
+	if err != nil {
+		dataJSON = []byte("{}")
+	}
+
+	// 构建Android配置
+	androidConfig := &HonorAndroidConfig{
+		TTL:            ttl,
+		Data:           string(dataJSON),
+		TargetUserType: targetUserType,
+		Notification: &HonorAndroidNotification{
+			Title:      pushLog.Title,
+			Body:       pushLog.Content,
+			Importance: importance,
+			// 荣耀推送要求通知消息必须包含ClickAction
+			ClickAction: &HonorClickAction{
+				Type: 3, // 3=打开应用
+			},
+			// 荣耀角标支持 - 设置角标数量（仅在角标>=0时设置）
+			Badge: func() *HonorBadgeNotification {
+				if pushLog.Badge >= 0 {
+					return &HonorBadgeNotification{
+						SetNum:     pushLog.Badge, // 设置角标数量
+						BadgeClass: "",            // 应用入口Activity类，留空使用默认
+					}
+				}
+				return nil // 角标<0时不设置
+			}(),
+		},
+	}
+
+	// 构建消息体
+	message := &HonorMessageRequest{
+		Notification: notification,
+		Android:      androidConfig,
+		Token:        []string{device.Token},
+		Data:         string(dataJSON),
+	}
+
+	return message
 }
 
 // buildOppoMessage 构建OPPO推送消息
@@ -1989,6 +2343,46 @@ func (a *AndroidProvider) mapHuaweiError(result *models.PushResult, huaweiCode s
 	default:
 		result.ErrorCode = "HUAWEI_ERROR_" + huaweiCode
 		result.ErrorMessage = fmt.Sprintf("华为推送失败，错误码: %s, 错误信息: %s", huaweiCode, huaweiMsg)
+	}
+}
+
+// mapHonorError 映射荣耀错误到统一错误码
+func (a *AndroidProvider) mapHonorError(result *models.PushResult, honorCode int, honorMsg string) {
+	switch honorCode {
+	case 200:
+		// 成功，不应该调用此函数
+		result.Success = true
+		return
+	case 400:
+		result.ErrorCode = "INVALID_ARGUMENT"
+		result.ErrorMessage = "荣耀推送参数错误：" + honorMsg
+	case 401:
+		result.ErrorCode = "AUTHENTICATION_ERROR"
+		result.ErrorMessage = "荣耀认证失败，请检查client_id和client_secret：" + honorMsg
+	case 403:
+		result.ErrorCode = "PERMISSION_DENIED"
+		result.ErrorMessage = "荣耀推送权限不足：" + honorMsg
+	case 404:
+		result.ErrorCode = "INVALID_TOKEN"
+		result.ErrorMessage = "荣耀设备token无效：" + honorMsg
+	case 429:
+		result.ErrorCode = "QUOTA_EXCEEDED"
+		result.ErrorMessage = "荣耀推送频率超限：" + honorMsg
+	case 500:
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = "荣耀推送服务器内部错误：" + honorMsg
+	case 502:
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = "荣耀推送服务器网关错误：" + honorMsg
+	case 503:
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = "荣耀推送服务暂时不可用：" + honorMsg
+	case 504:
+		result.ErrorCode = "SERVER_ERROR"
+		result.ErrorMessage = "荣耀推送服务器网关超时：" + honorMsg
+	default:
+		result.ErrorCode = fmt.Sprintf("HONOR_ERROR_%d", honorCode)
+		result.ErrorMessage = fmt.Sprintf("荣耀推送失败，错误码: %d, 错误信息: %s", honorCode, honorMsg)
 	}
 }
 

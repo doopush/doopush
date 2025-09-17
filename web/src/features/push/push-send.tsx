@@ -104,6 +104,12 @@ const pushFormSchema = z.object({
     vivo: z.object({
       category: z.enum(ANDROID_MESSAGE_CATEGORY_VALUES).optional(),
     }).optional(),
+    // 荣耀推送特有参数
+    honor: z.object({
+      importance: z.enum(['NORMAL', 'HIGH']).optional(),
+      ttl: z.string().optional(),
+      target_user_type: z.union([z.literal(0), z.literal(1)]).optional(),
+    }).optional(),
   }).optional(),
   target_type: z.enum(['single', 'batch', 'tags', 'broadcast', 'groups']).refine(val => val, {
     message: '请选择推送类型',
@@ -161,6 +167,11 @@ export default function PushSend() {
         vivo: {
           category: undefined,
         },
+        honor: {
+          importance: 'NORMAL',
+          ttl: '86400s',
+          target_user_type: 0,
+        },
       },
       target_type: 'single',
       device_ids: '',
@@ -206,6 +217,13 @@ export default function PushSend() {
 
           // 处理 vivo 特有参数
           form.setValue('payload.vivo.category', payload.vivo?.category || undefined)
+
+          // 处理荣耀特有参数
+          if (payload.honor) {
+            form.setValue('payload.honor.importance', payload.honor.importance || 'NORMAL')
+            form.setValue('payload.honor.ttl', payload.honor.ttl || '86400s')
+            form.setValue('payload.honor.target_user_type', payload.honor.target_user_type || 0)
+          }
         }
         
         // 设置为单设备推送
@@ -682,6 +700,9 @@ export default function PushSend() {
                                     <TabsTrigger value='vivo'>
                                       <span className='text-blue-600'>📱</span> VIVO
                                     </TabsTrigger>
+                                    <TabsTrigger value='honor'>
+                                      <span className='text-purple-600'>📱</span> 荣耀
+                                    </TabsTrigger>
                                   </TabsList>
 
                                   <TabsContent value='huawei'>
@@ -1006,6 +1027,110 @@ export default function PushSend() {
                                           </FormItem>
                                         )}
                                       />
+                                    </div>
+                                  </TabsContent>
+
+                                  <TabsContent value='honor'>
+                                    <div className='space-y-4'>
+                                      <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                                        <FormField
+                                          control={form.control}
+                                          name="payload.honor.importance"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel className='flex items-center gap-1'>
+                                                消息重要性 (importance)
+                                                <Tooltip>
+                                                  <TooltipTrigger>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top">
+                                                    <div className='space-y-1 text-sm'>
+                                                      <p><strong>NORMAL</strong>: 服务通讯类消息，正常优先级（推荐）</p>
+                                                      <p><strong>HIGH</strong>: 紧急消息，高优先级</p>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </FormLabel>
+                                              <Select value={field.value} onValueChange={field.onChange}>
+                                                <FormControl>
+                                                  <SelectTrigger>
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                  <SelectItem value="NORMAL">NORMAL (推荐)</SelectItem>
+                                                  <SelectItem value="HIGH">HIGH</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </FormItem>
+                                          )}
+                                        />
+
+                                        <FormField
+                                          control={form.control}
+                                          name="payload.honor.ttl"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel className='flex items-center gap-1'>
+                                                消息存活时间 (ttl)
+                                                <Tooltip>
+                                                  <TooltipTrigger>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top">
+                                                    <div className='space-y-1 text-sm'>
+                                                      <p>消息在荣耀推送服务器的存活时间</p>
+                                                      <p>格式: "86400s"（秒）或"24h"（小时）</p>
+                                                      <p>默认: "86400s"（1天）</p>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </FormLabel>
+                                              <FormControl>
+                                                <Input
+                                                  placeholder="86400s"
+                                                  {...field}
+                                                />
+                                              </FormControl>
+                                            </FormItem>
+                                          )}
+                                        />
+
+                                        <FormField
+                                          control={form.control}
+                                          name="payload.honor.target_user_type"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel className='flex items-center gap-1'>
+                                                目标用户类型 (target_user_type)
+                                                <Tooltip>
+                                                  <TooltipTrigger>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top">
+                                                    <div className='space-y-1 text-sm'>
+                                                      <p><strong>0</strong>: 正式消息（推荐）</p>
+                                                      <p><strong>1</strong>: 测试消息</p>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </FormLabel>
+                                              <Select value={field.value?.toString()} onValueChange={(value) => field.onChange(parseInt(value))}>
+                                                <FormControl>
+                                                  <SelectTrigger>
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                  <SelectItem value="0">正式消息</SelectItem>
+                                                  <SelectItem value="1">测试消息</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </FormItem>
+                                          )}
+                                        />
+                                      </div>
                                     </div>
                                   </TabsContent>
                                 </Tabs>

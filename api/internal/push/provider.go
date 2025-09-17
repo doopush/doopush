@@ -124,6 +124,8 @@ func (m *PushManager) createAndroidProvider(app *models.App, channel string) (Pu
 		return m.createOppoProvider(androidConfig)
 	case "vivo":
 		return m.createVivoProvider(androidConfig)
+	case "honor":
+		return m.createHonorProvider(androidConfig)
 	default:
 		return nil, fmt.Errorf("暂不支持的 Android 推送通道: %s", channel)
 	}
@@ -201,6 +203,17 @@ func (m *PushManager) createVivoProvider(config AndroidConfig) (PushProvider, er
 		return nil, fmt.Errorf("VIVO推送配置缺少 app_secret")
 	}
 	return NewAndroidProviderWithConfig("vivo", config), nil
+}
+
+// createHonorProvider 创建荣耀推送提供者
+func (m *PushManager) createHonorProvider(config AndroidConfig) (PushProvider, error) {
+	if config.AppID == "" {
+		return nil, fmt.Errorf("荣耀推送配置缺少 client_id")
+	}
+	if config.AppSecret == "" {
+		return nil, fmt.Errorf("荣耀推送配置缺少 client_secret")
+	}
+	return NewAndroidProviderWithConfig("honor", config), nil
 }
 
 // SendPush 统一推送接口
@@ -451,6 +464,8 @@ func (m *PushManager) TestConfigWithDevice(appID uint, title, content, platform,
 			provider, err = m.createOppoProvider(androidConfig)
 		case "vivo":
 			provider, err = m.createVivoProvider(androidConfig)
+		case "honor":
+			provider, err = m.createHonorProvider(androidConfig)
 		default:
 			return &models.PushResult{
 				Success:      false,

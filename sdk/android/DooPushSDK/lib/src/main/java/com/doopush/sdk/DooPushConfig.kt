@@ -46,7 +46,12 @@ data class DooPushConfig(
     /**
      * VIVO推送配置 (可选)
      */
-    val vivoConfig: VivoConfig? = null
+    val vivoConfig: VivoConfig? = null,
+    
+    /**
+     * 荣耀推送配置 (可选)
+     */
+    val honorConfig: HonorConfig? = null
     
 ) {
     
@@ -149,6 +154,34 @@ data class DooPushConfig(
         }
     }
     
+    /**
+     * 荣耀推送配置类（客户端需要 clientId 和 clientSecret，可从 mcs-services.json 自动读取）
+     * @param clientId 荣耀应用客户端ID，如果为空则会从 mcs-services.json 自动读取
+     * @param clientSecret 荣耀应用客户端密钥，如果为空则会从 mcs-services.json 自动读取
+     */
+    data class HonorConfig(
+        val clientId: String = "",
+        val clientSecret: String = ""
+    ) {
+        fun isValid(): Boolean {
+            return true
+        }
+        
+        fun getSummary(): String {
+            val clientIdInfo = if (clientId.isNotEmpty()) {
+                "ClientId=${clientId.take(8)}..."
+            } else {
+                "ClientId=auto(从mcs-services.json读取)"
+            }
+            val clientSecretInfo = if (clientSecret.isNotEmpty()) {
+                "ClientSecret=${clientSecret.take(8)}..."
+            } else {
+                "ClientSecret=auto(从mcs-services.json读取)"
+            }
+            return "荣耀推送配置: $clientIdInfo, $clientSecretInfo"
+        }
+    }
+    
     companion object {
         
         /**
@@ -182,6 +215,7 @@ data class DooPushConfig(
          * @param xiaomiConfig 小米推送配置 (可选)
          * @param oppoConfig OPPO推送配置 (可选)
          * @param vivoConfig VIVO推送配置 (可选)
+         * @param honorConfig 荣耀推送配置 (可选)
          * @return 配置实例
          * @throws DooPushConfigException 配置参数无效时抛出
          */
@@ -193,7 +227,8 @@ data class DooPushConfig(
             hmsConfig: HMSConfig? = null,
             xiaomiConfig: XiaomiConfig? = null,
             oppoConfig: OppoConfig? = null,
-            vivoConfig: VivoConfig? = null
+            vivoConfig: VivoConfig? = null,
+            honorConfig: HonorConfig? = null
         ): DooPushConfig {
             val config = DooPushConfig(
                 appId = appId.trim(),
@@ -202,7 +237,8 @@ data class DooPushConfig(
                 hmsConfig = hmsConfig,
                 xiaomiConfig = xiaomiConfig,
                 oppoConfig = oppoConfig,
-                vivoConfig = vivoConfig
+                vivoConfig = vivoConfig,
+                honorConfig = honorConfig
             )
             
             config.validate()
@@ -344,6 +380,7 @@ data class DooPushConfig(
         val xiaomiInfo = xiaomiConfig?.getSummary() ?: "小米推送配置: 未配置"
         val oppoInfo = oppoConfig?.getSummary() ?: "OPPO推送配置: 未配置"
         val vivoInfo = vivoConfig?.getSummary() ?: "VIVO推送配置: 未配置"
+        val honorInfo = honorConfig?.getSummary() ?: "荣耀推送配置: 未配置"
         
         return """
             |DooPush配置:
@@ -355,6 +392,7 @@ data class DooPushConfig(
             |  $xiaomiInfo
             |  $oppoInfo
             |  $vivoInfo
+            |  $honorInfo
         """.trimMargin()
     }
     
@@ -384,6 +422,13 @@ data class DooPushConfig(
      */
     fun hasVivoConfig(): Boolean {
         return vivoConfig != null && vivoConfig.isValid()
+    }
+    
+    /**
+     * 检查是否配置了荣耀推送
+     */
+    fun hasHonorConfig(): Boolean {
+        return honorConfig != null && honorConfig.isValid()
     }
     
     override fun toString(): String {

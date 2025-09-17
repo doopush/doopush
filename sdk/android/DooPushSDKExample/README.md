@@ -5,8 +5,8 @@
 ## 主要功能
 
 - **SDK状态监控**：实时显示SDK配置状态、注册状态、推送权限
-- **设备管理**：自动获取设备Token、设备信息，支持华为、小米、OPPO、VIVO和FCM多厂商推送服务
-- **推送注册**：一键注册推送通知，自动检测最佳推送服务（HMS/FCM/MIPUSH/OPPO/VIVO）
+- **设备管理**：自动获取设备Token、设备信息，支持华为、荣耀、小米、OPPO、VIVO和FCM多厂商推送服务
+- **推送注册**：一键注册推送通知，自动检测最佳推送服务（HMS/HONOR/FCM/MIPUSH/OPPO/VIVO）
 - **通知历史**：接收推送历史记录，支持详情查看和状态跟踪
 - **角标管理**：应用角标数字的设置和清除操作，支持多厂商设备
 - **设置页面**：详细的配置信息展示和服务器连接测试
@@ -118,6 +118,33 @@ cd sdk/android/DooPushSDKExample
 
 **注意：** 客户端SDK只需要`app_id`和`api_key`即可工作。服务端API推送时需要完整的三个参数（`app_id`、`app_key`、`app_secret`）。
 
+#### mcs-services.json 配置
+
+在 `app/` 目录下创建 `mcs-services.json` 文件（荣耀推送配置）：
+
+```json
+{
+  "client_id": "your_honor_client_id",
+  "client_secret": "your_honor_client_secret"
+}
+```
+
+**配置说明：**
+- `client_id`: 荣耀开发者平台的应用客户端ID
+- `client_secret`: 荣耀开发者平台的应用客户端密钥
+
+**重要特性：**
+- ✅ **自动配置**: SDK 会自动从 `mcs-services.json` 读取配置
+- ✅ **智能启用**: 在荣耀设备上自动启用荣耀推送服务
+- ✅ **零代码集成**: 无需在代码中手动配置荣耀推送参数
+- 🔐 **OAuth 2.0认证**: 使用OAuth 2.0 client_credentials流程进行服务认证
+
+**支持设备：**
+- 荣耀手机（Honor独立后的设备）
+- Magic OS系统设备
+
+**注意：** 荣耀推送使用OAuth 2.0认证机制，需要`client_id`和`client_secret`来获取访问令牌进行API调用。
+
 #### 推送服务配置
 
 1. **FCM配置**: 将 `google-services.json` 放在 `app/` 目录下
@@ -125,8 +152,51 @@ cd sdk/android/DooPushSDKExample
 3. **小米推送配置**: 在 DooPush 平台后台配置小米推送参数（App ID、App Key、App Secret）
 4. **OPPO推送配置**: 在 DooPush 平台后台配置OPPO推送参数（App ID、App Key、App Secret）
 5. **VIVO推送配置**: 在 DooPush 平台后台配置VIVO推送参数（App ID、App Key、App Secret）
+6. **荣耀推送配置**: 在 DooPush 平台后台配置荣耀推送参数（Client ID、Client Secret）
 
-### 3. 基本流程
+### 3. 依赖配置
+
+如需使用荣耀推送功能，请确保在项目的 `build.gradle` 文件中添加荣耀推送依赖：
+
+**项目级 build.gradle（根目录）**:
+```gradle
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://developer.huawei.com/repo/' }
+        maven { url 'https://developer.hihonor.com/repo' }  // 荣耀推送仓库
+    }
+}
+```
+
+**settings.gradle**:
+```gradle
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://developer.huawei.com/repo/' }
+        maven { url 'https://developer.hihonor.com/repo' }  // 荣耀推送仓库
+    }
+}
+```
+
+**应用级 build.gradle（app目录）**:
+```gradle
+dependencies {
+    // 荣耀推送 SDK
+    implementation 'com.hihonor.mcs:push:8.0.0.300'
+    
+    // 其他推送服务依赖...
+    implementation 'com.huawei.hms:push:6.11.0.300'           // 华为推送
+    implementation 'com.umeng.umsdk:xiaomi-push:6.0.1'        // 小米推送
+    implementation 'com.umeng.umsdk:oppo-push:3.5.3'          // OPPO推送
+    implementation 'com.umeng.umsdk:vivo-push:4.0.6.0'        // VIVO推送
+}
+```
+
+### 4. 基本流程
 1. 启动应用，SDK自动初始化并检测推送服务
 2. 点击"配置SDK"完成初始化
 3. 点击"注册推送"并授权通知权限
@@ -153,7 +223,8 @@ DooPushSDKExample/
     ├── doopush-services.json          # DooPush配置文件
     ├── xiaomi-services.json           # 小米推送配置文件
     ├── oppo-services.json             # OPPO推送配置文件
-    └── vivo-services.json             # VIVO推送配置文件
+    ├── vivo-services.json             # VIVO推送配置文件
+    └── mcs-services.json              # 荣耀推送配置文件
 ```
 
 ## 核心实现
@@ -250,10 +321,16 @@ private fun loadConfigFromAssets() {
 
 ## 推送服务兼容性
 
-### 华为/荣耀设备
+### 华为设备
 - 自动使用 HMS Push 服务
 - 支持角标显示
 - 需要 `agconnect-services.json` 配置文件
+
+### 荣耀设备
+- 自动使用荣耀推送服务
+- 支持Magic OS角标显示
+- 需要 `mcs-services.json` 配置文件
+- 使用OAuth 2.0认证机制
 
 ### 小米/红米设备
 - 自动使用小米推送服务
@@ -278,10 +355,11 @@ private fun loadConfigFromAssets() {
 - 角标支持因厂商而异
 
 ### 设备厂商角标支持
-- ✅ **华为/荣耀**: 原生支持
-- ✅ **小米**: 系统桌面支持
+- ✅ **华为**: EMUI/HarmonyOS原生支持
+- ✅ **荣耀**: Magic OS原生支持
+- ✅ **小米**: MIUI系统桌面支持
 - ✅ **OPPO/一加**: ColorOS支持  
-- ✅ **VIVO**: FunTouchOS支持
+- ✅ **VIVO**: FunTouchOS/OriginOS支持
 - ⚠️ **其他厂商**: 部分支持
 
 ## 调试技巧
@@ -309,10 +387,17 @@ adb logcat | grep DooPushSDKExample
 2. **Token获取失败**: 确认推送服务配置正确
 3. **角标不显示**: 检查设备权限和桌面兼容性
 4. **华为推送异常**: 确认 HMS Core 版本和配置
-5. **小米推送异常**: 确认小米推送SDK集成和配置参数
-6. **OPPO推送异常**: 确认OPPO开发者平台配置和app_secret正确性
-7. **VIVO推送异常**: 确认VIVO开发者平台配置，客户端需要app_id和api_key
-8. **设备推送服务检测失败**: 检查设备系统版本和推送服务可用性
+5. **荣耀推送异常**: 确认荣耀推送SDK集成和client_id/client_secret配置
+6. **小米推送异常**: 确认小米推送SDK集成和配置参数
+7. **OPPO推送异常**: 确认OPPO开发者平台配置和app_secret正确性
+8. **VIVO推送异常**: 确认VIVO开发者平台配置，客户端需要app_id和api_key
+9. **设备推送服务检测失败**: 检查设备系统版本和推送服务可用性
+
+### 荣耀推送特殊说明
+- **OAuth 2.0认证**: 荣耀推送使用OAuth 2.0 client_credentials流程进行认证
+- **独立服务**: 荣耀推送是独立于HMS的推送服务，需要单独配置
+- **Magic OS支持**: 专为Magic OS系统优化，提供更好的推送体验
+- **应用审核**: 确保应用已在荣耀开发者平台通过审核才能正常推送
 
 ### OPPO推送特殊说明
 - **应用签名**: OPPO推送对应用签名有严格要求，确保使用正确的签名文件

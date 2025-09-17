@@ -59,6 +59,7 @@ class DooPushManager private constructor() {
     private var xiaomiService: XiaomiService? = null
     private var oppoService: OppoService? = null
     private var vivoService: VivoService? = null
+    private var honorService: HonorService? = null
     private var tcpConnection: DooPushTCPConnection? = null
     private var applicationContext: Context? = null
     
@@ -123,6 +124,7 @@ class DooPushManager private constructor() {
      * @param xiaomiConfig 小米推送配置 (可选)
      * @param oppoConfig OPPO推送配置 (可选)
      * @param vivoConfig VIVO推送配置 (可选)
+     * @param honorConfig 荣耀推送配置 (可选)
      * @throws DooPushConfigException 配置参数无效时抛出
      */
     @Throws(DooPushConfigException::class)
@@ -134,7 +136,8 @@ class DooPushManager private constructor() {
         hmsConfig: DooPushConfig.HMSConfig? = null,
         xiaomiConfig: DooPushConfig.XiaomiConfig? = null,
         oppoConfig: DooPushConfig.OppoConfig? = null,
-        vivoConfig: DooPushConfig.VivoConfig? = null
+        vivoConfig: DooPushConfig.VivoConfig? = null,
+        honorConfig: DooPushConfig.HonorConfig? = null
     ) {
         try {
             Log.d(TAG, "开始配置 DooPush SDK")
@@ -194,8 +197,21 @@ class DooPushManager private constructor() {
                 vivoConfig
             }
             
+            // 智能配置处理：荣耀设备自动启用荣耀推送
+            val finalHonorConfig = if (honorConfig == null) {
+                val vendorInfo = DooPushDeviceVendor.getDeviceVendorInfo()
+                if (vendorInfo.preferredService == DooPushDeviceVendor.PushService.HONOR) {
+                    Log.d(TAG, "检测到荣耀设备，自动启用荣耀推送服务")
+                    DooPushConfig.HonorConfig() // 零配置，自动从 mcs-services.json 读取
+                } else {
+                    null
+                }
+            } else {
+                honorConfig
+            }
+            
             // 创建配置
-            config = DooPushConfig.create(appId, apiKey, baseURL, finalHmsConfig, finalXiaomiConfig, finalOppoConfig, finalVivoConfig)
+            config = DooPushConfig.create(appId, apiKey, baseURL, finalHmsConfig, finalXiaomiConfig, finalOppoConfig, finalVivoConfig, finalHonorConfig)
 
             // 初始化各组件
             deviceManager = DooPushDevice(applicationContext!!)
@@ -222,6 +238,12 @@ class DooPushManager private constructor() {
                 VivoPushReceiver.setService(this)
                 // 延迟初始化：在注册或获取Token时再进行
                 Log.d(TAG, "VIVO推送服务实例已创建（延迟初始化）")
+            }
+            honorService = HonorService(context.applicationContext).apply {
+                // 让接收器持有服务实例，便于通过接收器回调成功/失败
+                HonorPushReceiver.setService(this)
+                // 延迟初始化：在注册或获取Token时再进行
+                Log.d(TAG, "荣耀推送服务实例已创建（延迟初始化）")
             }
             tcpConnection = DooPushTCPConnection().apply {
                 delegate = tcpConnectionDelegate
@@ -395,6 +417,33 @@ class DooPushManager private constructor() {
                         )
                     } else {
                         Log.w(TAG, "VIVO推送未配置，fallback到FCM")
+                        registerWithFCM(callback)
+                    }
+                }
+                DooPushDeviceVendor.PushService.HONOR -> {
+                    if (config?.hasHonorConfig() == true) {
+                        // 组装设备信息（channel=honor）
+                        val deviceInfo = deviceManager!!.getCurrentDeviceInfo("honor")
+                        cachedDeviceInfo = deviceInfo
+                        
+                        honorService!!.getToken(
+                            object : HonorService.TokenCallback {
+                                override fun onSuccess(token: String) {
+                                    Log.d(TAG, "荣耀推送Token获取成功: ${token.substring(0, 12)}...")
+                                    cachedToken = token
+                                    // 调用设备注册API
+                                    registerDeviceToServer(deviceInfo, token, callback)
+                                }
+                                
+                                override fun onError(error: DooPushError) {
+                                    Log.e(TAG, "荣耀推送Token获取失败: ${error.message}")
+                                    isRegistering.set(false)
+                                    callback?.onError(error) ?: this@DooPushManager.callback?.onRegisterError(error)
+                                }
+                            }
+                        )
+                    } else {
+                        Log.w(TAG, "荣耀推送未配置，fallback到FCM")
                         registerWithFCM(callback)
                     }
                 }

@@ -512,3 +512,9 @@ export interface OppoPushParams {
 export interface VivoPushParams {
   category?: AndroidMessageCategory    // 消息分类，参考 vivo 分类说明
 }
+
+export interface HonorPushParams {
+  importance?: 'NORMAL' | 'HIGH'       // 消息重要性：NORMAL=服务通讯类, HIGH=紧急消息
+  ttl?: string                         // 消息存活时间（如："86400s"）
+  target_user_type?: 0 | 1            // 目标用户类型：0=正式消息, 1=测试消息
+}

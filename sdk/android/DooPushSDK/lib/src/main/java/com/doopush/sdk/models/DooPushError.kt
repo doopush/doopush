@@ -78,6 +78,15 @@ data class DooPushError(
         const val VIVO_CONFIG_INVALID = 3405
         const val VIVO_PUSH_ERROR = 3406
         
+        // 荣耀推送相关错误码
+        const val HONOR_NOT_AVAILABLE = 3501
+        const val HONOR_SDK_NOT_AVAILABLE = 3502
+        const val HONOR_INIT_FAILED = 3503
+        const val HONOR_TOKEN_FAILED = 3504
+        const val HONOR_CONFIG_INVALID = 3505
+        const val HONOR_SDK_ERROR = 3506
+        const val HONOR_UNKNOWN_ERROR = 3507
+        
         // 权限相关错误码
         const val PERMISSION_DENIED = 4001
         const val NOTIFICATION_PERMISSION_DENIED = 4002
@@ -420,6 +429,82 @@ data class DooPushError(
         }
         
         /**
+         * 创建荣耀推送不可用错误
+         */
+        fun honorNotAvailable(): DooPushError {
+            return DooPushError(
+                code = HONOR_NOT_AVAILABLE,
+                message = "荣耀推送服务不可用，可能是设备不支持或SDK未集成"
+            )
+        }
+        
+        /**
+         * 创建荣耀推送SDK不可用错误
+         */
+        fun honorSdkNotAvailable(): DooPushError {
+            return DooPushError(
+                code = HONOR_SDK_NOT_AVAILABLE,
+                message = "荣耀推送SDK不可用，请确保已集成荣耀推送SDK"
+            )
+        }
+        
+        /**
+         * 创建荣耀推送初始化失败错误
+         */
+        fun honorInitFailed(details: String? = null): DooPushError {
+            return DooPushError(
+                code = HONOR_INIT_FAILED,
+                message = "荣耀推送初始化失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建荣耀推送Token获取失败错误
+         */
+        fun honorTokenFailed(cause: Throwable? = null): DooPushError {
+            return DooPushError(
+                code = HONOR_TOKEN_FAILED,
+                message = "荣耀推送Token获取失败",
+                details = cause?.message,
+                cause = cause
+            )
+        }
+        
+        /**
+         * 创建荣耀推送配置无效错误
+         */
+        fun honorConfigInvalid(details: String? = null): DooPushError {
+            return DooPushError(
+                code = HONOR_CONFIG_INVALID,
+                message = "荣耀推送配置无效",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建荣耀推送SDK错误
+         */
+        fun honorSdkError(details: String? = null): DooPushError {
+            return DooPushError(
+                code = HONOR_SDK_ERROR,
+                message = "荣耀推送SDK调用错误",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建荣耀推送未知错误
+         */
+        fun honorUnknownError(details: String? = null): DooPushError {
+            return DooPushError(
+                code = HONOR_UNKNOWN_ERROR,
+                message = "荣耀推送未知错误",
+                details = details
+            )
+        }
+        
+        /**
          * 创建未知系统错误
          */
         fun unknown(cause: Throwable? = null): DooPushError {
@@ -481,6 +566,13 @@ data class DooPushError(
      */
     fun isHmsError(): Boolean {
         return code in 3101..3199
+    }
+    
+    /**
+     * 是否为荣耀推送相关错误
+     */
+    fun isHonorError(): Boolean {
+        return code in 3501..3599
     }
     
     /**

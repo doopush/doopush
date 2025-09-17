@@ -258,9 +258,23 @@ object DooPushDeviceVendor {
      * 检查荣耀推送是否可用
      */
     private fun isHonorPushAvailable(context: Context): Boolean {
-        // 荣耀设备目前主要使用HMS或FCM
-        // 可以根据需要实现专门的荣耀推送SDK检查
-        return isHMSAvailable(context)
+        return try {
+            // 检查是否为荣耀设备
+            val vendorInfo = getDeviceVendorInfo()
+            if (vendorInfo.preferredService != PushService.HONOR) {
+                return false
+            }
+            
+            // 检查荣耀推送SDK是否可用
+            Class.forName("com.hihonor.mcs.push.HonorPushClient")
+            true
+        } catch (e: ClassNotFoundException) {
+            Log.d(TAG, "荣耀推送不可用: ${e.message}")
+            false
+        } catch (e: Exception) {
+            Log.w(TAG, "检查荣耀推送可用性时出错", e)
+            false
+        }
     }
     
     /**

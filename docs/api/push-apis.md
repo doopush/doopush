@@ -105,6 +105,7 @@ Android 平台支持多种推送通道，系统会根据设备品牌智能选择
 |------|----------|------|
 | `fcm` | 所有Android设备 | Google Firebase Cloud Messaging，默认通道 |
 | `huawei` | 华为设备 | 华为移动服务HMS Push，华为设备专用 |
+| `honor` | 荣耀设备 | 荣耀推送服务，荣耀设备专用，使用OAuth 2.0认证 |
 | `xiaomi` | 小米设备 | 小米推送服务，小米/Redmi设备专用 |
 | `oppo` | OPPO设备 | OPPO推送服务，OPPO/OnePlus设备专用 |
 | `vivo` | VIVO设备 | VIVO推送服务，VIVO/iQOO设备专用 |
@@ -126,6 +127,7 @@ Android 平台支持多种推送通道，系统会根据设备品牌智能选择
 | 厂商 | 参数 | 类型 | 描述 | 示例 |
 |------|------|------|------|------|
 | 华为 HMS | `huawei` | object | 华为推送参数 | `{"importance": "HIGH", "ttl": 3600}` |
+| 荣耀推送 | `honor` | object | 荣耀推送参数 | `{"importance": "HIGH", "ttl": "3600s", "target_user_type": 0}` |
 | 小米推送 | `xiaomi` | object | 小米推送参数 | `{"pass_through": 0, "notify_type": 1}` |
 | OPPO推送 | `oppo` | object | OPPO推送参数 | `{"channel_id": "important", "notify_level": 2}` |
 | VIVO推送 | `vivo` | object | VIVO推送参数 | `{"classification": 1, "notify_type": 1}` |
@@ -133,6 +135,7 @@ Android 平台支持多种推送通道，系统会根据设备品牌智能选择
 **厂商参数详细说明**：
 
 - **华为 HMS**：`importance`（重要性）、`ttl`（存活时间）
+- **荣耀推送**：`importance`（消息重要性，NORMAL/HIGH）、`ttl`（消息存活时间，如"3600s"）、`target_user_type`（目标用户类型，0=正式消息/1=测试消息）
 - **小米推送**：`pass_through`（透传模式）、`notify_type`（通知类型）、`time_to_live`（存活时间）
 - **OPPO推送**：`channel_id`（通道ID）、`category`（消息分类）、`notify_level`（通知级别）
 - **VIVO推送**：`classification`（消息分类）、`notify_type`（通知类型）、`skip_type`（跳转类型）、`time_to_live`（存活时间）
@@ -181,6 +184,29 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
          "type": "all",
          "platform": "android",
          "channel": "huawei"
+       }
+     }'
+
+# 向所有荣耀设备推送
+curl -X POST "https://doopush.com/api/v1/apps/123/push" \
+     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "title": "荣耀用户专享通知",
+       "content": "荣耀设备专属优化推送，Magic OS用户尊享体验！",
+       "payload": {
+         "action": "open_page",
+         "url": "https://example.com/honor-promo",
+         "honor": {
+           "importance": "HIGH",
+           "ttl": "3600s",
+           "target_user_type": 0
+         }
+       },
+       "target": {
+         "type": "all",
+         "platform": "android",
+         "channel": "honor"
        }
      }'
 
