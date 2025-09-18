@@ -445,7 +445,6 @@ export interface FCMPushConfig {
 }
 
 // 华为推送配置
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface HuaweiPushConfig extends AndroidPushBaseConfig {
   app_id: string
   app_secret: string
