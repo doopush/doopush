@@ -28,7 +28,7 @@ data class DeviceInfo(
     val bundleId: String,
     
     /**
-     * 设备品牌 (如: Samsung, Xiaomi, Huawei)
+     * 设备品牌 (如: Google, Xiaomi, Huawei)
      */
     @SerializedName("brand")
     val brand: String,

@@ -479,13 +479,6 @@ export interface HonorPushConfig extends AndroidPushBaseConfig {
   client_secret: string
 }
 
-// 三星推送配置
-export interface SamsungPushConfig extends AndroidPushBaseConfig {
-  app_id: string
-  app_key: string
-  app_secret: string
-}
-
 // 推送配置联合类型
 export type PushConfig = 
   | IOSPushConfig 
@@ -494,8 +487,7 @@ export type PushConfig =
   | XiaomiPushConfig 
   | OppoPushConfig 
   | VivoPushConfig 
-  | HonorPushConfig 
-  | SamsungPushConfig
+  | HonorPushConfig
 
 // 推送厂商特有参数
 export interface HuaweiPushParams {

@@ -43,9 +43,9 @@ const editConfigSchema = z.object({
   // Android FCM v1 字段
   service_account_key: z.string().optional(), // FCM 服务账号密钥 JSON（包含项目ID）
   // Android 其他厂商字段
-  app_id: z.string().optional(),        // 华为/小米/OPPO/VIVO/荣耀/三星
-  app_key: z.string().optional(),       // 小米/OPPO/VIVO/三星
-  app_secret: z.string().optional(),    // 华为/小米/OPPO/VIVO/三星
+  app_id: z.string().optional(),        // 华为/小米/OPPO/VIVO/荣耀
+  app_key: z.string().optional(),       // 小米/OPPO/VIVO
+  app_secret: z.string().optional(),    // 华为/小米/OPPO/VIVO
   client_id: z.string().optional(),     // 荣耀
   client_secret: z.string().optional(), // 荣耀
 })
@@ -145,11 +145,6 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
               checkAndSetField('app_key', configData.app_key)
               checkAndSetField('app_secret', configData.app_secret)
               break
-            case 'samsung':
-              checkAndSetField('app_id', configData.app_id)
-              checkAndSetField('app_key', configData.app_key)
-              checkAndSetField('app_secret', configData.app_secret)
-              break
           case 'honor':
             checkAndSetField('app_id', configData.app_id)
             checkAndSetField('client_id', configData.client_id)
@@ -221,13 +216,6 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
             }
             break
           case 'vivo':
-            configData = {
-              app_id: buildFieldValue('app_id', data.app_id || ''),
-              app_key: buildFieldValue('app_key', data.app_key || ''),
-              app_secret: buildFieldValue('app_secret', data.app_secret || '')
-            }
-            break
-          case 'samsung':
             configData = {
               app_id: buildFieldValue('app_id', data.app_id || ''),
               app_key: buildFieldValue('app_key', data.app_key || ''),
@@ -659,62 +647,6 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                     <FormMessage />
                   </FormItem>
                 )}
-                  />
-                </>
-              )}
-
-              {/* Android 三星配置字段 */}
-              {config.platform === 'android' && config.channel === 'samsung' && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="app_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>App ID *</FormLabel>
-                        <FormControl>
-                          <Input placeholder={getFieldPlaceholder('app_id', '输入 SAMSUNG App ID')} {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          {getFieldDescription('app_id', 'SAMSUNG开发者平台的应用ID')}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="app_key"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>App Key *</FormLabel>
-                        <FormControl>
-                          <Input placeholder={getFieldPlaceholder('app_key', '输入 SAMSUNG App Key')} {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          {getFieldDescription('app_key', 'SAMSUNG开发者平台的应用密钥')}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="app_secret"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>App Secret *</FormLabel>
-                        <FormControl>
-                          <Input placeholder={getFieldPlaceholder('app_secret', '输入 SAMSUNG App Secret')} {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          {getFieldDescription('app_secret', 'SAMSUNG开发者平台的应用密钥')}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
                   />
                 </>
               )}

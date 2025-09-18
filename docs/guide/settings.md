@@ -88,7 +88,6 @@ Android SDK 正在开发中，配置功能将在 SDK 完成后开放。
 - **小米** - 小米推送
 - **OPPO** - ColorOS 推送
 - **VIVO** - vivo 推送
-- **三星** - Samsung Push
 
 ### 配置管理
 

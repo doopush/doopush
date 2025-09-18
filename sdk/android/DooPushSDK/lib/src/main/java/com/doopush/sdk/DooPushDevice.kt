@@ -30,7 +30,7 @@ class DooPushDevice(private val context: Context) {
          * 设备型号映射 - 将一些常见的型号代码映射为可读名称
          */
         private val MODEL_MAPPING = mapOf(
-            // Samsung
+            // 常见Galaxy系列型号
             "SM-G973F" to "Galaxy S10",
             "SM-G975F" to "Galaxy S10+",
             "SM-G981B" to "Galaxy S20",
@@ -151,7 +151,7 @@ class DooPushDevice(private val context: Context) {
     
     /**
      * 生成用户代理字符串
-     * 格式: DooPush-Android-SDK/1.0.0 (com.example.app; Samsung Galaxy S21; Android 11)
+     * 格式: DooPush-Android-SDK/1.0.0 (com.example.app; Google Pixel 7; Android 14)
      * 
      * @return 用户代理字符串
      */

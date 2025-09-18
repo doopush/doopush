@@ -27,7 +27,7 @@ import java.lang.reflect.Method
 
 /**
  * 角标管理器
- * 支持华为、小米、OPPO、VIVO、三星等厂商的角标设置
+ * 支持华为、小米、OPPO、VIVO等厂商的角标设置
  */
 object BadgeManager {
     private const val TAG = "DooPush_BadgeManager"
@@ -60,7 +60,6 @@ object BadgeManager {
                 isXiaomiLauncher(context) -> setXiaomiBadge(context, count)
                 isOppoLauncher(context) -> setOppoBadge(context, count)
                 isVivoLauncher(context) -> setVivoBadge(context, count)
-                isSamsungLauncher(context) -> setSamsungBadge(context, count)
                 else -> {
                     Log.w(TAG, "未识别的桌面类型，尝试通用方法")
                     setGenericBadge(context, count)
@@ -103,13 +102,6 @@ object BadgeManager {
     private fun isVivoLauncher(context: Context): Boolean {
         return isLauncherClassExists(VIVO_LAUNCHER_CLASS) ||
                Build.MANUFACTURER.equals("vivo", ignoreCase = true)
-    }
-    
-    /**
-     * 判断是否为三星桌面
-     */
-    private fun isSamsungLauncher(context: Context): Boolean {
-        return Build.MANUFACTURER.equals("samsung", ignoreCase = true)
     }
     
     /**
@@ -225,27 +217,6 @@ object BadgeManager {
             true
         } catch (e: Exception) {
             Log.e(TAG, "设置VIVO角标失败", e)
-            false
-        }
-    }
-    
-    /**
-     * 设置三星角标
-     */
-    private fun setSamsungBadge(context: Context, count: Int): Boolean {
-        return try {
-            Log.d(TAG, "三星设备设置角标: $count")
-            
-            val intent = Intent("android.intent.action.BADGE_COUNT_UPDATE").apply {
-                putExtra("badge_count", count)
-                putExtra("badge_count_package_name", context.packageName)
-                putExtra("badge_count_class_name", getLauncherClassName(context))
-            }
-            context.sendBroadcast(intent)
-            
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "设置三星角标失败", e)
             false
         }
     }

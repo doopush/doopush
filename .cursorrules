@@ -188,7 +188,7 @@ doopush/
 - 错误处理和token失效管理
 
 ### Android推送
-- 支持多厂商通道: FCM, 华为HMS, 小米, OPPO, VIVO, 荣耀, 三星
+- 支持多厂商通道: FCM, 华为HMS, 小米, OPPO, VIVO, 荣耀
 - 根据设备厂商自动路由到对应通道
 - 统一的消息格式适配
 

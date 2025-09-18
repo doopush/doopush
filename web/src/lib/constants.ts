@@ -10,7 +10,6 @@ export const ANDROID_VENDORS = {
   oppo: { name: 'OPPO推送', displayName: 'OPPO', fullName: 'OPPO推送 (OPPO Push)' },
   vivo: { name: 'VIVO推送', displayName: 'VIVO', fullName: 'VIVO推送 (VIVO Push)' },
   honor: { name: '荣耀推送', displayName: '荣耀', fullName: '荣耀推送 (Honor Push)' },
-  samsung: { name: '三星推送', displayName: '三星', fullName: '三星推送 (Samsung Push)' },
 } as const
 
 // Android厂商键数组
@@ -47,7 +46,6 @@ export const ANDROID_VENDOR_ICONS = {
   oppo: '📱',
   vivo: '📱',
   honor: '📱',
-  samsung: '📱',
 } as const
 
 // Android厂商统一的消息分类 (vivo/OPPO等使用)
