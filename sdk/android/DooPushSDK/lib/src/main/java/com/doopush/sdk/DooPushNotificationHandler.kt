@@ -2,8 +2,8 @@ package com.doopush.sdk
 
 import android.content.Context
 import android.content.Intent
-import android.os.Bundle
 import android.util.Log
+import android.app.NotificationManager
 import com.doopush.sdk.models.PushMessage
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
@@ -240,6 +240,39 @@ object DooPushNotificationHandler {
             Log.d(TAG, "已添加推送点击数据到Intent")
         } catch (e: Exception) {
             Log.e(TAG, "添加推送点击数据失败", e)
+        }
+    }
+
+    /**
+     * 清除所有通知栏消息
+     * @param context Android 上下文
+     * @return 是否清除成功
+     */
+    fun clearNotifications(context: Context): Boolean {
+        try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            // 通用通知清除
+            notificationManager.cancelAll()
+
+            // 厂商特定通知清除（可扩展）
+            // TODO 考虑用于通知或者触发特点厂商自己的清除逻辑？
+            when (DooPushDeviceVendor.getDeviceVendorInfo().preferredService) {
+                DooPushDeviceVendor.PushService.MIPUSH -> {
+                    // XiaomiService(context).clearNotifications()
+                }
+                DooPushDeviceVendor.PushService.OPPO -> {
+                    // OppoService(context).clearNotifications()
+                }
+                else -> {
+                    Log.d(TAG, "执行通用通知清除")
+                }
+            }
+
+            Log.d(TAG, "通知栏消息清除成功")
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "通知栏消息清除失败", e)
+            return false
         }
     }
     
