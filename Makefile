@@ -86,6 +86,12 @@ install: ## 安装所有依赖
 	@echo "安装后端依赖..."
 	@make api-tidy
 
+# 快捷命令
+api: api-dev
+gateway: api-gateway
+web: web-dev
+docs: docs-dev
+
 # 帮助命令
 help:
 	@echo ""
