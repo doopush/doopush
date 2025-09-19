@@ -866,15 +866,23 @@ class DooPushManager private constructor() {
     fun disconnectTCP() {
         tcpConnection?.disconnect()
     }
-    
+
     /**
-     * 应用进入前台时调用
+     * 应用进入前台时调用，执行通知清除和角标重置
+     * @param context Android 上下文，推荐使用 Application 上下文
      */
-    fun applicationDidBecomeActive() {
+    fun applicationDidBecomeActive(context: Context) {
         tcpConnection?.applicationDidBecomeActive()
         Log.d(TAG, "应用进入前台")
+        // 清除通知栏消息
+        // TODO 如果应用没有初始化 SDK 也可以清除通知？
+        DooPushNotificationHandler.clearNotifications(context)
+        // 清除角标（仅在SDK已初始化时执行）
+        if (checkInitialized()) {
+            clearBadge()
+        }
     }
-    
+
     /**
      * 应用进入后台时调用
      */

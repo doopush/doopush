@@ -42,7 +42,7 @@ class AppLifecycleHandler : Application.ActivityLifecycleCallbacks {
         
         // 第一个Activity恢复时，通知SDK应用进入前台
         if (activityCount == 1) {
-            DooPushManager.getInstance().applicationDidBecomeActive()
+            DooPushManager.getInstance().applicationDidBecomeActive(activity.applicationContext)
         }
     }
     
