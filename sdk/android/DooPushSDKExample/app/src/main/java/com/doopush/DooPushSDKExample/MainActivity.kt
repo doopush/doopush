@@ -278,6 +278,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
                         DooPushDeviceVendor.PushService.MIPUSH -> "小米推送"
                         DooPushDeviceVendor.PushService.OPPO -> "OPPO推送"
                         DooPushDeviceVendor.PushService.VIVO -> "VIVO推送"
+                        DooPushDeviceVendor.PushService.MEIZU -> "魅族推送"
                         DooPushDeviceVendor.PushService.HONOR -> "荣耀推送"
                     }
                     binding.tvTokenType.text = "使用服务: $serviceText (${vendorInfo.brand})"
@@ -558,6 +559,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
                 DooPushDeviceVendor.PushService.MIPUSH -> "小米推送"
                 DooPushDeviceVendor.PushService.OPPO -> "OPPO推送"
                 DooPushDeviceVendor.PushService.VIVO -> "VIVO推送"
+                DooPushDeviceVendor.PushService.MEIZU -> "魅族推送"
                 DooPushDeviceVendor.PushService.HONOR -> "荣耀推送"
             }
             binding.tvTokenType.text = "使用服务: $serviceText (${vendorInfo.brand})"
@@ -620,6 +622,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
                 DooPushDeviceVendor.PushService.MIPUSH -> "小米推送"
                 DooPushDeviceVendor.PushService.OPPO -> "OPPO推送"
                 DooPushDeviceVendor.PushService.VIVO -> "VIVO推送"
+                DooPushDeviceVendor.PushService.MEIZU -> "魅族推送"
                 DooPushDeviceVendor.PushService.HONOR -> "荣耀推送"
             }
             binding.tvTokenType.text = "使用服务: $serviceText (${vendorInfo.brand})"
@@ -662,6 +665,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         val isXiaomiAvailable = dooPushManager.isXiaomiAvailable()
         val isOppoAvailable = dooPushManager.isOppoAvailable()
         val isVivoAvailable = dooPushManager.isVivoAvailable()
+        val isMeizuAvailable = dooPushManager.isMeizuAvailable()
         
         val statusText = StringBuilder()
         statusText.append("推送服务可用性状态：\n\n")
@@ -677,6 +681,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         statusText.append("- 小米推送：${if (isXiaomiAvailable) "✓ 可用" else "✗ 不可用"}\n")
         statusText.append("- OPPO推送：${if (isOppoAvailable) "✓ 可用" else "✗ 不可用"}\n")
         statusText.append("- VIVO推送：${if (isVivoAvailable) "✓ 可用" else "✗ 不可用"}\n")
+        statusText.append("- 魅族推送：${if (isMeizuAvailable) "✓ 可用" else "✗ 不可用"}\n")
         
         statusText.append("\n支持的服务：\n")
         vendorInfo.supportedServices.forEach { service ->
@@ -703,6 +708,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
             DooPushDeviceVendor.PushService.MIPUSH -> "小米推送"
             DooPushDeviceVendor.PushService.OPPO -> "OPPO推送"
             DooPushDeviceVendor.PushService.VIVO -> "VIVO推送"
+            DooPushDeviceVendor.PushService.MEIZU -> "魅族推送"
             DooPushDeviceVendor.PushService.HONOR -> "荣耀推送"
         }
     }

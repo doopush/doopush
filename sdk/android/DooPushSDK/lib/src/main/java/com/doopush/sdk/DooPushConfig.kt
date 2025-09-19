@@ -49,6 +49,11 @@ data class DooPushConfig(
     val vivoConfig: VivoConfig? = null,
     
     /**
+     * 魅族推送配置 (可选)
+     */
+    val meizuConfig: MeizuConfig? = null,
+    
+    /**
      * 荣耀推送配置 (可选)
      */
     val honorConfig: HonorConfig? = null
@@ -155,6 +160,34 @@ data class DooPushConfig(
     }
     
     /**
+     * 魅族推送配置类（客户端需要 appId 和 appKey，可从 meizu-services.json 自动读取）
+     * @param appId 魅族应用ID，如果为空则会从 meizu-services.json 自动读取
+     * @param appKey 魅族应用Key，如果为空则会从 meizu-services.json 自动读取
+     */
+    data class MeizuConfig(
+        val appId: String = "",
+        val appKey: String = ""
+    ) {
+        fun isValid(): Boolean {
+            return true
+        }
+        
+        fun getSummary(): String {
+            val appIdInfo = if (appId.isNotEmpty()) {
+                "AppId=$appId"
+            } else {
+                "AppId=auto(从meizu-services.json读取)"
+            }
+            val appKeyInfo = if (appKey.isNotEmpty()) {
+                "AppKey=${appKey.take(8)}..."
+            } else {
+                "AppKey=auto(从meizu-services.json读取)"
+            }
+            return "魅族推送配置: $appIdInfo, $appKeyInfo"
+        }
+    }
+    
+    /**
      * 荣耀推送配置
      * @param clientId 旧版SDK需要的客户端ID，可从 mcs-services.json 自动读取
      * @param clientSecret 旧版SDK需要的客户端密钥，可从 mcs-services.json 自动读取
@@ -229,6 +262,7 @@ data class DooPushConfig(
          * @param xiaomiConfig 小米推送配置 (可选)
          * @param oppoConfig OPPO推送配置 (可选)
          * @param vivoConfig VIVO推送配置 (可选)
+         * @param meizuConfig 魅族推送配置 (可选)
          * @param honorConfig 荣耀推送配置 (可选)
          * @return 配置实例
          * @throws DooPushConfigException 配置参数无效时抛出
@@ -242,6 +276,7 @@ data class DooPushConfig(
             xiaomiConfig: XiaomiConfig? = null,
             oppoConfig: OppoConfig? = null,
             vivoConfig: VivoConfig? = null,
+            meizuConfig: MeizuConfig? = null,
             honorConfig: HonorConfig? = null
         ): DooPushConfig {
             val config = DooPushConfig(
@@ -252,6 +287,7 @@ data class DooPushConfig(
                 xiaomiConfig = xiaomiConfig,
                 oppoConfig = oppoConfig,
                 vivoConfig = vivoConfig,
+                meizuConfig = meizuConfig,
                 honorConfig = honorConfig
             )
             
@@ -394,6 +430,7 @@ data class DooPushConfig(
         val xiaomiInfo = xiaomiConfig?.getSummary() ?: "小米推送配置: 未配置"
         val oppoInfo = oppoConfig?.getSummary() ?: "OPPO推送配置: 未配置"
         val vivoInfo = vivoConfig?.getSummary() ?: "VIVO推送配置: 未配置"
+        val meizuInfo = meizuConfig?.getSummary() ?: "魅族推送配置: 未配置"
         val honorInfo = honorConfig?.getSummary() ?: "荣耀推送配置: 未配置"
         
         return """
@@ -406,6 +443,7 @@ data class DooPushConfig(
             |  $xiaomiInfo
             |  $oppoInfo
             |  $vivoInfo
+            |  $meizuInfo
             |  $honorInfo
         """.trimMargin()
     }
@@ -436,6 +474,13 @@ data class DooPushConfig(
      */
     fun hasVivoConfig(): Boolean {
         return vivoConfig != null && vivoConfig.isValid()
+    }
+    
+    /**
+     * 检查是否配置了魅族推送
+     */
+    fun hasMeizuConfig(): Boolean {
+        return meizuConfig != null && meizuConfig.isValid()
     }
     
     /**

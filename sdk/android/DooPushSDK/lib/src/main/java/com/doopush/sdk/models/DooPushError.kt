@@ -78,15 +78,23 @@ data class DooPushError(
         const val VIVO_CONFIG_INVALID = 3405
         const val VIVO_PUSH_ERROR = 3406
         
+        // 魅族推送相关错误码
+        const val MEIZU_NOT_AVAILABLE = 3501
+        const val MEIZU_INIT_FAILED = 3502
+        const val MEIZU_TOKEN_FETCH_FAILED = 3503
+        const val MEIZU_REGISTER_FAILED = 3504
+        const val MEIZU_CONFIG_INVALID = 3505
+        const val MEIZU_PUSH_ERROR = 3506
+        
         // 荣耀推送相关错误码
-        const val HONOR_NOT_AVAILABLE = 3501
-        const val HONOR_SDK_NOT_AVAILABLE = 3502
-        const val HONOR_INIT_FAILED = 3503
-        const val HONOR_TOKEN_FAILED = 3504
-        const val HONOR_CONFIG_INVALID = 3505
-        const val HONOR_SDK_ERROR = 3506
-        const val HONOR_APP_ID_MISSING = 3507
-        const val HONOR_UNKNOWN_ERROR = 3508
+        const val HONOR_NOT_AVAILABLE = 3601
+        const val HONOR_SDK_NOT_AVAILABLE = 3602
+        const val HONOR_INIT_FAILED = 3603
+        const val HONOR_TOKEN_FAILED = 3604
+        const val HONOR_CONFIG_INVALID = 3605
+        const val HONOR_SDK_ERROR = 3606
+        const val HONOR_APP_ID_MISSING = 3607
+        const val HONOR_UNKNOWN_ERROR = 3608
         
         // 权限相关错误码
         const val PERMISSION_DENIED = 4001
@@ -425,6 +433,72 @@ data class DooPushError(
             return DooPushError(
                 code = VIVO_PUSH_ERROR,
                 message = "VIVO推送操作失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建魅族推送不可用错误
+         */
+        fun meizuNotAvailable(): DooPushError {
+            return DooPushError(
+                code = MEIZU_NOT_AVAILABLE,
+                message = "魅族推送服务不可用，可能是设备不支持或SDK未集成"
+            )
+        }
+        
+        /**
+         * 创建魅族推送初始化失败错误
+         */
+        fun meizuInitFailed(details: String? = null): DooPushError {
+            return DooPushError(
+                code = MEIZU_INIT_FAILED,
+                message = "魅族推送初始化失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建魅族推送Token获取失败错误
+         */
+        fun meizuTokenFailed(cause: Throwable? = null): DooPushError {
+            return DooPushError(
+                code = MEIZU_TOKEN_FETCH_FAILED,
+                message = "魅族推送Token获取失败",
+                details = cause?.message,
+                cause = cause
+            )
+        }
+        
+        /**
+         * 创建魅族推送注册失败错误
+         */
+        fun meizuRegisterFailed(details: String? = null): DooPushError {
+            return DooPushError(
+                code = MEIZU_REGISTER_FAILED,
+                message = "魅族推送注册失败",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建魅族推送配置无效错误
+         */
+        fun meizuConfigInvalid(details: String? = null): DooPushError {
+            return DooPushError(
+                code = MEIZU_CONFIG_INVALID,
+                message = "魅族推送配置无效",
+                details = details
+            )
+        }
+        
+        /**
+         * 创建魅族推送操作错误
+         */
+        fun meizuPushError(details: String? = null): DooPushError {
+            return DooPushError(
+                code = MEIZU_PUSH_ERROR,
+                message = "魅族推送操作失败",
                 details = details
             )
         }

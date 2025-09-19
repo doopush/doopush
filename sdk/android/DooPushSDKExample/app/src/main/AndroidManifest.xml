@@ -130,6 +130,20 @@
             </intent-filter>
         </service>
 
+        <!-- 魅族推送接收器 -->
+        <receiver
+            android:name=".MeizuPushMessageReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="com.meizu.cloud.push.permission.MESSAGE">
+            <intent-filter>
+                <action android:name="com.meizu.flyme.push.intent.MESSAGE" />
+                <action android:name="com.meizu.flyme.push.intent.REGISTER.FEEDBACK" />
+                <action android:name="com.meizu.flyme.push.intent.UNREGISTER.FEEDBACK" />
+                <category android:name="com.doopush.DooPushSDKExample" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

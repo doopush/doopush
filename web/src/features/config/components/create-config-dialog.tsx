@@ -72,6 +72,8 @@ const createConfigSchema = z.object({
         return data.app_id && data.app_key && data.app_secret
       case 'vivo':
         return data.app_id && data.app_key && data.app_secret
+      case 'meizu':
+        return data.app_id && data.app_secret
       case 'honor':
         return data.app_id && data.client_id && data.client_secret
     }
@@ -191,6 +193,12 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
             configData = {
               app_id: data.app_id,
               app_key: data.app_key,
+              app_secret: data.app_secret
+            }
+            break
+          case 'meizu':
+            configData = {
+              app_id: data.app_id,
               app_secret: data.app_secret
             }
             break
@@ -617,6 +625,44 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                         <FormControl>
                           <Input placeholder={`输入 ${currentChannel.toUpperCase()} App Secret`} {...field} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {currentPlatform === 'android' && currentChannel === 'meizu' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="app_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入魅族 App ID" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          魅族开发者平台的应用ID
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_secret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Secret *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入魅族 App Secret" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          魅族开发者平台的应用密钥
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

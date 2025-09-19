@@ -20,6 +20,7 @@ object DooPushDeviceVendor {
         MIPUSH,     // 小米推送
         OPPO,       // OPPO推送
         VIVO,       // VIVO推送
+        MEIZU,      // 魅族推送
         HONOR       // 荣耀推送
     }
     
@@ -85,6 +86,12 @@ object DooPushDeviceVendor {
                 PushService.VIVO to listOf(PushService.VIVO, PushService.FCM)
             }
             
+            // 魅族设备
+            manufacturer == "MEIZU" || brand == "MEIZU" -> {
+                Log.d(TAG, "检测到魅族设备")
+                PushService.MEIZU to listOf(PushService.MEIZU, PushService.FCM)
+            }
+            
             // 其他设备使用FCM
             else -> {
                 Log.d(TAG, "检测到其他设备，使用FCM: $manufacturer")
@@ -111,6 +118,7 @@ object DooPushDeviceVendor {
             PushService.MIPUSH -> isMiPushAvailable(context)
             PushService.OPPO -> isOppoPushAvailable(context)
             PushService.VIVO -> isVivoPushAvailable(context)
+            PushService.MEIZU -> isMeizuPushAvailable(context)
             PushService.HONOR -> isHonorPushAvailable(context)
         }
     }
@@ -153,7 +161,7 @@ object DooPushDeviceVendor {
     /**
      * 检查Firebase是否可用
      */
-    private fun isFirebaseAvailable(context: Context): Boolean {
+    private fun isFirebaseAvailable(@Suppress("UNUSED_PARAMETER") context: Context): Boolean {
         return try {
             Class.forName("com.google.firebase.messaging.FirebaseMessaging")
             true
@@ -169,7 +177,7 @@ object DooPushDeviceVendor {
     /**
      * 检查华为HMS是否可用
      */
-    private fun isHMSAvailable(context: Context): Boolean {
+    private fun isHMSAvailable(@Suppress("UNUSED_PARAMETER") context: Context): Boolean {
         return try {
             // 检查是否为华为设备
             val vendorInfo = getDeviceVendorInfo()
@@ -195,7 +203,7 @@ object DooPushDeviceVendor {
     /**
      * 检查小米推送是否可用
      */
-    private fun isMiPushAvailable(context: Context): Boolean {
+    private fun isMiPushAvailable(@Suppress("UNUSED_PARAMETER") context: Context): Boolean {
         return try {
             Class.forName("com.xiaomi.mipush.sdk.MiPushClient")
             true
@@ -211,7 +219,7 @@ object DooPushDeviceVendor {
     /**
      * 检查OPPO推送是否可用
      */
-    private fun isOppoPushAvailable(context: Context): Boolean {
+    private fun isOppoPushAvailable(@Suppress("UNUSED_PARAMETER") context: Context): Boolean {
         return try {
             // 检查是否为OPPO或OnePlus设备
             val vendorInfo = getDeviceVendorInfo()
@@ -234,7 +242,7 @@ object DooPushDeviceVendor {
     /**
      * 检查VIVO推送是否可用
      */
-    private fun isVivoPushAvailable(context: Context): Boolean {
+    private fun isVivoPushAvailable(@Suppress("UNUSED_PARAMETER") context: Context): Boolean {
         return try {
             // 检查是否为VIVO或iQOO设备
             val vendorInfo = getDeviceVendorInfo()
@@ -250,6 +258,29 @@ object DooPushDeviceVendor {
             false
         } catch (e: Exception) {
             Log.w(TAG, "检查VIVO推送可用性时出错", e)
+            false
+        }
+    }
+    
+    /**
+     * 检查魅族推送是否可用
+     */
+    private fun isMeizuPushAvailable(@Suppress("UNUSED_PARAMETER") context: Context): Boolean {
+        return try {
+            // 检查是否为魅族设备
+            val vendorInfo = getDeviceVendorInfo()
+            if (vendorInfo.preferredService != PushService.MEIZU) {
+                return false
+            }
+            
+            // 检查魅族推送SDK是否可用
+            Class.forName("com.meizu.cloud.pushsdk.PushManager")
+            true
+        } catch (e: ClassNotFoundException) {
+            Log.d(TAG, "魅族推送不可用: ${e.message}")
+            false
+        } catch (e: Exception) {
+            Log.w(TAG, "检查魅族推送可用性时出错", e)
             false
         }
     }

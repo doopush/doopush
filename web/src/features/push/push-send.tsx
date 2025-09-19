@@ -104,6 +104,38 @@ const pushFormSchema = z.object({
     vivo: z.object({
       category: z.enum(ANDROID_MESSAGE_CATEGORY_VALUES).optional(),
     }).optional(),
+    // 魅族推送特有参数
+    meizu: z.object({
+      notice_msg_type: z.union([z.literal(0), z.literal(1)]).optional(),
+      notice_bar_type: z.union([z.literal(0), z.literal(2)]).optional(),
+      notice_expand_type: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional(),
+      notice_expand_content: z.string().optional(),
+      notice_expand_img_url: z.string().url('请输入有效的图片URL').optional().or(z.literal('')),
+      click_type: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional(),
+      activity: z.string().optional(),
+      url: z.string().url('请输入有效的URL').optional().or(z.literal('')),
+      parameters: z.record(z.unknown()).optional(),
+      custom_attribute: z.string().optional(),
+      off_line: z.union([z.literal(0), z.literal(1)]).optional(),
+      valid_time: z.number().int().min(1).max(72).optional(),
+      suspend: z.union([z.literal(0), z.literal(1)]).optional(),
+      clear_notice_bar: z.union([z.literal(0), z.literal(1)]).optional(),
+      notify_key: z.string().optional(),
+      vibrate: z.union([z.literal(0), z.literal(1)]).optional(),
+      lights: z.union([z.literal(0), z.literal(1)]).optional(),
+      sound: z.union([z.literal(0), z.literal(1)]).optional(),
+      subtitle: z.string().optional(),
+      pull_down_top: z.union([z.literal(0), z.literal(1)]).optional(),
+      time_top: z.number().int().min(1800).max(7200).optional(),
+      not_group: z.union([z.literal(0), z.literal(1)]).optional(),
+      title_color: z.string().optional(),
+      background_img_url: z.string().url('请输入有效的图片URL').optional().or(z.literal('')),
+      small_icon_url: z.string().url('请输入有效的图标URL').optional().or(z.literal('')),
+      big_icon_url: z.string().url('请输入有效的图标URL').optional().or(z.literal('')),
+      callback: z.string().url('请输入有效的回调URL').optional().or(z.literal('')),
+      callback_param: z.string().optional(),
+      callback_type: z.enum(['1', '2', '3']).optional(),
+    }).optional(),
     // 荣耀推送特有参数
     honor: z.object({
       importance: z.enum(['NORMAL', 'HIGH']).optional(),
@@ -167,6 +199,37 @@ export default function PushSend() {
         vivo: {
           category: undefined,
         },
+        meizu: {
+          notice_msg_type: 0,
+          notice_bar_type: 0,
+          notice_expand_type: 0,
+          notice_expand_content: '',
+          notice_expand_img_url: '',
+          click_type: 0,
+          activity: '',
+          url: '',
+          parameters: {},
+          custom_attribute: '',
+          off_line: 1,
+          valid_time: 24,
+          suspend: 0,
+          clear_notice_bar: 1,
+          notify_key: '',
+          vibrate: 1,
+          lights: 1,
+          sound: 1,
+          subtitle: '',
+          pull_down_top: 0,
+          time_top: 3600,
+          not_group: 0,
+          title_color: '',
+          background_img_url: '',
+          small_icon_url: '',
+          big_icon_url: '',
+          callback: '',
+          callback_param: '',
+          callback_type: '3',
+        },
         honor: {
           importance: 'NORMAL',
           ttl: '86400s',
@@ -217,6 +280,39 @@ export default function PushSend() {
 
           // 处理 vivo 特有参数
           form.setValue('payload.vivo.category', payload.vivo?.category || undefined)
+
+          // 处理魅族特有参数
+          if (payload.meizu) {
+            form.setValue('payload.meizu.notice_msg_type', payload.meizu.notice_msg_type ?? 0)
+            form.setValue('payload.meizu.notice_bar_type', payload.meizu.notice_bar_type ?? 0)
+            form.setValue('payload.meizu.notice_expand_type', payload.meizu.notice_expand_type ?? 0)
+            form.setValue('payload.meizu.notice_expand_content', payload.meizu.notice_expand_content || '')
+            form.setValue('payload.meizu.notice_expand_img_url', payload.meizu.notice_expand_img_url || '')
+            form.setValue('payload.meizu.click_type', payload.meizu.click_type ?? 0)
+            form.setValue('payload.meizu.activity', payload.meizu.activity || '')
+            form.setValue('payload.meizu.url', payload.meizu.url || '')
+            form.setValue('payload.meizu.parameters', payload.meizu.parameters || {})
+            form.setValue('payload.meizu.custom_attribute', payload.meizu.custom_attribute || '')
+            form.setValue('payload.meizu.off_line', payload.meizu.off_line ?? 1)
+            form.setValue('payload.meizu.valid_time', payload.meizu.valid_time ?? 24)
+            form.setValue('payload.meizu.suspend', payload.meizu.suspend ?? 0)
+            form.setValue('payload.meizu.clear_notice_bar', payload.meizu.clear_notice_bar ?? 1)
+            form.setValue('payload.meizu.notify_key', payload.meizu.notify_key || '')
+            form.setValue('payload.meizu.vibrate', payload.meizu.vibrate ?? 1)
+            form.setValue('payload.meizu.lights', payload.meizu.lights ?? 1)
+            form.setValue('payload.meizu.sound', payload.meizu.sound ?? 1)
+            form.setValue('payload.meizu.subtitle', payload.meizu.subtitle || '')
+            form.setValue('payload.meizu.pull_down_top', payload.meizu.pull_down_top ?? 0)
+            form.setValue('payload.meizu.time_top', payload.meizu.time_top ?? 3600)
+            form.setValue('payload.meizu.not_group', payload.meizu.not_group ?? 0)
+            form.setValue('payload.meizu.title_color', payload.meizu.title_color || '')
+            form.setValue('payload.meizu.background_img_url', payload.meizu.background_img_url || '')
+            form.setValue('payload.meizu.small_icon_url', payload.meizu.small_icon_url || '')
+            form.setValue('payload.meizu.big_icon_url', payload.meizu.big_icon_url || '')
+            form.setValue('payload.meizu.callback', payload.meizu.callback || '')
+            form.setValue('payload.meizu.callback_param', payload.meizu.callback_param || '')
+            form.setValue('payload.meizu.callback_type', payload.meizu.callback_type || '3')
+          }
 
           // 处理荣耀特有参数
           if (payload.honor) {
@@ -700,6 +796,9 @@ export default function PushSend() {
                                     <TabsTrigger value='vivo'>
                                       <span className='text-blue-600'>📱</span> VIVO
                                     </TabsTrigger>
+                                    <TabsTrigger value='meizu'>
+                                      <span className='text-blue-400'>📱</span> 魅族
+                                    </TabsTrigger>
                                     <TabsTrigger value='honor'>
                                       <span className='text-purple-600'>📱</span> 荣耀
                                     </TabsTrigger>
@@ -1027,6 +1126,733 @@ export default function PushSend() {
                                           </FormItem>
                                         )}
                                       />
+                                    </div>
+                                  </TabsContent>
+
+                                  <TabsContent value='meizu'>
+                                    <div className='space-y-4'>
+                                      <Accordion type="single" collapsible className="w-full">
+                                        <AccordionItem value="basic">
+                                          <AccordionTrigger className="text-sm font-medium">
+                                            📋 基础配置
+                                          </AccordionTrigger>
+                                          <AccordionContent>
+                                            <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.notice_msg_type"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      消息分类
+                                                      <Tooltip>
+                                                        <TooltipTrigger>
+                                                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top">
+                                                          <div className='space-y-1 text-sm'>
+                                                            <p>0=公信消息（默认）</p>
+                                                            <p>1=私信消息</p>
+                                                          </div>
+                                                        </TooltipContent>
+                                                      </Tooltip>
+                                                    </FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">公信消息</SelectItem>
+                                                        <SelectItem value="1">私信消息</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+                                              
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.notice_bar_type"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      通知栏样式
+                                                      <Tooltip>
+                                                        <TooltipTrigger>
+                                                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top">
+                                                          <div className='space-y-1 text-sm'>
+                                                            <p>0=标准样式（默认）</p>
+                                                            <p>2=原生样式</p>
+                                                          </div>
+                                                        </TooltipContent>
+                                                      </Tooltip>
+                                                    </FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">标准样式</SelectItem>
+                                                        <SelectItem value="2">原生样式</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.off_line"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      离线消息
+                                                      <Tooltip>
+                                                        <TooltipTrigger>
+                                                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top">
+                                                          <div className='space-y-1 text-sm'>
+                                                            <p>0=不推送离线消息</p>
+                                                            <p>1=推送离线消息（推荐）</p>
+                                                          </div>
+                                                        </TooltipContent>
+                                                      </Tooltip>
+                                                    </FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">不推送离线消息</SelectItem>
+                                                        <SelectItem value="1">推送离线消息</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.valid_time"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      有效时长（小时）
+                                                      <Tooltip>
+                                                        <TooltipTrigger>
+                                                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top">
+                                                          <div className='space-y-1 text-sm'>
+                                                            <p>消息有效时长：1-72小时</p>
+                                                            <p>默认：24小时</p>
+                                                          </div>
+                                                        </TooltipContent>
+                                                      </Tooltip>
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        type="number"
+                                                        min={1}
+                                                        max={72}
+                                                        placeholder="24"
+                                                        {...field}
+                                                        onChange={(e) => field.onChange(Number(e.target.value))}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+                                            </div>
+                                          </AccordionContent>
+                                        </AccordionItem>
+
+                                        <AccordionItem value="expand">
+                                          <AccordionTrigger className="text-sm font-medium">
+                                            📋 展开样式配置
+                                          </AccordionTrigger>
+                                          <AccordionContent>
+                                            <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.notice_expand_type"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      展开方式
+                                                      <Tooltip>
+                                                        <TooltipTrigger>
+                                                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top">
+                                                          <div className='space-y-1 text-sm'>
+                                                            <p>0=标准展开</p>
+                                                            <p>1=文本展开</p>
+                                                            <p>2=大图展开</p>
+                                                          </div>
+                                                        </TooltipContent>
+                                                      </Tooltip>
+                                                    </FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">标准展开</SelectItem>
+                                                        <SelectItem value="1">文本展开</SelectItem>
+                                                        <SelectItem value="2">大图展开</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.notice_expand_content"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>展开内容</FormLabel>
+                                                    <FormControl>
+                                                      <Textarea
+                                                        placeholder="展开时显示的详细内容（文本展开时使用）"
+                                                        className="resize-none"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.notice_expand_img_url"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>展开大图URL</FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        placeholder="大图展开时使用的图片URL"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+                                            </div>
+                                          </AccordionContent>
+                                        </AccordionItem>
+
+                                        <AccordionItem value="click">
+                                          <AccordionTrigger className="text-sm font-medium">
+                                            🖱️ 点击行为配置
+                                          </AccordionTrigger>
+                                          <AccordionContent>
+                                            <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.click_type"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      点击动作
+                                                      <Tooltip>
+                                                        <TooltipTrigger>
+                                                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top">
+                                                          <div className='space-y-1 text-sm'>
+                                                            <p>0=打开应用</p>
+                                                            <p>1=打开页面</p>
+                                                            <p>2=打开URI</p>
+                                                          </div>
+                                                        </TooltipContent>
+                                                      </Tooltip>
+                                                    </FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">打开应用</SelectItem>
+                                                        <SelectItem value="1">打开页面</SelectItem>
+                                                        <SelectItem value="2">打开URI</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.activity"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>目标Activity</FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        placeholder="点击类型为打开页面时使用"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.url"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>目标URL</FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        placeholder="点击类型为打开URI时使用"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.custom_attribute"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>自定义属性</FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        placeholder="自定义属性信息"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+                                            </div>
+                                          </AccordionContent>
+                                        </AccordionItem>
+
+                                        <AccordionItem value="notification">
+                                          <AccordionTrigger className="text-sm font-medium">
+                                            🔔 通知设置
+                                          </AccordionTrigger>
+                                          <AccordionContent>
+                                            <div className='grid items-start grid-cols-2 md:grid-cols-4 gap-4'>
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.vibrate"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>震动</FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">关闭</SelectItem>
+                                                        <SelectItem value="1">开启</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.lights"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>闪光</FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">关闭</SelectItem>
+                                                        <SelectItem value="1">开启</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.sound"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>声音</FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">关闭</SelectItem>
+                                                        <SelectItem value="1">开启</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.clear_notice_bar"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>可清除</FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">不可清除</SelectItem>
+                                                        <SelectItem value="1">可清除</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.suspend"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>悬浮窗</FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">不显示</SelectItem>
+                                                        <SelectItem value="1">显示</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.notify_key"
+                                                render={({ field }) => (
+                                                  <FormItem className="md:col-span-3">
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      分组合并key
+                                                      <Tooltip>
+                                                        <TooltipTrigger>
+                                                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top">
+                                                          <div className='space-y-1 text-sm'>
+                                                            <p>相同key的消息会合并显示</p>
+                                                          </div>
+                                                        </TooltipContent>
+                                                      </Tooltip>
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        placeholder="消息分组合并标识"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+                                            </div>
+                                          </AccordionContent>
+                                        </AccordionItem>
+
+                                        <AccordionItem value="vip">
+                                          <AccordionTrigger className="text-sm font-medium">
+                                            ⭐ VIP功能配置
+                                          </AccordionTrigger>
+                                          <AccordionContent>
+                                            <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.subtitle"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      子标题
+                                                      <span className="text-xs text-yellow-600 bg-yellow-100 px-1 rounded">VIP</span>
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        placeholder="通知的子标题"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.title_color"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      标题颜色
+                                                      <span className="text-xs text-yellow-600 bg-yellow-100 px-1 rounded">VIP</span>
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        placeholder="#FF0000"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.pull_down_top"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      即时置顶
+                                                      <span className="text-xs text-yellow-600 bg-yellow-100 px-1 rounded">VIP</span>
+                                                    </FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">否</SelectItem>
+                                                        <SelectItem value="1">是</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.time_top"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      定时置顶（秒）
+                                                      <span className="text-xs text-yellow-600 bg-yellow-100 px-1 rounded">VIP</span>
+                                                      <Tooltip>
+                                                        <TooltipTrigger>
+                                                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top">
+                                                          <div className='space-y-1 text-sm'>
+                                                            <p>定时置顶时长：1800-7200秒</p>
+                                                            <p>默认：3600秒（1小时）</p>
+                                                          </div>
+                                                        </TooltipContent>
+                                                      </Tooltip>
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        type="number"
+                                                        min={1800}
+                                                        max={7200}
+                                                        placeholder="3600"
+                                                        {...field}
+                                                        onChange={(e) => field.onChange(Number(e.target.value))}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.not_group"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      独立成组
+                                                      <span className="text-xs text-yellow-600 bg-yellow-100 px-1 rounded">VIP</span>
+                                                    </FormLabel>
+                                                    <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="0">否</SelectItem>
+                                                        <SelectItem value="1">是</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.background_img_url"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      背景图URL
+                                                      <span className="text-xs text-yellow-600 bg-yellow-100 px-1 rounded">VIP</span>
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        placeholder="通知背景图片URL"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.small_icon_url"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      小图标URL
+                                                      <span className="text-xs text-yellow-600 bg-yellow-100 px-1 rounded">VIP</span>
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        placeholder="小图标URL"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.big_icon_url"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      大图标URL
+                                                      <span className="text-xs text-yellow-600 bg-yellow-100 px-1 rounded">VIP</span>
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        placeholder="大图标URL"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+                                            </div>
+                                          </AccordionContent>
+                                        </AccordionItem>
+
+                                        <AccordionItem value="callback">
+                                          <AccordionTrigger className="text-sm font-medium">
+                                            📞 回执配置
+                                          </AccordionTrigger>
+                                          <AccordionContent>
+                                            <div className='grid items-start grid-cols-1 md:grid-cols-2 gap-4'>
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.callback_type"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel className='flex items-center gap-1'>
+                                                      回执类型
+                                                      <Tooltip>
+                                                        <TooltipTrigger>
+                                                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top">
+                                                          <div className='space-y-1 text-sm'>
+                                                            <p>1=送达回执</p>
+                                                            <p>2=点击回执</p>
+                                                            <p>3=送达+点击回执（推荐）</p>
+                                                          </div>
+                                                        </TooltipContent>
+                                                      </Tooltip>
+                                                    </FormLabel>
+                                                    <Select value={field.value} onValueChange={field.onChange}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="1">送达回执</SelectItem>
+                                                        <SelectItem value="2">点击回执</SelectItem>
+                                                        <SelectItem value="3">送达+点击回执</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.callback"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>回执地址</FormLabel>
+                                                    <FormControl>
+                                                      <Input
+                                                        placeholder="接收回执的HTTP URL"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+
+                                              <FormField
+                                                control={form.control}
+                                                name="payload.meizu.callback_param"
+                                                render={({ field }) => (
+                                                  <FormItem className="md:col-span-2">
+                                                    <FormLabel>回执参数</FormLabel>
+                                                    <FormControl>
+                                                      <Textarea
+                                                        placeholder="回调时携带的自定义参数"
+                                                        className="resize-none"
+                                                        {...field}
+                                                      />
+                                                    </FormControl>
+                                                  </FormItem>
+                                                )}
+                                              />
+                                            </div>
+                                          </AccordionContent>
+                                        </AccordionItem>
+                                      </Accordion>
                                     </div>
                                   </TabsContent>
 

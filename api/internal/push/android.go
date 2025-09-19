@@ -443,6 +443,98 @@ type VivoMessage struct {
 	ClientCustomMap map[string]string `json:"clientCustomMap,omitempty"` // 自定义透传参数
 }
 
+// MeizuMessage 魅族推送消息结构
+type MeizuMessage struct {
+	AppID       string `json:"appId"`       // 应用ID
+	PushIds     string `json:"pushIds"`     // 目标设备pushId，多个逗号分隔
+	MessageJSON string `json:"messageJson"` // 消息内容JSON字符串
+	Sign        string `json:"sign"`        // MD5签名
+}
+
+// MeizuMessageBody 魅族推送消息体结构（序列化为MessageJSON）
+type MeizuMessageBody struct {
+	NoticeBarInfo    *MeizuNoticeBarInfo    `json:"noticeBarInfo"`              // 通知栏信息
+	NoticeExpandInfo *MeizuNoticeExpandInfo `json:"noticeExpandInfo,omitempty"` // 展开信息
+	ClickTypeInfo    *MeizuClickTypeInfo    `json:"clickTypeInfo,omitempty"`    // 点击行为
+	PushTimeInfo     *MeizuPushTimeInfo     `json:"pushTimeInfo"`               // 推送时间信息
+	AdvanceInfo      *MeizuAdvanceInfo      `json:"advanceInfo,omitempty"`      // 高级信息
+	VipInfo          *MeizuVipInfo          `json:"vipInfo,omitempty"`          // VIP功能
+	Extra            *MeizuExtra            `json:"extra,omitempty"`            // 回执信息
+}
+
+// MeizuNoticeBarInfo 魅族通知栏信息
+type MeizuNoticeBarInfo struct {
+	NoticeMsgType int    `json:"noticeMsgType"` // 消息分类: 0=公信, 1=私信
+	NoticeBarType int    `json:"noticeBarType"` // 通知栏样式: 0=标准, 2=原生
+	Title         string `json:"title"`         // 通知标题
+	Content       string `json:"content"`       // 通知内容
+}
+
+// MeizuNoticeExpandInfo 魅族展开信息
+type MeizuNoticeExpandInfo struct {
+	NoticeExpandType    int    `json:"noticeExpandType"`              // 展开方式: 0=标准, 1=文本, 2=大图
+	NoticeExpandContent string `json:"noticeExpandContent,omitempty"` // 展开内容
+	NoticeExpandImgUrl  string `json:"noticeExpandImgUrl,omitempty"`  // 展开大图URL
+}
+
+// MeizuClickTypeInfo 魅族点击行为信息
+type MeizuClickTypeInfo struct {
+	ClickType       int    `json:"clickType,omitempty"`       // 点击动作: 0=打开应用, 1=打开页面, 2=打开URI
+	Activity        string `json:"activity,omitempty"`        // 目标Activity
+	URL             string `json:"url,omitempty"`             // 目标URL
+	Parameters      string `json:"parameters,omitempty"`      // 额外参数JSON
+	CustomAttribute string `json:"customAttribute,omitempty"` // 自定义属性
+}
+
+// MeizuPushTimeInfo 魅族推送时间信息
+type MeizuPushTimeInfo struct {
+	OffLine   int `json:"offLine"`   // 离线消息: 0=否, 1=是
+	ValidTime int `json:"validTime"` // 有效时长(小时): 1-72
+}
+
+// MeizuAdvanceInfo 魅族高级信息
+type MeizuAdvanceInfo struct {
+	Suspend          int                    `json:"suspend,omitempty"`          // 悬浮窗: 1=显示, 0=不显示
+	ClearNoticeBar   int                    `json:"clearNoticeBar,omitempty"`   // 可清除: 1=可以, 0=不可以
+	NotifyKey        string                 `json:"notifyKey,omitempty"`        // 分组合并key
+	NotificationType *MeizuNotificationType `json:"notificationType,omitempty"` // 通知类型
+}
+
+// MeizuNotificationType 魅族通知类型
+type MeizuNotificationType struct {
+	Vibrate int `json:"vibrate,omitempty"` // 震动: 0=关闭, 1=开启
+	Lights  int `json:"lights,omitempty"`  // 闪光: 0=关闭, 1=开启
+	Sound   int `json:"sound,omitempty"`   // 声音: 0=关闭, 1=开启
+}
+
+// MeizuVipInfo 魅族VIP功能信息
+type MeizuVipInfo struct {
+	Subtitle         string `json:"subtitle,omitempty"`         // 子标题
+	PullDownTop      int    `json:"pullDownTop,omitempty"`      // 即时置顶: 0=否, 1=是
+	TimeTop          int    `json:"timeTop,omitempty"`          // 定时置顶(秒): 1800-7200
+	NotGroup         int    `json:"notGroup,omitempty"`         // 独立成组: 0=否, 1=是
+	TitleColor       string `json:"titleColor,omitempty"`       // 标题颜色
+	BackgroundImgUrl string `json:"backgroundImgUrl,omitempty"` // 背景图URL
+	SmallIconUrl     string `json:"smallIconUrl,omitempty"`     // 小图标URL
+	BigIconUrl       string `json:"bigIconUrl,omitempty"`       // 大图标URL
+}
+
+// MeizuExtra 魅族回执信息
+type MeizuExtra struct {
+	Callback      string `json:"callback,omitempty"`       // 回执地址
+	CallbackParam string `json:"callback.param,omitempty"` // 回执参数
+	CallbackType  string `json:"callback.type,omitempty"`  // 回执类型: 1=送达, 2=点击, 3=送达+点击
+}
+
+// MeizuSendResponse 魅族推送响应结构
+type MeizuSendResponse struct {
+	Code     string                 `json:"code"`               // 返回码
+	Message  string                 `json:"message"`            // 返回消息
+	Value    map[string]interface{} `json:"value"`              // 返回结果
+	MsgId    string                 `json:"msgId"`              // 消息ID
+	Redirect string                 `json:"redirect,omitempty"` // 重定向URL
+}
+
 // VivoAuthRequest VIVO认证请求结构
 type VivoAuthRequest struct {
 	AppID     string `json:"appId"`     // VIVO应用ID
@@ -722,6 +814,8 @@ func (a *AndroidProvider) SendPush(device *models.Device, pushLog *models.PushLo
 		return a.sendOPPO(device, pushLog)
 	case "vivo":
 		return a.sendVIVO(device, pushLog)
+	case "meizu":
+		return a.sendMeizu(device, pushLog)
 	default:
 		result := &models.PushResult{
 			AppID:        pushLog.AppID,
@@ -1655,6 +1749,242 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 	return message
 }
 
+// buildMeizuMessage 构建魅族推送消息
+func (a *AndroidProvider) buildMeizuMessage(device *models.Device, pushLog *models.PushLog) (*MeizuMessage, error) {
+	// 设置默认参数
+	messageBody := &MeizuMessageBody{
+		NoticeBarInfo: &MeizuNoticeBarInfo{
+			NoticeMsgType: 0, // 默认公信消息
+			NoticeBarType: 0, // 默认标准样式
+			Title:         pushLog.Title,
+			Content:       pushLog.Content,
+		},
+		PushTimeInfo: &MeizuPushTimeInfo{
+			OffLine:   1,  // 默认启用离线消息
+			ValidTime: 24, // 默认24小时
+		},
+	}
+
+	// 从pushLog.Payload中解析魅族特有参数
+	if pushLog.Payload != "" && pushLog.Payload != "{}" {
+		var payloadMap map[string]interface{}
+		if err := json.Unmarshal([]byte(pushLog.Payload), &payloadMap); err == nil {
+			if meizuData, ok := payloadMap["meizu"].(map[string]interface{}); ok {
+				// 解析通知栏信息
+				if noticeMsgType, ok := meizuData["notice_msg_type"].(float64); ok {
+					messageBody.NoticeBarInfo.NoticeMsgType = int(noticeMsgType)
+				}
+				if noticeBarType, ok := meizuData["notice_bar_type"].(float64); ok {
+					messageBody.NoticeBarInfo.NoticeBarType = int(noticeBarType)
+				}
+
+				// 解析展开信息
+				if noticeExpandType, ok := meizuData["notice_expand_type"].(float64); ok {
+					if messageBody.NoticeExpandInfo == nil {
+						messageBody.NoticeExpandInfo = &MeizuNoticeExpandInfo{}
+					}
+					messageBody.NoticeExpandInfo.NoticeExpandType = int(noticeExpandType)
+				}
+				if noticeExpandContent, ok := meizuData["notice_expand_content"].(string); ok {
+					if messageBody.NoticeExpandInfo == nil {
+						messageBody.NoticeExpandInfo = &MeizuNoticeExpandInfo{}
+					}
+					messageBody.NoticeExpandInfo.NoticeExpandContent = noticeExpandContent
+				}
+				if noticeExpandImgUrl, ok := meizuData["notice_expand_img_url"].(string); ok {
+					if messageBody.NoticeExpandInfo == nil {
+						messageBody.NoticeExpandInfo = &MeizuNoticeExpandInfo{}
+					}
+					messageBody.NoticeExpandInfo.NoticeExpandImgUrl = noticeExpandImgUrl
+				}
+
+				// 解析点击行为
+				if clickType, ok := meizuData["click_type"].(float64); ok {
+					if messageBody.ClickTypeInfo == nil {
+						messageBody.ClickTypeInfo = &MeizuClickTypeInfo{}
+					}
+					messageBody.ClickTypeInfo.ClickType = int(clickType)
+				}
+				if activity, ok := meizuData["activity"].(string); ok {
+					if messageBody.ClickTypeInfo == nil {
+						messageBody.ClickTypeInfo = &MeizuClickTypeInfo{}
+					}
+					messageBody.ClickTypeInfo.Activity = activity
+				}
+				if url, ok := meizuData["url"].(string); ok {
+					if messageBody.ClickTypeInfo == nil {
+						messageBody.ClickTypeInfo = &MeizuClickTypeInfo{}
+					}
+					messageBody.ClickTypeInfo.URL = url
+				}
+				if parameters, ok := meizuData["parameters"].(map[string]interface{}); ok {
+					if messageBody.ClickTypeInfo == nil {
+						messageBody.ClickTypeInfo = &MeizuClickTypeInfo{}
+					}
+					if paramJSON, err := json.Marshal(parameters); err == nil {
+						messageBody.ClickTypeInfo.Parameters = string(paramJSON)
+					}
+				}
+				if customAttribute, ok := meizuData["custom_attribute"].(string); ok {
+					if messageBody.ClickTypeInfo == nil {
+						messageBody.ClickTypeInfo = &MeizuClickTypeInfo{}
+					}
+					messageBody.ClickTypeInfo.CustomAttribute = customAttribute
+				}
+
+				// 解析推送时间信息
+				if offLine, ok := meizuData["off_line"].(float64); ok {
+					messageBody.PushTimeInfo.OffLine = int(offLine)
+				}
+				if validTime, ok := meizuData["valid_time"].(float64); ok {
+					messageBody.PushTimeInfo.ValidTime = int(validTime)
+				}
+
+				// 解析高级信息
+				if suspend, ok := meizuData["suspend"].(float64); ok {
+					if messageBody.AdvanceInfo == nil {
+						messageBody.AdvanceInfo = &MeizuAdvanceInfo{}
+					}
+					messageBody.AdvanceInfo.Suspend = int(suspend)
+				}
+				if clearNoticeBar, ok := meizuData["clear_notice_bar"].(float64); ok {
+					if messageBody.AdvanceInfo == nil {
+						messageBody.AdvanceInfo = &MeizuAdvanceInfo{}
+					}
+					messageBody.AdvanceInfo.ClearNoticeBar = int(clearNoticeBar)
+				}
+				if notifyKey, ok := meizuData["notify_key"].(string); ok {
+					if messageBody.AdvanceInfo == nil {
+						messageBody.AdvanceInfo = &MeizuAdvanceInfo{}
+					}
+					messageBody.AdvanceInfo.NotifyKey = notifyKey
+				}
+
+				// 解析通知类型
+				if vibrate, ok := meizuData["vibrate"].(float64); ok {
+					if messageBody.AdvanceInfo == nil {
+						messageBody.AdvanceInfo = &MeizuAdvanceInfo{}
+					}
+					if messageBody.AdvanceInfo.NotificationType == nil {
+						messageBody.AdvanceInfo.NotificationType = &MeizuNotificationType{}
+					}
+					messageBody.AdvanceInfo.NotificationType.Vibrate = int(vibrate)
+				}
+				if lights, ok := meizuData["lights"].(float64); ok {
+					if messageBody.AdvanceInfo == nil {
+						messageBody.AdvanceInfo = &MeizuAdvanceInfo{}
+					}
+					if messageBody.AdvanceInfo.NotificationType == nil {
+						messageBody.AdvanceInfo.NotificationType = &MeizuNotificationType{}
+					}
+					messageBody.AdvanceInfo.NotificationType.Lights = int(lights)
+				}
+				if sound, ok := meizuData["sound"].(float64); ok {
+					if messageBody.AdvanceInfo == nil {
+						messageBody.AdvanceInfo = &MeizuAdvanceInfo{}
+					}
+					if messageBody.AdvanceInfo.NotificationType == nil {
+						messageBody.AdvanceInfo.NotificationType = &MeizuNotificationType{}
+					}
+					messageBody.AdvanceInfo.NotificationType.Sound = int(sound)
+				}
+
+				// 解析VIP功能
+				if subtitle, ok := meizuData["subtitle"].(string); ok {
+					if messageBody.VipInfo == nil {
+						messageBody.VipInfo = &MeizuVipInfo{}
+					}
+					messageBody.VipInfo.Subtitle = subtitle
+				}
+				if pullDownTop, ok := meizuData["pull_down_top"].(float64); ok {
+					if messageBody.VipInfo == nil {
+						messageBody.VipInfo = &MeizuVipInfo{}
+					}
+					messageBody.VipInfo.PullDownTop = int(pullDownTop)
+				}
+				if timeTop, ok := meizuData["time_top"].(float64); ok {
+					if messageBody.VipInfo == nil {
+						messageBody.VipInfo = &MeizuVipInfo{}
+					}
+					messageBody.VipInfo.TimeTop = int(timeTop)
+				}
+				if notGroup, ok := meizuData["not_group"].(float64); ok {
+					if messageBody.VipInfo == nil {
+						messageBody.VipInfo = &MeizuVipInfo{}
+					}
+					messageBody.VipInfo.NotGroup = int(notGroup)
+				}
+				if titleColor, ok := meizuData["title_color"].(string); ok {
+					if messageBody.VipInfo == nil {
+						messageBody.VipInfo = &MeizuVipInfo{}
+					}
+					messageBody.VipInfo.TitleColor = titleColor
+				}
+				if backgroundImgUrl, ok := meizuData["background_img_url"].(string); ok {
+					if messageBody.VipInfo == nil {
+						messageBody.VipInfo = &MeizuVipInfo{}
+					}
+					messageBody.VipInfo.BackgroundImgUrl = backgroundImgUrl
+				}
+				if smallIconUrl, ok := meizuData["small_icon_url"].(string); ok {
+					if messageBody.VipInfo == nil {
+						messageBody.VipInfo = &MeizuVipInfo{}
+					}
+					messageBody.VipInfo.SmallIconUrl = smallIconUrl
+				}
+				if bigIconUrl, ok := meizuData["big_icon_url"].(string); ok {
+					if messageBody.VipInfo == nil {
+						messageBody.VipInfo = &MeizuVipInfo{}
+					}
+					messageBody.VipInfo.BigIconUrl = bigIconUrl
+				}
+
+				// 解析回执信息
+				if callback, ok := meizuData["callback"].(string); ok {
+					if messageBody.Extra == nil {
+						messageBody.Extra = &MeizuExtra{}
+					}
+					messageBody.Extra.Callback = callback
+				}
+				if callbackParam, ok := meizuData["callback_param"].(string); ok {
+					if messageBody.Extra == nil {
+						messageBody.Extra = &MeizuExtra{}
+					}
+					messageBody.Extra.CallbackParam = callbackParam
+				}
+				if callbackType, ok := meizuData["callback_type"].(string); ok {
+					if messageBody.Extra == nil {
+						messageBody.Extra = &MeizuExtra{}
+					}
+					messageBody.Extra.CallbackType = callbackType
+				}
+			}
+		}
+	}
+
+	// 序列化消息体为JSON字符串
+	messageJSON, err := json.Marshal(messageBody)
+	if err != nil {
+		return nil, fmt.Errorf("序列化魅族消息体失败: %v", err)
+	}
+
+	// 构建最终的魅族推送消息
+	message := &MeizuMessage{
+		AppID:       a.config.AppID,
+		PushIds:     device.Token,
+		MessageJSON: string(messageJSON),
+	}
+
+	// 生成MD5签名
+	sign, err := a.getMeizuSignature(message)
+	if err != nil {
+		return nil, fmt.Errorf("生成魅族MD5签名失败: %v", err)
+	}
+	message.Sign = sign
+
+	return message, nil
+}
+
 func (a *AndroidProvider) buildXiaomiMessage(device *models.Device, pushLog *models.PushLog) *XiaomiMessage {
 	// 构建基本消息结构
 	message := &XiaomiMessage{
@@ -2197,6 +2527,41 @@ func (a *AndroidProvider) sendVIVO(device *models.Device, pushLog *models.PushLo
 	return result
 }
 
+// sendMeizu 发送魅族推送
+func (a *AndroidProvider) sendMeizu(device *models.Device, pushLog *models.PushLog) *models.PushResult {
+	result := &models.PushResult{
+		AppID:        pushLog.AppID,
+		PushLogID:    pushLog.ID,
+		Success:      false,
+		ResponseData: "{}",
+	}
+
+	// 构建魅族推送消息
+	message, err := a.buildMeizuMessage(device, pushLog)
+	if err != nil {
+		result.ErrorCode = "MESSAGE_BUILD_ERROR"
+		result.ErrorMessage = fmt.Sprintf("构建魅族推送消息失败: %v", err)
+		return result
+	}
+
+	// 发送推送消息
+	meizuCode, meizuMsg, msgId, err := a.sendMeizuMessage(message, device)
+	if err != nil {
+		// 检查是否是网络错误
+		if meizuCode == "" {
+			return a.createNetworkError(pushLog, err)
+		}
+		// 使用魅族错误映射
+		a.mapMeizuError(result, meizuCode, meizuMsg)
+		return result
+	}
+
+	result.Success = true
+	result.ResponseData = fmt.Sprintf(`{"msg_id":"%s"}`, msgId)
+
+	return result
+}
+
 // 统一错误处理和错误码映射
 
 // mapFCMError 映射FCM错误到统一错误码
@@ -2514,5 +2879,165 @@ func (a *AndroidProvider) createResponseError(pushLog *models.PushLog, err error
 		ErrorCode:    "RESPONSE_ERROR",
 		ErrorMessage: fmt.Sprintf("读取响应失败: %v", err),
 		ResponseData: "{}",
+	}
+}
+
+// getMeizuSignature 生成魅族推送MD5签名
+func (a *AndroidProvider) getMeizuSignature(message *MeizuMessage) (string, error) {
+	// 构建参数map
+	params := map[string]string{
+		"appId":       message.AppID,
+		"pushIds":     message.PushIds,
+		"messageJson": message.MessageJSON,
+	}
+
+	// 按参数名字典序排序并拼接
+	var keys []string
+	for k := range params {
+		keys = append(keys, k)
+	}
+
+	// 手动排序（字典序）
+	for i := 0; i < len(keys); i++ {
+		for j := i + 1; j < len(keys); j++ {
+			if keys[i] > keys[j] {
+				keys[i], keys[j] = keys[j], keys[i]
+			}
+		}
+	}
+
+	// 按排序后的键拼接字符串
+	var baseString strings.Builder
+	for _, key := range keys {
+		baseString.WriteString(key)
+		baseString.WriteString("=")
+		baseString.WriteString(params[key])
+	}
+
+	// 追加appSecret
+	baseString.WriteString(a.config.AppSecret)
+
+	// 计算MD5签名（32位小写）
+	hash := md5.New()
+	hash.Write([]byte(baseString.String()))
+	signature := hex.EncodeToString(hash.Sum(nil))
+
+	return signature, nil
+}
+
+// sendMeizuMessage 发送魅族推送消息
+func (a *AndroidProvider) sendMeizuMessage(message *MeizuMessage, device *models.Device) (string, string, string, error) {
+	// 魅族推送API endpoint
+	pushURL := "https://server-api-push.meizu.com/garcia/api/server/push/varnished/pushByPushId"
+
+	// 构建表单参数
+	data := url.Values{}
+	data.Set("appId", message.AppID)
+	data.Set("pushIds", message.PushIds)
+	data.Set("messageJson", message.MessageJSON)
+	data.Set("sign", message.Sign)
+
+	// 创建HTTP请求
+	req, err := http.NewRequest("POST", pushURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return "", "", "", fmt.Errorf("创建魅族推送请求失败: %v", err)
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	// 发送请求
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return "", "", "", fmt.Errorf("魅族推送请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// 读取响应
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", "", fmt.Errorf("读取魅族推送响应失败: %v", err)
+	}
+
+	// 解析魅族响应
+	var meizuResp MeizuSendResponse
+	if err := json.Unmarshal(body, &meizuResp); err != nil {
+		return "", "", "", fmt.Errorf("解析魅族推送响应失败: %v, 原始响应: %s", err, string(body))
+	}
+
+	// 检查魅族的响应结果（魅族的成功码是200）
+	if resp.StatusCode != http.StatusOK || meizuResp.Code != "200" {
+		errorMsg := meizuResp.Message
+		if errorMsg == "" {
+			errorMsg = "未知错误"
+		}
+		return meizuResp.Code, errorMsg, "", fmt.Errorf("魅族推送失败: status=%d, code=%s, message=%s, body=%s",
+			resp.StatusCode, meizuResp.Code, errorMsg, string(body))
+	}
+
+	// 成功时返回消息ID
+	msgId := meizuResp.MsgId
+	if msgId == "" {
+		msgId = "unknown"
+	}
+
+	return "200", "", msgId, nil
+}
+
+// mapMeizuError 映射魅族错误到统一错误码
+func (a *AndroidProvider) mapMeizuError(result *models.PushResult, meizuCode string, meizuMsg string) {
+	switch meizuCode {
+	case "200":
+		// 成功，不应该调用此函数
+		result.Success = true
+		return
+	case "1005":
+		// 参数错误
+		result.ErrorCode = "INVALID_PARAMETER"
+		result.ErrorMessage = fmt.Sprintf("魅族推送参数错误: %s", meizuMsg)
+	case "1006":
+		// 签名认证失败
+		result.ErrorCode = "SIGNATURE_ERROR"
+		result.ErrorMessage = fmt.Sprintf("魅族推送签名验证失败: %s", meizuMsg)
+	case "110000":
+		// appId不合法
+		result.ErrorCode = "INVALID_APP_ID"
+		result.ErrorMessage = fmt.Sprintf("魅族应用ID不合法: %s", meizuMsg)
+	case "110001":
+		// appKey不合法
+		result.ErrorCode = "INVALID_APP_KEY"
+		result.ErrorMessage = fmt.Sprintf("魅族应用Key不合法: %s", meizuMsg)
+	case "110002":
+		// pushId未注册
+		result.ErrorCode = "INVALID_TOKEN"
+		result.ErrorMessage = fmt.Sprintf("魅族设备Token未注册: %s", meizuMsg)
+	case "110003":
+		// pushId非法
+		result.ErrorCode = "INVALID_TOKEN"
+		result.ErrorMessage = fmt.Sprintf("魅族设备Token非法: %s", meizuMsg)
+	case "110009":
+		// 应用被加入黑名单
+		result.ErrorCode = "APP_BLACKLISTED"
+		result.ErrorMessage = fmt.Sprintf("魅族应用被加入黑名单: %s", meizuMsg)
+	case "110010":
+		// 推送速率过快
+		result.ErrorCode = "RATE_LIMIT_EXCEEDED"
+		result.ErrorMessage = fmt.Sprintf("魅族推送频率过快: %s", meizuMsg)
+	case "110019":
+		// 超过每天推送次数限制
+		result.ErrorCode = "DAILY_LIMIT_EXCEEDED"
+		result.ErrorMessage = fmt.Sprintf("魅族推送每日次数超限: %s", meizuMsg)
+	case "110053":
+		// 透传超过限制
+		result.ErrorCode = "TRANSPARENT_LIMIT"
+		result.ErrorMessage = fmt.Sprintf("魅族透传消息超过限制: %s", meizuMsg)
+	default:
+		// 未知错误
+		result.ErrorCode = "MEIZU_ERROR_" + meizuCode
+		if meizuMsg != "" {
+			result.ErrorMessage = fmt.Sprintf("魅族推送失败: 错误码=%s, 错误信息=%s", meizuCode, meizuMsg)
+		} else {
+			result.ErrorMessage = fmt.Sprintf("魅族推送失败: 错误码=%s", meizuCode)
+		}
 	}
 }

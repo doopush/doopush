@@ -145,6 +145,10 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
               checkAndSetField('app_key', configData.app_key)
               checkAndSetField('app_secret', configData.app_secret)
               break
+            case 'meizu':
+              checkAndSetField('app_id', configData.app_id)
+              checkAndSetField('app_secret', configData.app_secret)
+              break
           case 'honor':
             checkAndSetField('app_id', configData.app_id)
             checkAndSetField('client_id', configData.client_id)
@@ -219,6 +223,12 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
             configData = {
               app_id: buildFieldValue('app_id', data.app_id || ''),
               app_key: buildFieldValue('app_key', data.app_key || ''),
+              app_secret: buildFieldValue('app_secret', data.app_secret || '')
+            }
+            break
+          case 'meizu':
+            configData = {
+              app_id: buildFieldValue('app_id', data.app_id || ''),
               app_secret: buildFieldValue('app_secret', data.app_secret || '')
             }
             break
@@ -647,6 +657,45 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                     <FormMessage />
                   </FormItem>
                 )}
+                  />
+                </>
+              )}
+
+              {/* Android 魅族配置字段 */}
+              {config.platform === 'android' && config.channel === 'meizu' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="app_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App ID *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_id', '输入魅族 App ID')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_id', '魅族开发者平台的应用ID')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="app_secret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>App Secret *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={getFieldPlaceholder('app_secret', '输入魅族 App Secret')} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {getFieldDescription('app_secret', '魅族开发者平台的应用密钥')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </>
               )}

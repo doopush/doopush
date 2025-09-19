@@ -9,6 +9,7 @@ export const ANDROID_VENDORS = {
   xiaomi: { name: '小米推送', displayName: '小米', fullName: '小米推送 (Mi Push)' },
   oppo: { name: 'OPPO推送', displayName: 'OPPO', fullName: 'OPPO推送 (OPPO Push)' },
   vivo: { name: 'VIVO推送', displayName: 'VIVO', fullName: 'VIVO推送 (VIVO Push)' },
+  meizu: { name: '魅族推送', displayName: '魅族', fullName: '魅族推送 (Flyme Push)' },
   honor: { name: '荣耀推送', displayName: '荣耀', fullName: '荣耀推送 (Honor Push)' },
 } as const
 
@@ -45,6 +46,7 @@ export const ANDROID_VENDOR_ICONS = {
   xiaomi: '📱',
   oppo: '📱',
   vivo: '📱',
+  meizu: '📱',
   honor: '📱',
 } as const
 

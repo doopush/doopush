@@ -198,6 +198,9 @@ dependencies {
 
     // 荣耀推送
     implementation 'com.hihonor.mcs:push:8.0.12.307'
+
+    // 魅族推送
+    implementation 'com.umeng.umsdk:meizu-push:5.0.3'
     
     // 权限请求
     implementation 'com.github.permissions-dispatcher:permissionsdispatcher:4.9.2'

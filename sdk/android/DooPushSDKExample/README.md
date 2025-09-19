@@ -5,8 +5,8 @@
 ## 主要功能
 
 - **SDK状态监控**：实时显示SDK配置状态、注册状态、推送权限
-- **设备管理**：自动获取设备Token、设备信息，支持华为、荣耀、小米、OPPO、VIVO和FCM多厂商推送服务
-- **推送注册**：一键注册推送通知，自动检测最佳推送服务（HMS/HONOR/FCM/MIPUSH/OPPO/VIVO）
+- **设备管理**：自动获取设备Token、设备信息，支持华为、荣耀、小米、OPPO、VIVO、魅族和FCM多厂商推送服务
+- **推送注册**：一键注册推送通知，自动检测最佳推送服务（HMS/HONOR/FCM/MIPUSH/OPPO/VIVO/MEIZU）
 - **通知历史**：接收推送历史记录，支持详情查看和状态跟踪
 - **角标管理**：应用角标数字的设置和清除操作，支持多厂商设备
 - **设置页面**：详细的配置信息展示和服务器连接测试
@@ -118,6 +118,41 @@ cd sdk/android/DooPushSDKExample
 
 **注意：** 客户端SDK只需要`app_id`和`api_key`即可工作。服务端API推送时需要完整的三个参数（`app_id`、`app_key`、`app_secret`）。
 
+#### meizu-services.json 配置
+
+在 `app/` 目录下创建 `meizu-services.json` 文件（魅族推送配置）：
+
+```json
+{
+  "app_id": "your_meizu_app_id",
+  "app_key": "your_meizu_app_key"
+}
+```
+
+**配置说明：**
+- `app_id`: 魅族开发者平台的应用ID
+- `app_key`: 魅族开发者平台的应用Key（客户端SDK使用）
+
+**重要特性：**
+- ✅ **自动配置**: SDK 会自动从 `meizu-services.json` 读取配置
+- ✅ **智能启用**: 在魅族设备上自动启用魅族推送服务
+- ✅ **零代码集成**: 无需在代码中手动配置魅族推送参数
+- ✅ **VIP功能支持**: 支持魅族推送的高级功能（字幕、置顶、分组等）
+- 🔐 **安全设计**: 客户端只需要`app_id`和`app_key`，敏感的`app_secret`仅在服务端使用
+
+**支持设备：**
+- 魅族手机 (Flyme OS)
+
+**VIP功能特色：**
+- **字幕显示**: 支持在通知栏显示副标题
+- **消息置顶**: 支持瞬时置顶和定时置顶功能
+- **独立分组**: 避免消息被自动分组合并
+- **自定义颜色**: 支持标题颜色和背景颜色自定义
+- **自定义图标**: 支持小图标、大图标和背景图片
+- **回执功能**: 支持送达回执和点击回执统计
+
+**注意：** 客户端SDK只需要`app_id`和`app_key`即可工作。服务端API推送时需要完整的三个参数（`app_id`、`app_key`、`app_secret`）。魅族推送支持丰富的VIP功能，可通过DooPush管理后台进行详细配置。
+
 #### mcs-services.json 配置
 
 在 `app/` 目录下创建 `mcs-services.json` 文件（荣耀推送配置）：
@@ -152,7 +187,8 @@ cd sdk/android/DooPushSDKExample
 3. **小米推送配置**: 在 DooPush 平台后台配置小米推送参数（App ID、App Key、App Secret）
 4. **OPPO推送配置**: 在 DooPush 平台后台配置OPPO推送参数（App ID、App Key、App Secret）
 5. **VIVO推送配置**: 在 DooPush 平台后台配置VIVO推送参数（App ID、App Key、App Secret）
-6. **荣耀推送配置**: 在 DooPush 平台后台配置荣耀推送参数（Client ID、Client Secret）
+6. **魅族推送配置**: 在 DooPush 平台后台配置魅族推送参数（App ID、App Key、App Secret）
+7. **荣耀推送配置**: 在 DooPush 平台后台配置荣耀推送参数（Client ID、Client Secret）
 
 ### 3. 依赖配置
 
@@ -224,6 +260,7 @@ DooPushSDKExample/
     ├── xiaomi-services.json           # 小米推送配置文件
     ├── oppo-services.json             # OPPO推送配置文件
     ├── vivo-services.json             # VIVO推送配置文件
+    ├── meizu-services.json            # 魅族推送配置文件
     └── mcs-services.json              # 荣耀推送配置文件
 ```
 
@@ -349,6 +386,13 @@ private fun loadConfigFromAssets() {
 - 需要在 DooPush 平台配置VIVO推送参数
 - iQOO设备统一使用VIVO推送通道
 
+### 魅族设备
+- 自动使用魅族推送服务（Flyme Push）
+- 支持Flyme OS角标显示
+- 需要在 DooPush 平台配置魅族推送参数
+- 支持丰富的VIP功能（字幕、置顶、自定义样式）
+- 支持送达和点击回执统计
+
 ### Google Play 设备
 - 自动使用 FCM 服务
 - 需要 `google-services.json` 配置文件
@@ -360,6 +404,7 @@ private fun loadConfigFromAssets() {
 - ✅ **小米**: MIUI系统桌面支持
 - ✅ **OPPO/一加**: ColorOS支持  
 - ✅ **VIVO**: FunTouchOS/OriginOS支持
+- ✅ **魅族**: Flyme OS支持
 - ⚠️ **其他厂商**: 部分支持
 
 ## 调试技巧
@@ -378,6 +423,9 @@ adb logcat -s OppoService
 # 查看VIVO推送日志
 adb logcat -s VivoService
 
+# 查看魅族推送日志
+adb logcat -s MeizuService
+
 # 查看应用完整日志
 adb logcat | grep DooPushSDKExample
 ```
@@ -391,7 +439,8 @@ adb logcat | grep DooPushSDKExample
 6. **小米推送异常**: 确认小米推送SDK集成和配置参数
 7. **OPPO推送异常**: 确认OPPO开发者平台配置和app_secret正确性
 8. **VIVO推送异常**: 确认VIVO开发者平台配置，客户端需要app_id和api_key
-9. **设备推送服务检测失败**: 检查设备系统版本和推送服务可用性
+9. **魅族推送异常**: 确认魅族开发者平台配置，检查app_id和app_key正确性
+10. **设备推送服务检测失败**: 检查设备系统版本和推送服务可用性
 
 ### 荣耀推送特殊说明
 - **OAuth 2.0认证**: 荣耀推送使用OAuth 2.0 client_credentials流程进行认证
@@ -412,6 +461,15 @@ adb logcat | grep DooPushSDKExample
 - **权限申请**: 应用需要申请推送权限，用户同意后才能正常推送
 - **安全设计**: `app_key`和`app_secret`仅在服务端API调用时使用，客户端不暴露
 - **UPS支持**: 支持统一推送服务（Unified Push Service）标准
+
+### 魅族推送特殊说明
+- **客户端配置**: 客户端SDK只需要`app_id`和`app_key`，服务端API需要完整的三个参数
+- **VIP功能丰富**: 支持字幕显示、消息置顶、独立分组、自定义颜色、自定义图标等高级功能
+- **回执机制**: 支持送达回执和点击回执，便于消息统计分析
+- **消息分类**: 支持通知栏消息和透传消息两种类型
+- **任务推送**: 支持大批量推送的任务模式，提升推送效率
+- **MD5签名**: 使用MD5签名认证机制，确保API调用安全
+- **应用审核**: 确保应用已在魅族开发者平台通过审核才能正常推送
 
 ## SDK集成示例
 

@@ -59,6 +59,7 @@ class DooPushManager private constructor() {
     private var xiaomiService: XiaomiService? = null
     private var oppoService: OppoService? = null
     private var vivoService: VivoService? = null
+    private var meizuService: MeizuService? = null
     private var honorService: HonorService? = null
     private var tcpConnection: DooPushTCPConnection? = null
     private var applicationContext: Context? = null
@@ -124,6 +125,7 @@ class DooPushManager private constructor() {
      * @param xiaomiConfig 小米推送配置 (可选)
      * @param oppoConfig OPPO推送配置 (可选)
      * @param vivoConfig VIVO推送配置 (可选)
+     * @param meizuConfig 魅族推送配置 (可选)
      * @param honorConfig 荣耀推送配置 (可选)
      * @throws DooPushConfigException 配置参数无效时抛出
      */
@@ -137,6 +139,7 @@ class DooPushManager private constructor() {
         xiaomiConfig: DooPushConfig.XiaomiConfig? = null,
         oppoConfig: DooPushConfig.OppoConfig? = null,
         vivoConfig: DooPushConfig.VivoConfig? = null,
+        meizuConfig: DooPushConfig.MeizuConfig? = null,
         honorConfig: DooPushConfig.HonorConfig? = null
     ) {
         try {
@@ -197,6 +200,19 @@ class DooPushManager private constructor() {
                 vivoConfig
             }
             
+            // 智能配置处理：魅族设备自动启用魅族推送
+            val finalMeizuConfig = if (meizuConfig == null) {
+                val vendorInfo = DooPushDeviceVendor.getDeviceVendorInfo()
+                if (vendorInfo.preferredService == DooPushDeviceVendor.PushService.MEIZU) {
+                    Log.d(TAG, "检测到魅族设备，自动启用魅族推送服务")
+                    DooPushConfig.MeizuConfig() // 零配置，自动从 meizu-services.json 读取
+                } else {
+                    null
+                }
+            } else {
+                meizuConfig
+            }
+            
             // 智能配置处理：荣耀设备自动启用荣耀推送
             val finalHonorConfig = if (honorConfig == null) {
                 val vendorInfo = DooPushDeviceVendor.getDeviceVendorInfo()
@@ -211,7 +227,7 @@ class DooPushManager private constructor() {
             }
             
             // 创建配置
-            config = DooPushConfig.create(appId, apiKey, baseURL, finalHmsConfig, finalXiaomiConfig, finalOppoConfig, finalVivoConfig, finalHonorConfig)
+            config = DooPushConfig.create(appId, apiKey, baseURL, finalHmsConfig, finalXiaomiConfig, finalOppoConfig, finalVivoConfig, finalMeizuConfig, finalHonorConfig)
 
             // 初始化各组件
             deviceManager = DooPushDevice(applicationContext!!)
@@ -238,6 +254,12 @@ class DooPushManager private constructor() {
                 VivoPushReceiver.setService(this)
                 // 延迟初始化：在注册或获取Token时再进行
                 Log.d(TAG, "VIVO推送服务实例已创建（延迟初始化）")
+            }
+            meizuService = MeizuService(context.applicationContext).apply {
+                // 让接收器持有服务实例，便于通过接收器回调成功/失败
+                MeizuPushReceiver.setService(this)
+                // 延迟初始化：在注册或获取Token时再进行
+                Log.d(TAG, "魅族推送服务实例已创建（延迟初始化）")
             }
             honorService = HonorService(context.applicationContext).apply {
                 // 让接收器持有服务实例，便于通过接收器回调成功/失败
@@ -424,6 +446,33 @@ class DooPushManager private constructor() {
                         registerWithFCM(callback)
                     }
                 }
+                DooPushDeviceVendor.PushService.MEIZU -> {
+                    if (config?.hasMeizuConfig() == true) {
+                        // 组装设备信息（channel=meizu）
+                        val deviceInfo = deviceManager!!.getCurrentDeviceInfo("meizu")
+                        cachedDeviceInfo = deviceInfo
+                        
+                        meizuService!!.getToken(
+                            object : MeizuService.TokenCallback {
+                                override fun onSuccess(token: String) {
+                                    Log.d(TAG, "魅族推送Token获取成功: ${token.substring(0, 12)}...")
+                                    cachedToken = token
+                                    // 调用设备注册API
+                                    registerDeviceToServer(deviceInfo, token, callback)
+                                }
+                                
+                                override fun onError(error: DooPushError) {
+                                    Log.e(TAG, "魅族推送Token获取失败: ${error.message}")
+                                    isRegistering.set(false)
+                                    callback?.onError(error) ?: this@DooPushManager.callback?.onRegisterError(error)
+                                }
+                            }
+                        )
+                    } else {
+                        Log.w(TAG, "魅族推送未配置，fallback到FCM")
+                        registerWithFCM(callback)
+                    }
+                }
                 DooPushDeviceVendor.PushService.HONOR -> {
                     if (config?.hasHonorConfig() == true) {
                         // 组装设备信息（channel=honor）
@@ -603,8 +652,34 @@ class DooPushManager private constructor() {
     }
 
     /**
+     * 获取魅族推送Token
+     * 
+     * @param callback Token获取回调
+     */
+    fun getMeizuToken(callback: DooPushTokenCallback) {
+        if (!checkInitialized()) {
+            callback.onError(DooPushError.configNotInitialized())
+            return
+        }
+        
+        meizuService!!.getToken(
+            object : MeizuService.TokenCallback {
+                override fun onSuccess(token: String) {
+                    Log.d(TAG, "魅族推送Token获取成功: ${token.substring(0, 12)}...")
+                    callback.onSuccess(token)
+                }
+                
+                override fun onError(error: DooPushError) {
+                    Log.e(TAG, "魅族推送Token获取失败: ${error.message}")
+                    callback.onError(error)
+                }
+            }
+        )
+    }
+
+    /**
      * 获取最适合的推送Token
-     * 根据设备厂商智能选择FCM、HMS、小米、OPPO或VIVO推送
+     * 根据设备厂商智能选择FCM、HMS、小米、OPPO、VIVO或魅族推送
      * 
      * @param callback Token获取回调
      */
@@ -655,6 +730,15 @@ class DooPushManager private constructor() {
                     getFCMToken(callback)
                 }
             }
+            DooPushDeviceVendor.PushService.MEIZU -> {
+                if (config?.hasMeizuConfig() == true) {
+                    Log.d(TAG, "使用魅族推送")
+                    getMeizuToken(callback)
+                } else {
+                    Log.d(TAG, "魅族推送未配置，fallback到FCM")
+                    getFCMToken(callback)
+                }
+            }
             else -> {
                 Log.d(TAG, "使用FCM推送")
                 getFCMToken(callback)
@@ -688,6 +772,13 @@ class DooPushManager private constructor() {
      */
     fun isVivoAvailable(): Boolean {
         return vivoService?.isVivoAvailable() ?: false
+    }
+
+    /**
+     * 检查魅族推送服务是否可用
+     */
+    fun isMeizuAvailable(): Boolean {
+        return meizuService?.isMeizuAvailable() ?: false
     }
     
     /**
