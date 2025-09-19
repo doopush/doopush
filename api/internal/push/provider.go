@@ -118,6 +118,8 @@ func (m *PushManager) createAndroidProvider(app *models.App, channel string) (Pu
 		return m.createFCMProvider(androidConfig)
 	case "huawei":
 		return m.createHuaweiProvider(androidConfig)
+	case "honor":
+		return m.createHonorProvider(androidConfig)
 	case "xiaomi":
 		return m.createXiaomiProvider(androidConfig)
 	case "oppo":
@@ -126,8 +128,6 @@ func (m *PushManager) createAndroidProvider(app *models.App, channel string) (Pu
 		return m.createVivoProvider(androidConfig)
 	case "meizu":
 		return m.createMeizuProvider(androidConfig)
-	case "honor":
-		return m.createHonorProvider(androidConfig)
 	default:
 		return nil, fmt.Errorf("暂不支持的 Android 推送通道: %s", channel)
 	}
@@ -378,6 +378,18 @@ func (m *PushManager) validateAndroidConfig(channel, configJSON string) error {
 		}
 		return nil
 
+	case "honor":
+		if androidConfig.AppID == "" {
+			return fmt.Errorf("荣耀推送配置缺少 app_id")
+		}
+		if androidConfig.ClientID == "" {
+			return fmt.Errorf("荣耀推送配置缺少 client_id")
+		}
+		if androidConfig.ClientSecret == "" {
+			return fmt.Errorf("荣耀推送配置缺少 client_secret")
+		}
+		return nil
+
 	case "xiaomi":
 		if androidConfig.AppID == "" {
 			return fmt.Errorf("小米推送配置缺少 app_id")
@@ -483,6 +495,8 @@ func (m *PushManager) TestConfigWithDevice(appID uint, title, content, platform,
 			provider, err = m.createFCMProvider(androidConfig)
 		case "huawei":
 			provider, err = m.createHuaweiProvider(androidConfig)
+		case "honor":
+			provider, err = m.createHonorProvider(androidConfig)
 		case "xiaomi":
 			provider, err = m.createXiaomiProvider(androidConfig)
 		case "oppo":
@@ -491,8 +505,6 @@ func (m *PushManager) TestConfigWithDevice(appID uint, title, content, platform,
 			provider, err = m.createVivoProvider(androidConfig)
 		case "meizu":
 			provider, err = m.createMeizuProvider(androidConfig)
-		case "honor":
-			provider, err = m.createHonorProvider(androidConfig)
 		default:
 			return &models.PushResult{
 				Success:      false,

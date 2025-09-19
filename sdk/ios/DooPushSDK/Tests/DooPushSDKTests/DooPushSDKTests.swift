@@ -143,14 +143,14 @@ final class DooPushSDKTests: XCTestCase {
         let config = DooPushConfig(
             appId: "123",
             apiKey: "test_key",
-            baseURL: "https://api.doopush.com/v1"
+            baseURL: "https://doopush.com/api/v1"
         )
         
         let deviceURL = config.deviceRegistrationURL()
-        XCTAssertEqual(deviceURL, "https://api.doopush.com/v1/apps/123/devices")
+        XCTAssertEqual(deviceURL, "https://doopush.com/api/v1/apps/123/devices")
         
         let customURL = config.apiURL(for: "custom/endpoint")
-        XCTAssertEqual(customURL, "https://api.doopush.com/v1/custom/endpoint")
+        XCTAssertEqual(customURL, "https://doopush.com/api/v1/custom/endpoint")
     }
     
     // MARK: - 环境检测测试

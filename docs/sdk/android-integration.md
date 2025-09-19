@@ -281,7 +281,7 @@ class MyApplication : Application() {
                 context = this,
                 appId = "your_app_id",           // DooPush 应用ID
                 apiKey = "your_api_key",         // DooPush API Key
-                baseURL = "https://api.doopush.com/api/v1" // 可选，默认为官方服务
+                baseURL = "https://doopush.com/api/v1" // 可选，默认为官方服务
             )
             
             Log.d("DooPush", "SDK 初始化成功")

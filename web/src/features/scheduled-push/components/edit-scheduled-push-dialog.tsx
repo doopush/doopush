@@ -95,7 +95,7 @@ const editScheduledPushSchema = z.object({
       click_type: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional(),
       activity: z.string().optional(),
       url: z.string().url('请输入有效的URL').optional().or(z.literal('')),
-      parameters: z.record(z.unknown()).optional(),
+      parameters: z.record(z.string(), z.unknown()).optional(),
       custom_attribute: z.string().optional(),
       off_line: z.union([z.literal(0), z.literal(1)]).optional(),
       valid_time: z.number().int().min(1).max(72).optional(),
