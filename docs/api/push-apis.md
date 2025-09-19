@@ -88,7 +88,7 @@ https://doopush.com/api/v1
 | `tags` | array | 设备标签筛选（新版本推荐） | 见标签筛选说明 |
 | `group_ids` | array | 分组ID数组（当type为groups时） | `[1, 2]` |
 | `platform` | string | 平台筛选：`ios`, `android` | `"android"` |
-| `channel` | string | 推送通道筛选 | `"fcm"`, `"huawei"`, `"xiaomi"`, `"oppo"`, `"vivo"` |
+| `channel` | string | 推送通道筛选 | `"fcm"`, `"huawei"`, `"xiaomi"`, `"oppo"`, `"vivo"`, `"meizu"` |
 
 #### 标签筛选 (tags)
 
@@ -109,6 +109,7 @@ Android 平台支持多种推送通道，系统会根据设备品牌智能选择
 | `xiaomi` | 小米设备 | 小米推送服务，小米/Redmi设备专用 |
 | `oppo` | OPPO设备 | OPPO推送服务，OPPO/OnePlus设备专用 |
 | `vivo` | VIVO设备 | VIVO推送服务，VIVO/iQOO设备专用 |
+| `meizu` | 魅族设备 | 魅族推送服务，魅族设备专用 |
 
 #### 载荷参数 (payload)
 
@@ -131,6 +132,7 @@ Android 平台支持多种推送通道，系统会根据设备品牌智能选择
 | 小米推送 | `xiaomi` | object | 小米推送参数 | `{"pass_through": 0, "notify_type": 1}` |
 | OPPO推送 | `oppo` | object | OPPO推送参数 | `{"channel_id": "important", "notify_level": 2}` |
 | VIVO推送 | `vivo` | object | VIVO推送参数 | `{"classification": 1, "notify_type": 1}` |
+| 魅族推送 | `meizu` | object | 魅族推送参数 | `{"notice_msg_type": 0, "click_type": 0, "subtitle": "重要通知"}` |
 
 **厂商参数详细说明**：
 
@@ -139,6 +141,7 @@ Android 平台支持多种推送通道，系统会根据设备品牌智能选择
 - **小米推送**：`pass_through`（透传模式）、`notify_type`（通知类型）、`time_to_live`（存活时间）
 - **OPPO推送**：`channel_id`（通道ID）、`category`（消息分类）、`notify_level`（通知级别）
 - **VIVO推送**：`classification`（消息分类）、`notify_type`（通知类型）、`skip_type`（跳转类型）、`time_to_live`（存活时间）
+- **魅族推送**：`notice_msg_type`（消息类型，0通知栏/1透传）、`click_type`（点击行为）、`subtitle`（副标题）、`pull_down_top`（置顶功能）、`callback`（回执地址）
 
 ### 请求示例
 
@@ -231,6 +234,32 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
          "type": "all",
          "platform": "android",
          "channel": "vivo"
+       }
+     }'
+
+# 向所有魅族设备推送（带厂商参数）
+curl -X POST "https://doopush.com/api/v1/apps/123/push" \
+     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "title": "魅族用户专属通知",
+       "content": "魅族设备优化推送，体验更佳消息送达！",
+       "payload": {
+         "action": "open_page",
+         "url": "https://example.com/meizu-special",
+         "meizu": {
+           "notice_msg_type": 0,
+           "notice_bar_type": 0,
+           "click_type": 0,
+           "off_line": 1,
+           "valid_time": 24,
+           "subtitle": "重要通知"
+         }
+       },
+       "target": {
+         "type": "all",
+         "platform": "android",
+         "channel": "meizu"
        }
      }'
 
@@ -490,7 +519,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/batch" \
 |------|------|------|------|
 | `badge` | integer | iOS角标数量 | `1` |
 | `platform` | string | 指定平台：`ios`, `android` | `"ios"` |
-| `channel` | string | 指定推送通道：`fcm`, `huawei`, `xiaomi`, `oppo`, `vivo` | `"huawei"` |
+| `channel` | string | 指定推送通道：`fcm`, `huawei`, `xiaomi`, `oppo`, `vivo`, `meizu` | `"huawei"` |
 | `payload` | object | 自定义载荷 | 见载荷参数说明 |
 
 ### 请求示例

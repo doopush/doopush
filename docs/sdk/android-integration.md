@@ -11,6 +11,7 @@ DooPush Android SDK 为 Android 应用提供统一的推送通知解决方案，
 - ✅ **小米推送** - 小米设备专用通道，MIUI深度优化
 - ✅ **OPPO推送** - OPPO/OnePlus设备专用，ColorOS优化
 - ✅ **VIVO推送** - VIVO/iQOO设备专用，Origin OS优化
+- ✅ **魅族推送** - 魅族设备专用，Flyme OS优化
 
 ### 🧠 智能推送路由
 - **自动厂商识别** - 根据设备品牌自动选择最优推送通道
@@ -85,6 +86,9 @@ dependencies {
     
     // 可选：VIVO推送 （VIVO设备）
     implementation 'com.umeng.umsdk:vivo-push:4.0.6.0'
+    
+    // 可选：魅族推送 （魅族设备）
+    implementation 'com.umeng.umsdk:meizu-push:4.4.0'
 }
 ```
 
@@ -130,6 +134,7 @@ dependencies {
 <uses-permission android:name="com.oppo.launcher.permission.READ_SETTINGS" />
 <uses-permission android:name="com.oppo.launcher.permission.WRITE_SETTINGS" />
 <uses-permission android:name="com.vivo.notification.permission.BADGE_ICON" />
+<uses-permission android:name="com.meizu.flyme.permission.PUSH" />
 
 <!-- 自启动权限（部分厂商需要） -->
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -236,6 +241,24 @@ plugins {
 - 客户端 SDK 只需要 `app_id` 和 `api_key` 两个参数
 - `app_secret` 仅在服务端推送时使用，确保客户端安全
 - 需要在 VIVO 开发者平台申请推送权限并通过审核
+
+#### 魅族推送配置
+
+1. 在 [魅族开放平台](https://open.flyme.cn) 创建应用
+2. 获取 AppID、AppKey 和 AppSecret
+3. 创建 `assets/meizu-services.json` 文件：
+
+```json
+{
+    "app_id": "your_meizu_app_id",
+    "app_key": "your_meizu_app_key"
+}
+```
+
+**说明**：
+- 客户端 SDK 只需要 `app_id` 和 `app_key` 两个参数
+- `app_secret` 仅在服务端推送时使用，确保客户端安全
+- 需要在魅族开放平台申请推送权限并通过审核
 
 ### 4. SDK初始化
 
@@ -398,6 +421,7 @@ val hmsAvailable = dooPushManager.isHMSAvailable()
 val xiaomiAvailable = dooPushManager.isXiaomiAvailable()
 val oppoAvailable = dooPushManager.isOppoAvailable()
 val vivoAvailable = dooPushManager.isVivoAvailable()
+val meizuAvailable = dooPushManager.isMeizuAvailable()
 
 Log.d("DooPush", """
     推送服务可用性:
@@ -406,6 +430,7 @@ Log.d("DooPush", """
     小米: $xiaomiAvailable
     OPPO: $oppoAvailable
     VIVO: $vivoAvailable
+    魅族: $meizuAvailable
 """.trimIndent())
 
 // 获取支持的推送服务列表
@@ -504,6 +529,7 @@ A:
 - ✅ **小米推送**: 完全支持，小米设备自动识别
 - ✅ **OPPO推送**: 完全支持，OPPO设备自动识别
 - ✅ **VIVO推送**: 完全支持，VIVO设备自动识别
+- ✅ **魅族推送**: 完全支持，魅族设备自动识别
 
 #### Q: VIVO设备无法接收推送？
 A: 
@@ -511,6 +537,18 @@ A:
 2. 在 VIVO 开发者平台申请推送权限并通过审核
 3. 检查应用包名和签名是否与 VIVO 后台配置一致
 4. 确认 `app_id` 和 `api_key` 配置正确
+
+#### Q: 魅族设备推送支持情况？
+A: 
+✅ **魅族推送已完全支持！** 魅族设备会自动使用魅族推送服务，提供针对Flyme OS的专门优化。
+
+#### Q: 魅族设备无法接收推送？
+A: 
+1. 确保已添加魅族推送依赖和 `meizu-services.json` 配置文件
+2. 在魅族开放平台申请推送权限并通过审核
+3. 检查应用包名和签名是否与魅族后台配置一致
+4. 确认 `app_id` 和 `app_key` 配置正确
+5. 验证是否为真正的魅族设备（非刷机或第三方ROM）
 
 #### Q: 荣耀设备推送支持情况？
 A: 
@@ -546,10 +584,11 @@ A:
 adb logcat -s DooPushManager
 
 # 查看所有推送相关日志
-adb logcat | grep -i "push\|doopush\|fcm\|hms\|honor\|oppo\|vivo"
+adb logcat | grep -i "push\|doopush\|fcm\|hms\|honor\|oppo\|vivo\|meizu"
 
 # 查看特定厂商推送日志
 adb logcat -s VivoService      # VIVO推送日志
+adb logcat -s MeizuService     # 魅族推送日志
 adb logcat -s HonorService     # 荣耀推送日志
 adb logcat -s HMSService       # 华为推送日志
 ```

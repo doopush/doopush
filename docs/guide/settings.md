@@ -77,17 +77,18 @@ MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQg...
 
 Android 平台支持多个推送通道，包括 FCM 和各厂商通道。
 
-::: info 📱 Android SDK 状态
-Android SDK 正在开发中，配置功能将在 SDK 完成后开放。
+::: tip 📱 Android SDK 状态
+Android SDK 已完成开发，支持全部厂商推送通道，可正常配置和使用。
 :::
 
-**规划支持的通道**：
+**支持的推送通道**：
 - **FCM** - Firebase Cloud Messaging
 - **华为** - HMS Push Kit
 - **荣耀** - 荣耀推送
 - **小米** - 小米推送
 - **OPPO** - ColorOS 推送
 - **VIVO** - vivo 推送
+- **魅族** - Flyme 推送
 
 ### 配置管理
 

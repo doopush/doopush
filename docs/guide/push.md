@@ -83,6 +83,7 @@ token1,token2,token3
   - 小米推送（小米/红米设备）
   - OPPO推送（OPPO/OnePlus设备）
   - VIVO推送（VIVO/iQOO设备）
+  - 魅族推送（魅族设备）
 
 #### 👥 分组推送 (Groups)
 向特定设备分组发送推送通知。
@@ -164,6 +165,17 @@ token1,token2,token3
 - `skip_type` - 跳转类型（1应用内/2网页/3指定页面/4Intent）
 - `time_to_live` - 消息存活时间（秒）
 
+**魅族推送参数**：
+- `notice_msg_type` - 消息类型（0通知栏/1透传）
+- `notice_bar_type` - 通知样式（0文字/2大图）
+- `notice_expand_type` - 展开样式（0标准/1大文字/2大图）
+- `click_type` - 点击行为（0应用内/1网页/2指定页面）
+- `off_line` - 离线推送（0否/1是）
+- `valid_time` - 有效期（小时，1-72）
+- `subtitle` - 副标题
+- `pull_down_top` - 瞬时置顶（0否/1是）
+- `callback` - 回执地址
+
 **厂商参数示例**：
 ```json
 {
@@ -184,6 +196,14 @@ token1,token2,token3
     "notify_type": 1,
     "skip_type": 1,
     "time_to_live": 3600
+  },
+  "meizu": {
+    "notice_msg_type": 0,
+    "notice_bar_type": 0,
+    "click_type": 0,
+    "off_line": 1,
+    "valid_time": 24,
+    "subtitle": "重要通知"
   }
 }
 ```
@@ -315,6 +335,7 @@ token1,token2,token3
   - **小米推送** - 小米设备专用推送
   - **OPPO推送** - OPPO设备专用推送
   - **VIVO推送** - VIVO设备专用推送
+  - **魅族推送** - 魅族设备专用推送
 
 **搜索功能**：
 - 支持按推送标题搜索
@@ -367,7 +388,7 @@ token1,token2,token3
 
 **平台对比**：
 - iOS vs Android 推送效果对比
-- Android 不同厂商推送效果对比（FCM、HMS、荣耀、小米、OPPO、VIVO）
+- Android 不同厂商推送效果对比（FCM、HMS、荣耀、小米、OPPO、VIVO、魅族）
 - 不同平台的用户行为差异分析
 
 ### 效果优化建议
