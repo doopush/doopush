@@ -44,6 +44,7 @@ type AndroidConfig struct {
 	AppSecret    string `json:"app_secret,omitempty"`    // 应用 Secret（华为/小米/OPPO/VIVO等）
 	ClientID     string `json:"client_id,omitempty"`     // 客户端 ID（荣耀等）
 	ClientSecret string `json:"client_secret,omitempty"` // 客户端 Secret（荣耀等）
+	CallBack     string `json:"call_back_url,omitempty"` // 消息回执
 }
 
 // AndroidProviderConfig Android 推送提供者配置
@@ -58,6 +59,7 @@ type AndroidProviderConfig struct {
 	AppSecret    string
 	ClientID     string
 	ClientSecret string
+	CallBack     string `json:"callBack,omitempty"`
 }
 
 // NewAndroidProvider 创建Android推送提供者
@@ -91,6 +93,7 @@ func NewAndroidProviderWithConfig(channel string, config AndroidConfig) *Android
 			AppSecret:         config.AppSecret,
 			ClientID:          config.ClientID,
 			ClientSecret:      config.ClientSecret,
+			CallBack:          config.CallBack,
 		},
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -383,6 +386,7 @@ type OppoNotification struct {
 	ChannelID        string `json:"channel_id,omitempty"`        // 指定下发的通道ID
 	Category         string `json:"category,omitempty"`          // 通道类别名
 	NotifyLevel      int    `json:"notify_level,omitempty"`      // 通知栏消息提醒等级
+	CallBackUrl      string `json:"call_back_url,omitempty"`     // 回调地址
 }
 
 // OppoAuthRequest OPPO认证请求结构
@@ -441,6 +445,8 @@ type VivoMessage struct {
 	Classification  int               `json:"classification"`            // 消息分类: 0=运营消息, 1=系统消息
 	RequestID       string            `json:"requestId"`                 // 请求ID，用于去重
 	ClientCustomMap map[string]string `json:"clientCustomMap,omitempty"` // 自定义透传参数
+	Extra           map[string]string `json:"extra,omitempty"`           //消息回执
+	ForegroundShow  bool              `json:"foregroundShow"`            // 是否前台展示
 }
 
 // MeizuMessage 魅族推送消息结构
@@ -1125,6 +1131,7 @@ func (a *AndroidProvider) buildHuaweiMessage(device *models.Device, pushLog *mod
 		TTL:      "86400s",
 		Category: category,         // 华为自定义分类，避免频控
 		Data:     string(dataJSON), // 在Android配置中也设置数据，确保数据传递
+		BiTag:    fmt.Sprintf("%d", pushLog.ID),
 		Notification: &HuaweiAndroidNotification{
 			Title:        pushLog.Title,
 			Body:         pushLog.Content,
@@ -1146,6 +1153,7 @@ func (a *AndroidProvider) buildHuaweiMessage(device *models.Device, pushLog *mod
 				}
 				return nil // 角标<0时不设置
 			}(),
+			ForegroundShow: false, // 是否在前台显示通知
 		},
 	}
 
@@ -1552,6 +1560,7 @@ func (a *AndroidProvider) buildHonorMessage(device *models.Device, pushLog *mode
 		TTL:            ttl,
 		Data:           string(dataJSON),
 		TargetUserType: targetUserType,
+		BiTag:          fmt.Sprintf("%d", pushLog.ID),
 		Notification: &HonorAndroidNotification{
 			Title:      pushLog.Title,
 			Body:       pushLog.Content,
@@ -1592,6 +1601,7 @@ func (a *AndroidProvider) buildOppoMessage(device *models.Device, pushLog *model
 	channelID := ""     // 通道ID
 	offLine := true     // 默认启用离线消息
 	offLineTTL := 86400 // 默认离线消息存活24小时
+	callBackUrl := a.config.CallBack
 
 	// 构建自定义数据用于action_parameters
 	customData := make(map[string]interface{})
@@ -1655,6 +1665,7 @@ func (a *AndroidProvider) buildOppoMessage(device *models.Device, pushLog *model
 		ChannelID:        channelID,
 		Category:         category,
 		NotifyLevel:      notifyLevel,
+		CallBackUrl:      callBackUrl,
 	}
 
 	// 构建OPPO推送消息
@@ -1677,7 +1688,9 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 	skipContent := ""   // 跳转内容
 	networkType := -1   // 网络类型，默认为-1（不限制）
 	classification := 0 // 消息分类，默认为0（运营消息）
-
+	extra := make(map[string]string)
+	extra["callback.id"] = a.config.CallBack
+	extra["callback.param"] = "vivo"
 	// 构建自定义数据
 	customData := make(map[string]string)
 	customData["badge"] = fmt.Sprintf("%d", pushLog.Badge)
@@ -1744,6 +1757,8 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 		Classification:  classification,
 		RequestID:       fmt.Sprintf("dp_%d_%d", pushLog.ID, time.Now().Unix()), // 使用推送日志ID和时间戳作为请求ID
 		ClientCustomMap: customData,
+		Extra:           extra,
+		ForegroundShow:  false,
 	}
 
 	return message
@@ -1940,6 +1955,10 @@ func (a *AndroidProvider) buildMeizuMessage(device *models.Device, pushLog *mode
 				}
 
 				// 解析回执信息
+				if messageBody.Extra == nil {
+					messageBody.Extra = &MeizuExtra{}
+				}
+				messageBody.Extra.Callback = a.config.CallBack
 				if callback, ok := meizuData["callback"].(string); ok {
 					if messageBody.Extra == nil {
 						messageBody.Extra = &MeizuExtra{}
@@ -2040,6 +2059,8 @@ func (a *AndroidProvider) buildXiaomiMessage(device *models.Device, pushLog *mod
 		extraMap["dedup_key"] = pushLog.DedupKey
 	}
 	extraMap["dp_source"] = "doopush"
+	extraMap["callback"] = a.config.CallBack
+	extraMap["notify_foreground"] = 0
 
 	// 解析并合并自定义数据到extra字段
 	if pushLog.Payload != "" && pushLog.Payload != "{}" {
