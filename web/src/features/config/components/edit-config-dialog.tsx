@@ -48,6 +48,8 @@ const editConfigSchema = z.object({
   app_secret: z.string().optional(),    // 华为/小米/OPPO/VIVO
   client_id: z.string().optional(),     // 荣耀
   client_secret: z.string().optional(), // 荣耀
+  // 通用消息回执字段
+  call_back_url: z.string().optional(), // 推送消息回执
 })
 
 type EditConfigFormData = z.infer<typeof editConfigSchema>
@@ -79,6 +81,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
       app_secret: '',
       client_id: '',
       client_secret: '',
+      call_back_url: '',
     },
   })
 
@@ -102,6 +105,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
           app_secret: '',
           client_id: '',
           client_secret: '',
+          call_back_url: '',
         })
         
         // 检查隐藏字段的函数
@@ -155,6 +159,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
             checkAndSetField('client_secret', configData.client_secret)
             break
           }
+          checkAndSetField('call_back_url', configData.call_back_url)
         }
         
         setHiddenFields(newHiddenFields)
@@ -240,6 +245,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
             }
             break
         }
+        configData.call_back_url = buildFieldValue('call_back_url', data.call_back_url || '')
       }
       
       const configJson = JSON.stringify(configData)
@@ -450,7 +456,22 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                       </FormItem>
                     )}
                   />
-
+                  <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>消息回执</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入推送消息回执（可选）" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          推送状态回调地址，用于接收推送结果通知
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </>
               )}
 
@@ -490,6 +511,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                       </FormItem>
                     )}
                   />
+                  
                 </>
               )}
 
@@ -541,6 +563,22 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                         </FormControl>
                         <FormDescription>
                           {getFieldDescription('app_secret', '小米开发者联盟的应用密钥')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>消息回执</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入推送消息回执（可选）" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          推送状态回调地址，用于接收推送结果通知
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -602,6 +640,22 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>消息回执</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入推送消息回执（可选）" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          推送状态回调地址，用于接收推送结果通知
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </>
               )}
 
@@ -653,10 +707,26 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                         </FormControl>
                         <FormDescription>
                           {getFieldDescription('app_secret', `${config.channel.toUpperCase()}开发者平台的应用密钥`)}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>消息回执id</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入推送消息回执id(可选)" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          推送状态回调地址id, 用于接收推送结果通知
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </>
               )}
@@ -697,6 +767,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                       </FormItem>
                     )}
                   />
+                  
                 </>
               )}
 
@@ -753,6 +824,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                   </FormItem>
                 )}
               />
+
             </>
           )}
             </form>
