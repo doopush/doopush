@@ -12,6 +12,10 @@ type APIResponse struct {
 	Message string      `json:"message" example:"成功"`
 	Data    interface{} `json:"data,omitempty"`
 }
+type CAPIResponse struct {
+	Code    string `json:"code" example:"0"`
+	Message string `json:"message" example:"成功"`
+}
 
 // Success 成功响应
 func Success(c *gin.Context, data interface{}) {
@@ -19,6 +23,14 @@ func Success(c *gin.Context, data interface{}) {
 		Code:    200,
 		Message: "成功",
 		Data:    data,
+	})
+}
+
+// Success 成功响应
+func Csuccess(c *gin.Context, code string) {
+	c.JSON(http.StatusOK, CAPIResponse{
+		Code:    code,
+		Message: "success",
 	})
 }
 
