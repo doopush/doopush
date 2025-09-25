@@ -437,6 +437,8 @@ type VivoMessage struct {
 	RegID           string            `json:"regId"`                     // 目标设备注册ID
 	Title           string            `json:"title"`                     // 通知标题
 	Content         string            `json:"content"`                   // 通知内容
+	PushMode        int               `json:"pushMode,omitempty"`        //0：正式推送；1：测试推送；不填默认为0
+	AddBadge        bool              `json:"addBadge"`                  // 是否增加角标
 	NotifyType      int               `json:"notifyType"`                // 通知类型: 1=通知栏, 2=透传
 	TimeToLive      int               `json:"timeToLive"`                // 离线保存时长(秒)
 	SkipType        int               `json:"skipType"`                  // 跳转类型: 1=打开应用, 2=打开URL, 3=自定义
@@ -1694,6 +1696,7 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 	// 构建自定义数据
 	customData := make(map[string]string)
 	customData["badge"] = fmt.Sprintf("%d", pushLog.Badge)
+
 	customData["push_log_id"] = fmt.Sprintf("%d", pushLog.ID)
 	if pushLog.DedupKey != "" {
 		customData["dedup_key"] = pushLog.DedupKey
@@ -1751,6 +1754,8 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 		Content:         pushLog.Content,
 		NotifyType:      notifyType,
 		TimeToLive:      timeToLive,
+		AddBadge:        false,
+		PushMode:        0,
 		SkipType:        skipType,
 		SkipContent:     skipContent,
 		NetworkType:     networkType,
@@ -2256,27 +2261,27 @@ func (a *AndroidProvider) sendVivoMessage(message *VivoMessage, device *models.D
 		return "", "", "", fmt.Errorf("获取VIVO认证token失败: %v", err)
 	}
 
-	// 构建请求参数
-	requestData := make(map[string]interface{})
-	// 将VivoMessage的字段直接作为请求参数
-	requestData["regId"] = message.RegID
-	requestData["title"] = message.Title
-	requestData["content"] = message.Content
-	requestData["notifyType"] = message.NotifyType
-	requestData["timeToLive"] = message.TimeToLive
-	requestData["skipType"] = message.SkipType
-	if message.SkipContent != "" {
-		requestData["skipContent"] = message.SkipContent
-	}
-	requestData["networkType"] = message.NetworkType
-	requestData["classification"] = message.Classification
-	requestData["requestId"] = message.RequestID
-	if len(message.ClientCustomMap) > 0 {
-		requestData["clientCustomMap"] = message.ClientCustomMap
-	}
+	// // 构建请求参数
+	// requestData := make(map[string]interface{})
+	// // 将VivoMessage的字段直接作为请求参数
+	// requestData["regId"] = message.RegID
+	// requestData["title"] = message.Title
+	// requestData["content"] = message.Content
+	// requestData["notifyType"] = message.NotifyType
+	// requestData["timeToLive"] = message.TimeToLive
+	// requestData["skipType"] = message.SkipType
+	// if message.SkipContent != "" {
+	// 	requestData["skipContent"] = message.SkipContent
+	// }
+	// requestData["networkType"] = message.NetworkType
+	// requestData["classification"] = message.Classification
+	// requestData["requestId"] = message.RequestID
+	// if len(message.ClientCustomMap) > 0 {
+	// 	requestData["clientCustomMap"] = message.ClientCustomMap
+	// }
 
 	// 序列化请求数据为JSON
-	requestJSON, err := json.Marshal(requestData)
+	requestJSON, err := json.Marshal(message)
 	if err != nil {
 		return "", "", "", fmt.Errorf("序列化VIVO推送请求失败: %v", err)
 	}

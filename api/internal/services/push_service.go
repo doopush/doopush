@@ -82,6 +82,10 @@ func (s *PushService) SendPush(appID uint, userID uint, req PushRequest) ([]mode
 	// 创建推送日志
 	var pushLogs []models.PushLog
 	for _, device := range devices {
+		// 设备在线时不发送通知栏消息
+		if device.IsOnline {
+			continue
+		}
 		// 生成去重键
 		dedupKey := utils.HashString(fmt.Sprintf("%d_%s_%s_%d",
 			appID, req.Title, req.Content, device.ID))
