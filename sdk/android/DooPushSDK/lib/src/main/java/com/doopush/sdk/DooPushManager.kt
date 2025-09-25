@@ -1156,8 +1156,8 @@ class DooPushManager private constructor() {
                 Log.e(TAG, "Context为空，无法设置角标")
                 return false
             }
-            
             BadgeManager.setBadgeCount(context, count)
+
         } catch (e: Exception) {
             Log.e(TAG, "设置角标数量失败", e)
             false

@@ -26,6 +26,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import com.doopush.sdk.R
 import com.doopush.sdk.utils.DeviceBrand
 
 /**
@@ -65,14 +66,14 @@ object BadgeManager {
      * @param count 角标数量，0表示清除角标
      * @return 是否设置成功
      */
-    fun setBadgeCount(context: Context, count: Int, resId: Int, title: String, content: String): Boolean {
+    fun setBadgeCount(context: Context, count: Int): Boolean {
         Log.d(TAG, "设置角标数量: $count")
         
         return try {
             when {
                 isHuaweiLauncher() -> setHuaweiBadge(context, count)
                 isHonorLauncher() -> setHonorBadge(context, count)
-                isXiaomiLauncher() -> setXiaomiBadge(context, count, resId, title, content)
+                isXiaomiLauncher() -> setXiaomiBadge(context, count)
                 isOppoLauncher() -> setOppoBadge(context, count)
                 isVivoLauncher() -> setVivoBadge(context, count)
                 isMeiZuLauncher() -> setMeiZuBadge(context, count)
@@ -193,7 +194,7 @@ object BadgeManager {
     /**
      * 设置小米角标
      */
-    private fun setXiaomiBadge(context: Context, count: Int, resId: Int, title: String, content: String): Boolean {
+    private fun setXiaomiBadge(context: Context, count: Int): Boolean {
         return try {
             Log.d(TAG, "小米设备设置角标: $count")
 
@@ -204,13 +205,13 @@ object BadgeManager {
                 val mNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
                 // 通知在Android8.0之后需要创建通道，才能弹出来
-                val channel = NotificationChannel("doopush", title, NotificationManager.IMPORTANCE_HIGH)
+                val channel = NotificationChannel("doopush", "", NotificationManager.IMPORTANCE_HIGH)
                 mNotificationManager.createNotificationChannel(channel)
 
                 val notification = Notification.Builder(context, "doopush")
-                    .setSmallIcon(resId)
-                    .setContentTitle(title)
-                    .setContentText(content)
+                    .setSmallIcon(R.drawable.ic_transparent)
+                    .setContentTitle("")
+                    .setContentText("")
                     .setNumber(count)
                     .build()
 
@@ -220,13 +221,13 @@ object BadgeManager {
                 val mNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
                 // 通知在Android8.0之后需要创建通道，才能弹出来
-                val channel = NotificationChannel("doopush", title, NotificationManager.IMPORTANCE_HIGH)
+                val channel = NotificationChannel("doopush", "", NotificationManager.IMPORTANCE_HIGH)
                 mNotificationManager.createNotificationChannel(channel)
 
                 val notification = Notification.Builder(context, "doopush")
-                    .setSmallIcon(resId)
-                    .setContentTitle(title)
-                    .setContentText(content)
+                    .setSmallIcon(R.drawable.ic_transparent)
+                    .setContentTitle("")
+                    .setContentText("")
                     .build()
                 val field = notification.javaClass.getDeclaredField("extraNotification")
                 val extraNotification = field.get(notification)
@@ -477,6 +478,6 @@ object BadgeManager {
      * 清除角标
      */
     fun clearBadge(context: Context): Boolean {
-        return setBadgeCount(context, 0,0,"","")
+        return setBadgeCount(context, 0)
     }
 }
