@@ -1507,7 +1507,7 @@ func (a *AndroidProvider) buildHonorMessage(device *models.Device, pushLog *mode
 	// 解析荣耀特有参数
 	importance := "NORMAL" // 默认为服务通讯类消息
 	ttl := "86400s"        // 默认消息存活时间1天
-	targetUserType := 0    // 默认为正式消息
+	targetUserType := 0    // 默认为0正式消息,1测试消息
 
 	// 从pushLog.Payload中解析荣耀特有参数
 	if pushLog.Payload != "" && pushLog.Payload != "{}" {
@@ -1755,7 +1755,7 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 		NotifyType:      notifyType,
 		TimeToLive:      timeToLive,
 		AddBadge:        false,
-		PushMode:        0,
+		PushMode:        0, //0：正式推送；1：测试推送；不填默认为0
 		SkipType:        skipType,
 		SkipContent:     skipContent,
 		NetworkType:     networkType,
