@@ -824,7 +824,22 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                   </FormItem>
                 )}
               />
-
+              <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>应用入口Activity类全路径</FormLabel>
+                        <FormControl>
+                          <Input placeholder="应用入口Activity类全路径(设置角标必填)" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          设置应用角标数字,应用入口Activity类全路径必填
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
             </>
           )}
             </form>

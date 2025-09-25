@@ -1575,8 +1575,8 @@ func (a *AndroidProvider) buildHonorMessage(device *models.Device, pushLog *mode
 			Badge: func() *HonorBadgeNotification {
 				if pushLog.Badge >= 0 {
 					return &HonorBadgeNotification{
-						SetNum:     pushLog.Badge, // 设置角标数量
-						BadgeClass: "",            // 应用入口Activity类，留空使用默认
+						SetNum:     pushLog.Badge,     // 设置角标数量
+						BadgeClass: a.config.CallBack, // 应用入口Activity类，留空使用默认
 					}
 				}
 				return nil // 角标<0时不设置
@@ -2194,6 +2194,7 @@ func (a *AndroidProvider) sendOppoMessage(message *OppoMessage, device *models.D
 
 	// 序列化消息为JSON
 	messageJSON, err := json.Marshal(message)
+
 	if err != nil {
 		return "", "", "", fmt.Errorf("序列化OPPO推送消息失败: %v", err)
 	}
@@ -2282,6 +2283,7 @@ func (a *AndroidProvider) sendVivoMessage(message *VivoMessage, device *models.D
 
 	// 序列化请求数据为JSON
 	requestJSON, err := json.Marshal(message)
+
 	if err != nil {
 		return "", "", "", fmt.Errorf("序列化VIVO推送请求失败: %v", err)
 	}
