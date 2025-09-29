@@ -205,10 +205,10 @@ object BadgeManager {
                 val mNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
                 // 通知在Android8.0之后需要创建通道，才能弹出来
-                val channel = NotificationChannel("doopush", "", NotificationManager.IMPORTANCE_HIGH)
+                val channel = NotificationChannel("doopush_channel", "doopush", NotificationManager.IMPORTANCE_HIGH)
                 mNotificationManager.createNotificationChannel(channel)
 
-                val notification = Notification.Builder(context, "doopush")
+                val notification = Notification.Builder(context, "doopush_channel")
                     .setSmallIcon(R.drawable.ic_transparent)
                     .setContentTitle("")
                     .setContentText("")
@@ -216,6 +216,7 @@ object BadgeManager {
                     .build()
 
                 mNotificationManager.notify(0, notification)
+                Log.i(TAG, "设置小米角标----->1")
             } else {
                 // 获取通知管理类
                 val mNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -234,6 +235,7 @@ object BadgeManager {
                 val method = extraNotification.javaClass.getDeclaredMethod("setMessageCount", Int::class.java)
                 method.invoke(extraNotification, count)
                 // 告诉系统要出现哪个通知
+                Log.i(TAG, "设置小米角标----->2")
                 mNotificationManager.notify(0, notification)
             }
             true
@@ -404,7 +406,7 @@ object BadgeManager {
                 client = context.contentResolver.acquireUnstableContentProviderClient(uri)
                 if (client != null) {
                     val result = client.call("change_badge", null, extra)?.getInt("result")
-                    // 处理结果
+                    Log.e(TAG, "设置魅族角标成功---->"+result)
                 } else {
                     return false
                 }
@@ -424,7 +426,7 @@ object BadgeManager {
             // 方法2: 华为推送服务器已经处理了角标，这里只是确保兼容性
             true
         } catch (e: Exception) {
-            Log.e(TAG, "设置荣耀角标失败", e)
+            Log.e(TAG, "设置魅族角标失败", e)
             false
         }
     }
