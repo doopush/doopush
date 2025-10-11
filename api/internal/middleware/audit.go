@@ -96,6 +96,20 @@ func logAuditAction(auditService *services.AuditService, c *gin.Context, request
 			appID = &appIDValue
 		}
 	}
+	if appID == nil {
+		if f := c.PostForm("appId"); f != "" {
+			if id, err := strconv.ParseUint(f, 10, 64); err == nil && id > 0 {
+				v := uint(id)
+				appID = &v
+			}
+		}
+		if q := c.Query("appId"); q != "" {
+			if id, err := strconv.ParseUint(q, 10, 64); err == nil && id > 0 {
+				v := uint(id)
+				appID = &v
+			}
+		}
+	}
 
 	// 解析操作类型和资源
 	action, resource, resourceID := parseActionFromRequest(c)

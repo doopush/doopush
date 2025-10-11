@@ -73,22 +73,23 @@ dependencies {
     implementation 'com.google.firebase:firebase-messaging-ktx'
     
     // 可选：华为 HMS Push （华为设备）
-    implementation 'com.huawei.hms:push:6.11.0.300'
+    implementation 'com.huawei.hms:push'
     
     // 可选：荣耀推送 （荣耀设备）
-    implementation 'com.hihonor.mcs:push:8.0.12.307'
+    implementation 'com.hihonor.mcs:push'
     
     // 可选：小米推送 （小米设备）
-    implementation 'com.umeng.umsdk:xiaomi-push:6.0.1'
+    implementation 'com.umeng.umsdk:xiaomi-push'
     
     // 可选：OPPO推送 （OPPO设备）
-    implementation 'com.umeng.umsdk:oppo-push:3.5.3'
+    implementation 'com.umeng.umsdk:oppo-push'
     
     // 可选：VIVO推送 （VIVO设备）
-    implementation 'com.umeng.umsdk:vivo-push:4.0.6.0'
+    implementation 'com.umeng.umsdk:vivo-push'
     
     // 可选：魅族推送 （魅族设备）
-    implementation 'com.umeng.umsdk:meizu-push:4.4.0'
+    implementation 'com.umeng.umsdk:meizu-push'
+    
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 }
