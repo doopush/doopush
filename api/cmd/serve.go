@@ -78,6 +78,7 @@ func startServer() {
 	auditCtrl := controllers.NewAuditController()
 	uploadCtrl := controllers.NewUploadController()
 	exportCtrl := controllers.NewExportController()
+	callbackCtrl := controllers.NewCallbackController()
 
 	// 基础路由 (无需认证)
 	r.GET("/health", healthCtrl.Check)
@@ -190,6 +191,18 @@ func startServer() {
 
 		// 导出文件下载 (无需认证)
 		api.GET("/export/download/:token", exportCtrl.DownloadFile)
+
+		// 消息回执接口 (无需认证，供各厂商推送服务回调使用)
+		receipt := api.Group("/apps/callback")
+		{
+			receipt.POST("/huawei", callbackCtrl.ReceiveHuaweiCallback)
+			receipt.POST("/honor", callbackCtrl.ReceiveHonorCallback)
+			receipt.POST("/oppo", callbackCtrl.ReceiveOppoCallback)
+			receipt.POST("/vivo", callbackCtrl.ReceiveVivoCallback)
+			receipt.POST("/xiaomi", callbackCtrl.ReceiveXiaomiCallback)
+			receipt.POST("/meizu", callbackCtrl.ReceiveMeizuCallback)
+			receipt.POST("", callbackCtrl.ReceiveGenericCallback) // 通用回执接口
+		}
 
 		// API Key认证的路由 (供客户端SDK使用)
 		apiKeyRoutes := api.Group("")

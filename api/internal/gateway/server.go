@@ -12,6 +12,7 @@ import (
 
 	"github.com/doopush/doopush/api/internal/config"
 	"github.com/doopush/doopush/api/internal/database"
+	"github.com/doopush/doopush/api/internal/services"
 	"github.com/panjf2000/gnet/v2"
 	"github.com/redis/go-redis/v9"
 )
@@ -84,6 +85,12 @@ func NewGatewayServer() (*GatewayServer, error) {
 
 // Start 启动网关服务器
 func (s *GatewayServer) Start() error {
+	// 启动时将所有设备设为离线状态
+	if err := s.setAllDevicesOffline(); err != nil {
+		log.Printf("设置设备离线状态失败: %v", err)
+		// 不阻断启动流程，仅记录错误
+	}
+
 	// 启动监控服务器
 	go s.startMetricsServer()
 
@@ -218,6 +225,12 @@ func loadGatewayConfig() (*GatewayConfig, error) {
 	}
 
 	return cfg, nil
+}
+
+// setAllDevicesOffline 将所有设备设为离线状态
+func (s *GatewayServer) setAllDevicesOffline() error {
+	deviceService := services.NewDeviceService()
+	return deviceService.SetAllDevicesOffline()
 }
 
 // GetPort 获取端口

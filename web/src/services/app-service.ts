@@ -105,13 +105,14 @@ export class AppService {
   /**
    * 上传图标
    */
-  static async uploadIcon(file: File): Promise<{
+  static async uploadIcon(file: File, appId: number = -1): Promise<{
     filename: string
     url: string
     size: number
   }> {
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('appId', appId.toString())
     
     return apiClient.post('/upload/image?type=app_icon', formData, {
       headers: {
@@ -123,8 +124,8 @@ export class AppService {
   /**
    * 删除上传的文件
    */
-  static async deleteUploadedFile(url: string): Promise<void> {
-    return apiClient.delete(`/upload/delete?url=${encodeURIComponent(url)}`)
+  static async deleteUploadedFile(url: string, appId: number = -1): Promise<void> {
+    return apiClient.delete(`/upload/delete?url=${encodeURIComponent(url)}&appId=${appId}`)
   }
 
   /**

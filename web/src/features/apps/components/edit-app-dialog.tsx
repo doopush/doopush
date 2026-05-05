@@ -122,14 +122,14 @@ export function EditAppDialog({ app, open, onOpenChange, onSuccess }: EditAppDia
           // 如果有原图标，先删除
           if (app.app_icon) {
             try {
-              await AppService.deleteUploadedFile(app.app_icon)
+              await AppService.deleteUploadedFile(app.app_icon,app.id)
             } catch (error) {
               console.warn('删除原图标失败:', error)
             }
           }
           
           // 上传新图标
-          const uploadResult = await AppService.uploadIcon(data.icon_files[0])
+          const uploadResult = await AppService.uploadIcon(data.icon_files[0],app.id)
           appIcon = uploadResult.url
         } catch (error) {
           toast.error('图标上传失败: ' + ((error as Error).message || ''))

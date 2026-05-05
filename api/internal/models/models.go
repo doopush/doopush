@@ -22,6 +22,17 @@ func AllModels() []interface{} {
 		&PushResult{},
 		&PushQueue{},
 
+		// 回执相关
+		&HuaweiCallback{},
+		&HonorCallback{},
+		&OppoCallback{},
+		&VivoCallback{},
+		&XiaomiCallback{},
+		&MeizuCallback{},
+		&ApnsCallback{},
+		&FcmCallback{},
+		&CallbackStatistics{},
+
 		// 模板和标签
 		&MessageTemplate{},
 		&DeviceTag{},

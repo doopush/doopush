@@ -55,6 +55,8 @@ const createConfigSchema = z.object({
   app_secret: z.string().optional(),    // 华为/小米/OPPO/VIVO
   client_id: z.string().optional(),     // 荣耀
   client_secret: z.string().optional(), // 荣耀
+  // 通用消息回执字段
+  call_back_url: z.string().optional(), // 推送消息回执
 }).refine((data) => {
   // 根据平台和通道验证必填字段
   if (data.platform === 'ios' && data.channel === 'apns') {
@@ -112,6 +114,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
       app_secret: '',
       client_id: '',
       client_secret: '',
+      call_back_url: '',
     },
   })
 
@@ -133,6 +136,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
         app_secret: '',
         client_id: '',
         client_secret: '',
+        call_back_url: '',
       })
     }
   }, [open, defaultPlatform, form, currentApp?.package_name])
@@ -160,46 +164,53 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
           team_id: data.team_id,
           bundle_id: data.bundle_id,
           private_key: data.private_key,
-          production: data.production || false
+          production: data.production || false,
+          call_back_url: data.call_back_url
         }
       } else if (data.platform === 'android') {
         switch (data.channel) {
           case 'fcm':
             configData = {
-              service_account_key: data.service_account_key
+              service_account_key: data.service_account_key,
+              call_back_url: data.call_back_url
             }
             break
           case 'huawei':
             configData = {
               app_id: data.app_id,
-              app_secret: data.app_secret
+              app_secret: data.app_secret,
+              call_back_url: data.call_back_url
             }
             break
           case 'xiaomi':
             configData = {
               app_id: data.app_id,
               app_key: data.app_key,
-              app_secret: data.app_secret
+              app_secret: data.app_secret,
+              call_back_url: data.call_back_url
             }
             break
           case 'oppo':
             configData = {
               app_id: data.app_id,
               app_key: data.app_key,
-              app_secret: data.app_secret
+              app_secret: data.app_secret,
+              call_back_url: data.call_back_url
             }
             break
           case 'vivo':
             configData = {
               app_id: data.app_id,
               app_key: data.app_key,
-              app_secret: data.app_secret
+              app_secret: data.app_secret,
+              call_back_url: data.call_back_url
             }
             break
           case 'meizu':
             configData = {
               app_id: data.app_id,
-              app_secret: data.app_secret
+              app_secret: data.app_secret,
+              call_back_url: data.call_back_url
             }
             break
           case 'honor':
@@ -207,6 +218,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
               app_id: data.app_id,
               client_id: data.client_id,
               client_secret: data.client_secret,
+              call_back_url: data.call_back_url
             }
             break
         }
@@ -428,6 +440,23 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>消息回执</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入推送消息回执（可选）" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          推送状态回调地址，用于接收推送结果通知
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </>
               )}
 
@@ -448,6 +477,23 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                         </FormControl>
                         <FormDescription>
                           从 Firebase 控制台 → 项目设置 → 服务账号 → 生成新的私钥，获取的完整 JSON 文件内容
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>消息回执</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入推送消息回执（可选）" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          推送状态回调地址，用于接收推送结果通知
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -491,6 +537,8 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       </FormItem>
                     )}
                   />
+
+                  
                 </>
               )}
 
@@ -533,6 +581,23 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                         <FormControl>
                           <Input placeholder="输入小米 App Secret" {...field} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>消息回执</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入推送消息回执（可选）" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          推送状态回调地址，用于接收推送结果通知
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -583,6 +648,23 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>消息回执</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入推送消息回执（可选）" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          推送状态回调地址，用于接收推送结果通知
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </>
               )}
 
@@ -629,6 +711,23 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>消息回执id</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入推送消息回执id(可选)" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          推送状态回调地址id, 用于接收推送结果通知
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </>
               )}
 
@@ -662,6 +761,22 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                         </FormControl>
                         <FormDescription>
                           魅族开发者平台的应用密钥
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>消息回执</FormLabel>
+                        <FormControl>
+                          <Input placeholder="输入推送消息回执（可选）" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          推送状态回调地址，用于接收推送结果通知
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -713,7 +828,22 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       </FormItem>
                     )}
                   />
-
+                  <FormField
+                    control={form.control}
+                    name="call_back_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>应用入口Activity类全路径</FormLabel>
+                        <FormControl>
+                          <Input placeholder="应用入口Activity类全路径(设置角标必填)" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          设置应用角标数字,应用入口Activity类全路径必填
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </>
               )}
             </form>

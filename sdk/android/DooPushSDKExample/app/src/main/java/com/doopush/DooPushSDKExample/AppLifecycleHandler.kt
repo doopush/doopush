@@ -53,6 +53,7 @@ class AppLifecycleHandler : Application.ActivityLifecycleCallbacks {
         // 最后一个Activity暂停时，通知SDK应用进入后台
         if (activityCount == 0) {
             DooPushManager.getInstance().applicationWillResignActive()
+            DooPushManager.getInstance().applicationWillTerminate()
         }
     }
     

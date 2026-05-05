@@ -73,22 +73,25 @@ dependencies {
     implementation 'com.google.firebase:firebase-messaging-ktx'
     
     // 可选：华为 HMS Push （华为设备）
-    implementation 'com.huawei.hms:push:6.11.0.300'
+    implementation 'com.huawei.hms:push'
     
     // 可选：荣耀推送 （荣耀设备）
-    implementation 'com.hihonor.mcs:push:8.0.12.307'
+    implementation 'com.hihonor.mcs:push'
     
     // 可选：小米推送 （小米设备）
-    implementation 'com.umeng.umsdk:xiaomi-push:6.0.1'
+    implementation 'com.umeng.umsdk:xiaomi-push'
     
     // 可选：OPPO推送 （OPPO设备）
-    implementation 'com.umeng.umsdk:oppo-push:3.5.3'
+    implementation 'com.umeng.umsdk:oppo-push'
     
     // 可选：VIVO推送 （VIVO设备）
-    implementation 'com.umeng.umsdk:vivo-push:4.0.6.0'
+    implementation 'com.umeng.umsdk:vivo-push'
     
     // 可选：魅族推送 （魅族设备）
-    implementation 'com.umeng.umsdk:meizu-push:4.4.0'
+    implementation 'com.umeng.umsdk:meizu-push'
+    
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 }
 ```
 
@@ -151,7 +154,7 @@ dependencies {
 ```kotlin
 // 项目级 build.gradle
 plugins {
-    id 'com.google.gms.google-services' version '4.3.15' apply false
+    id 'com.google.gms.google-services' version '4.4.0' apply false
 }
 
 // app 级 build.gradle
@@ -462,6 +465,8 @@ class MyApplication : Application() {
             override fun onActivityPaused(activity: Activity) {
                 // 应用进入后台
                 DooPushManager.getInstance().applicationWillResignActive()
+                // 断开TCP连接
+                DooPushManager.getInstance().applicationWillTerminate()
             }
             
             // 其他生命周期方法...
@@ -498,11 +503,21 @@ Log.d("DooPush", "设备信息:\n$deviceDebugInfo")
 
 ### 常见问题
 
+#### Q: demo无法编译报错?
+A: 
+1. 将org.jetbrains.kotlin.android更改为1.9.21及以上
+```
+plugins {
+    id 'org.jetbrains.kotlin.android' version '1.9.23' apply false
+}
+```
+
 #### Q: 华为设备无法接收推送？
 A: 
 1. 确保已添加 HMS Push 依赖和 `agconnect-services.json` 配置文件
 2. 在华为开发者后台启用推送服务
 3. 检查应用是否在华为应用市场上架或已添加测试白名单
+4. 检查SHA256证书/公钥指纹是否正确
 
 #### Q: 小米设备推送不稳定？
 A: 
@@ -576,6 +591,15 @@ A:
 1. 确保已添加角标相关权限
 2. 在设备设置中开启应用角标功能
 3. 注意部分第三方桌面可能不支持角标
+4. oppo不支持第三方角标设置
+
+#### Q: 通知栏不显示消息？
+A: 
+需要代码调用通知权限授权
+    
+#### Q: FCM获取TOKEN失败？
+A: 
+设备需要登录谷歌账号
 
 #### Q: 如何调试推送问题？
 A: 

@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: Number(env.WEB_PORT),
       host: '0.0.0.0',
-      allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0', '.coss.im'],
+      allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0', '.coder.dootask.com'],
       proxy: {
         '/api': {
           target: `http://localhost:${env.API_PORT}`,

@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.doopush.DooPushSDKExample.databinding.ActivityMainBinding
 import com.doopush.sdk.*
@@ -39,12 +40,13 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         var apiKey: String = ""
         var baseUrl: String = ""
         var debugEnabled: Boolean = true
-        
+        const val REQUEST_CODE_NOTIFICATION = 1001
+        const val REQUEST_CODE_BADGE = 1002
     }
     
     private lateinit var binding: ActivityMainBinding
     private val dooPushManager = DooPushManager.getInstance()
-    
+
     // 权限请求launcher
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -52,12 +54,13 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         if (isGranted) {
             Log.d(TAG, "通知权限已授予")
             updateUI()
+
         } else {
             Log.w(TAG, "通知权限被拒绝")
             showPermissionDialog()
         }
     }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -374,19 +377,46 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         val intent = Intent(this, SettingsActivity::class.java)
         startActivity(intent)
     }
-    
+
+    private fun areNotificationsEnabled(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            NotificationManagerCompat.from(this).areNotificationsEnabled()
+        } else {
+            true // Android N以下默认启用
+        }
+    }
     /**
      * 检查通知权限
      */
     private fun checkNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                Log.d(TAG, "通知权限未授予，请求权限")
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+//            if (ContextCompat.checkSelfPermission(
+//                    this,
+//                    Manifest.permission.POST_NOTIFICATIONS
+//                ) != PackageManager.PERMISSION_GRANTED
+//            ) {
+//                Log.d(TAG, "通知权限未授予，请求权限")
+//                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+//            }
+//        }
+        when {
+            // Android 13+ 需要运行时权限
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
+                if (ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    Log.d(TAG, "Android 13+ 通知权限未授予，请求权限")
+                    notificationPermissionLauncher?.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+            // Android 9-12 检查通知是否被禁用
+            else -> {
+                if (!areNotificationsEnabled()) {
+                    Log.d(TAG, "通知被禁用，引导用户到设置页面")
+                    showPermissionDialog()
+                }
             }
         }
     }

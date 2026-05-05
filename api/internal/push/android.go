@@ -44,6 +44,7 @@ type AndroidConfig struct {
 	AppSecret    string `json:"app_secret,omitempty"`    // 应用 Secret（华为/小米/OPPO/VIVO等）
 	ClientID     string `json:"client_id,omitempty"`     // 客户端 ID（荣耀等）
 	ClientSecret string `json:"client_secret,omitempty"` // 客户端 Secret（荣耀等）
+	CallBack     string `json:"call_back_url,omitempty"` // 消息回执
 }
 
 // AndroidProviderConfig Android 推送提供者配置
@@ -58,6 +59,7 @@ type AndroidProviderConfig struct {
 	AppSecret    string
 	ClientID     string
 	ClientSecret string
+	CallBack     string `json:"callBack,omitempty"`
 }
 
 // NewAndroidProvider 创建Android推送提供者
@@ -91,6 +93,7 @@ func NewAndroidProviderWithConfig(channel string, config AndroidConfig) *Android
 			AppSecret:         config.AppSecret,
 			ClientID:          config.ClientID,
 			ClientSecret:      config.ClientSecret,
+			CallBack:          config.CallBack,
 		},
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -383,6 +386,7 @@ type OppoNotification struct {
 	ChannelID        string `json:"channel_id,omitempty"`        // 指定下发的通道ID
 	Category         string `json:"category,omitempty"`          // 通道类别名
 	NotifyLevel      int    `json:"notify_level,omitempty"`      // 通知栏消息提醒等级
+	CallBackUrl      string `json:"call_back_url,omitempty"`     // 回调地址
 }
 
 // OppoAuthRequest OPPO认证请求结构
@@ -433,6 +437,8 @@ type VivoMessage struct {
 	RegID           string            `json:"regId"`                     // 目标设备注册ID
 	Title           string            `json:"title"`                     // 通知标题
 	Content         string            `json:"content"`                   // 通知内容
+	PushMode        int               `json:"pushMode,omitempty"`        //0：正式推送；1：测试推送；不填默认为0
+	AddBadge        bool              `json:"addBadge"`                  // 是否增加角标
 	NotifyType      int               `json:"notifyType"`                // 通知类型: 1=通知栏, 2=透传
 	TimeToLive      int               `json:"timeToLive"`                // 离线保存时长(秒)
 	SkipType        int               `json:"skipType"`                  // 跳转类型: 1=打开应用, 2=打开URL, 3=自定义
@@ -441,6 +447,8 @@ type VivoMessage struct {
 	Classification  int               `json:"classification"`            // 消息分类: 0=运营消息, 1=系统消息
 	RequestID       string            `json:"requestId"`                 // 请求ID，用于去重
 	ClientCustomMap map[string]string `json:"clientCustomMap,omitempty"` // 自定义透传参数
+	Extra           map[string]string `json:"extra,omitempty"`           //消息回执
+	ForegroundShow  bool              `json:"foregroundShow"`            // 是否前台展示
 }
 
 // MeizuMessage 魅族推送消息结构
@@ -1125,6 +1133,7 @@ func (a *AndroidProvider) buildHuaweiMessage(device *models.Device, pushLog *mod
 		TTL:      "86400s",
 		Category: category,         // 华为自定义分类，避免频控
 		Data:     string(dataJSON), // 在Android配置中也设置数据，确保数据传递
+		BiTag:    fmt.Sprintf("%d", pushLog.ID),
 		Notification: &HuaweiAndroidNotification{
 			Title:        pushLog.Title,
 			Body:         pushLog.Content,
@@ -1146,6 +1155,7 @@ func (a *AndroidProvider) buildHuaweiMessage(device *models.Device, pushLog *mod
 				}
 				return nil // 角标<0时不设置
 			}(),
+			ForegroundShow: false, // 是否在前台显示通知
 		},
 	}
 
@@ -1497,7 +1507,7 @@ func (a *AndroidProvider) buildHonorMessage(device *models.Device, pushLog *mode
 	// 解析荣耀特有参数
 	importance := "NORMAL" // 默认为服务通讯类消息
 	ttl := "86400s"        // 默认消息存活时间1天
-	targetUserType := 0    // 默认为正式消息
+	targetUserType := 0    // 默认为0正式消息,1测试消息
 
 	// 从pushLog.Payload中解析荣耀特有参数
 	if pushLog.Payload != "" && pushLog.Payload != "{}" {
@@ -1552,6 +1562,7 @@ func (a *AndroidProvider) buildHonorMessage(device *models.Device, pushLog *mode
 		TTL:            ttl,
 		Data:           string(dataJSON),
 		TargetUserType: targetUserType,
+		BiTag:          fmt.Sprintf("%d", pushLog.ID),
 		Notification: &HonorAndroidNotification{
 			Title:      pushLog.Title,
 			Body:       pushLog.Content,
@@ -1564,8 +1575,8 @@ func (a *AndroidProvider) buildHonorMessage(device *models.Device, pushLog *mode
 			Badge: func() *HonorBadgeNotification {
 				if pushLog.Badge >= 0 {
 					return &HonorBadgeNotification{
-						SetNum:     pushLog.Badge, // 设置角标数量
-						BadgeClass: "",            // 应用入口Activity类，留空使用默认
+						SetNum:     pushLog.Badge,     // 设置角标数量
+						BadgeClass: a.config.CallBack, // 应用入口Activity类，留空使用默认
 					}
 				}
 				return nil // 角标<0时不设置
@@ -1592,6 +1603,7 @@ func (a *AndroidProvider) buildOppoMessage(device *models.Device, pushLog *model
 	channelID := ""     // 通道ID
 	offLine := true     // 默认启用离线消息
 	offLineTTL := 86400 // 默认离线消息存活24小时
+	callBackUrl := a.config.CallBack
 
 	// 构建自定义数据用于action_parameters
 	customData := make(map[string]interface{})
@@ -1655,6 +1667,7 @@ func (a *AndroidProvider) buildOppoMessage(device *models.Device, pushLog *model
 		ChannelID:        channelID,
 		Category:         category,
 		NotifyLevel:      notifyLevel,
+		CallBackUrl:      callBackUrl,
 	}
 
 	// 构建OPPO推送消息
@@ -1677,10 +1690,13 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 	skipContent := ""   // 跳转内容
 	networkType := -1   // 网络类型，默认为-1（不限制）
 	classification := 0 // 消息分类，默认为0（运营消息）
-
+	extra := make(map[string]string)
+	extra["callback.id"] = a.config.CallBack
+	extra["callback.param"] = "vivo"
 	// 构建自定义数据
 	customData := make(map[string]string)
 	customData["badge"] = fmt.Sprintf("%d", pushLog.Badge)
+
 	customData["push_log_id"] = fmt.Sprintf("%d", pushLog.ID)
 	if pushLog.DedupKey != "" {
 		customData["dedup_key"] = pushLog.DedupKey
@@ -1738,12 +1754,16 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 		Content:         pushLog.Content,
 		NotifyType:      notifyType,
 		TimeToLive:      timeToLive,
+		AddBadge:        false,
+		PushMode:        0, //0：正式推送；1：测试推送；不填默认为0
 		SkipType:        skipType,
 		SkipContent:     skipContent,
 		NetworkType:     networkType,
 		Classification:  classification,
 		RequestID:       fmt.Sprintf("dp_%d_%d", pushLog.ID, time.Now().Unix()), // 使用推送日志ID和时间戳作为请求ID
 		ClientCustomMap: customData,
+		Extra:           extra,
+		ForegroundShow:  false,
 	}
 
 	return message
@@ -1940,6 +1960,10 @@ func (a *AndroidProvider) buildMeizuMessage(device *models.Device, pushLog *mode
 				}
 
 				// 解析回执信息
+				if messageBody.Extra == nil {
+					messageBody.Extra = &MeizuExtra{}
+				}
+				messageBody.Extra.Callback = a.config.CallBack
 				if callback, ok := meizuData["callback"].(string); ok {
 					if messageBody.Extra == nil {
 						messageBody.Extra = &MeizuExtra{}
@@ -2040,6 +2064,8 @@ func (a *AndroidProvider) buildXiaomiMessage(device *models.Device, pushLog *mod
 		extraMap["dedup_key"] = pushLog.DedupKey
 	}
 	extraMap["dp_source"] = "doopush"
+	extraMap["callback"] = a.config.CallBack
+	extraMap["notify_foreground"] = 0
 
 	// 解析并合并自定义数据到extra字段
 	if pushLog.Payload != "" && pushLog.Payload != "{}" {
@@ -2168,6 +2194,7 @@ func (a *AndroidProvider) sendOppoMessage(message *OppoMessage, device *models.D
 
 	// 序列化消息为JSON
 	messageJSON, err := json.Marshal(message)
+
 	if err != nil {
 		return "", "", "", fmt.Errorf("序列化OPPO推送消息失败: %v", err)
 	}
@@ -2235,27 +2262,28 @@ func (a *AndroidProvider) sendVivoMessage(message *VivoMessage, device *models.D
 		return "", "", "", fmt.Errorf("获取VIVO认证token失败: %v", err)
 	}
 
-	// 构建请求参数
-	requestData := make(map[string]interface{})
-	// 将VivoMessage的字段直接作为请求参数
-	requestData["regId"] = message.RegID
-	requestData["title"] = message.Title
-	requestData["content"] = message.Content
-	requestData["notifyType"] = message.NotifyType
-	requestData["timeToLive"] = message.TimeToLive
-	requestData["skipType"] = message.SkipType
-	if message.SkipContent != "" {
-		requestData["skipContent"] = message.SkipContent
-	}
-	requestData["networkType"] = message.NetworkType
-	requestData["classification"] = message.Classification
-	requestData["requestId"] = message.RequestID
-	if len(message.ClientCustomMap) > 0 {
-		requestData["clientCustomMap"] = message.ClientCustomMap
-	}
+	// // 构建请求参数
+	// requestData := make(map[string]interface{})
+	// // 将VivoMessage的字段直接作为请求参数
+	// requestData["regId"] = message.RegID
+	// requestData["title"] = message.Title
+	// requestData["content"] = message.Content
+	// requestData["notifyType"] = message.NotifyType
+	// requestData["timeToLive"] = message.TimeToLive
+	// requestData["skipType"] = message.SkipType
+	// if message.SkipContent != "" {
+	// 	requestData["skipContent"] = message.SkipContent
+	// }
+	// requestData["networkType"] = message.NetworkType
+	// requestData["classification"] = message.Classification
+	// requestData["requestId"] = message.RequestID
+	// if len(message.ClientCustomMap) > 0 {
+	// 	requestData["clientCustomMap"] = message.ClientCustomMap
+	// }
 
 	// 序列化请求数据为JSON
-	requestJSON, err := json.Marshal(requestData)
+	requestJSON, err := json.Marshal(message)
+
 	if err != nil {
 		return "", "", "", fmt.Errorf("序列化VIVO推送请求失败: %v", err)
 	}
