@@ -4,9 +4,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
-	"github.com/doopush/doopush/api/internal/config"
 	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/response"
 	"github.com/doopush/doopush/api/pkg/utils"
@@ -47,29 +45,16 @@ type DeviceListResponse struct {
 	Size    int           `json:"size" example:"20"`
 }
 
-// GatewayConfig Gateway配置信息
-type GatewayConfig struct {
-	Host string `json:"host" example:"gateway.doopush.com"`
-	Port int    `json:"port" example:"5003"`
-	SSL  bool   `json:"ssl" example:"false"`
-}
-
-// DeviceRegistrationResponse 设备注册响应（包含Gateway配置）
-type DeviceRegistrationResponse struct {
-	Device  interface{}   `json:"device"`
-	Gateway GatewayConfig `json:"gateway"`
-}
-
 // RegisterDevice 注册设备
 // @Summary 注册设备
-// @Description 注册设备以接收推送通知。需要验证API Key属于指定应用且bundle_id与应用包名匹配。可以在注册时同时设置设备标签。成功注册后返回设备信息和Gateway长连接配置
+// @Description 注册设备以接收推送通知。需要验证API Key属于指定应用且bundle_id与应用包名匹配。可以在注册时同时设置设备标签
 // @Tags 设备管理
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
 // @Param appId path int true "应用ID"
 // @Param request body RegisterDeviceRequest true "设备信息，必须包含bundle_id用于安全验证，可选包含tags数组进行标签绑定"
-// @Success 201 {object} response.APIResponse{data=DeviceRegistrationResponse} "注册成功，包含设备信息和Gateway配置"
+// @Success 201 {object} response.APIResponse "注册成功，返回设备信息"
 // @Failure 400 {object} response.APIResponse "请求参数错误"
 // @Failure 401 {object} response.APIResponse "API密钥无效或与应用不匹配"
 // @Failure 422 {object} response.APIResponse "Bundle ID与应用包名不匹配"
@@ -113,19 +98,10 @@ func (d *DeviceController) RegisterDevice(c *gin.Context) {
 		}
 	}
 
-	// 构建 Gateway 配置
-	gatewayConfig := d.getGatewayConfig(c)
-
-	// 构建包含 Gateway 配置的响应
-	registrationResponse := DeviceRegistrationResponse{
-		Device:  device,
-		Gateway: gatewayConfig,
-	}
-
 	c.JSON(http.StatusCreated, response.APIResponse{
 		Code:    201,
 		Message: "设备注册成功",
-		Data:    registrationResponse,
+		Data:    device,
 	})
 }
 
@@ -346,26 +322,4 @@ func (d *DeviceController) DeleteDevice(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"message": "设备删除成功"})
-}
-
-// getGatewayConfig 获取Gateway配置信息
-func (d *DeviceController) getGatewayConfig(c *gin.Context) GatewayConfig {
-	// 从环境变量获取 Gateway 配置，如果没有配置则使用默认值
-	host := config.GetString("GATEWAY_HOST", "")
-	port := config.GetInt("GATEWAY_PORT", 5003)
-	ssl := config.GetBool("GATEWAY_SSL", false)
-
-	// 如果host为空，则使用请求的host
-	if host == "" {
-		host = c.Request.Host
-		if strings.Contains(host, ":") {
-			host = strings.Split(host, ":")[0]
-		}
-	}
-
-	return GatewayConfig{
-		Host: host,
-		Port: port,
-		SSL:  ssl,
-	}
 }
