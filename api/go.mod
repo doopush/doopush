@@ -3,8 +3,10 @@ module github.com/doopush/doopush/api
 go 1.24.4
 
 require (
+	github.com/alicebob/miniredis/v2 v2.37.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.2.0
+	github.com/redis/go-redis/v9 v9.12.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 	github.com/swaggo/files v1.0.1
@@ -20,7 +22,7 @@ require (
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/redis/go-redis/v9 v9.12.1 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 )
 
 require (
