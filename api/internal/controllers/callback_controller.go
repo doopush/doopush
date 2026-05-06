@@ -102,8 +102,8 @@ func (r *CallbackController) processVendorCallback(c *gin.Context, vendor string
 // @Accept json
 // @Produce json
 // @Param appId path int true "应用ID"
-// @Param Callback body HuaweiCallbackData true "华为回执数据"
-// @Success 200 {object} response.APIResponse{data=CallbackProcessResult}
+// @Param Callback body interface{} true "华为回执数据"
+// @Success 200 {object} response.APIResponse
 // @Failure 400 {object} response.APIResponse
 // @Router /apps/callback/huawei [post]
 func (r *CallbackController) ReceiveHuaweiCallback(c *gin.Context) {
@@ -149,7 +149,7 @@ func (r *CallbackController) ReceiveMeizuCallback(c *gin.Context) {
 // @Param appId path int true "应用ID"
 // @Param vendor query string false "厂商类型" Enums(huawei,honor,oppo,vivo,xiaomi,meizu)
 // @Param Callback body interface{} true "回执数据"
-// @Success 200 {object} response.APIResponse{data=CallbackProcessResult}
+// @Success 200 {object} response.APIResponse
 // @Failure 400 {object} response.APIResponse
 // @Router /apps/callback [post]
 func (r *CallbackController) ReceiveGenericCallback(c *gin.Context) {
