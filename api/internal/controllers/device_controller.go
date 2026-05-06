@@ -155,6 +155,11 @@ func (d *DeviceController) GetDevices(c *gin.Context) {
 		return
 	}
 
+	// 用 Redis 实时覆写 is_online；失败仅记录、不阻断列表
+	if err := services.EnrichOnlineStatus(c.Request.Context(), d.rdb, devices); err != nil {
+		log.Printf("EnrichOnlineStatus failed: %v", err)
+	}
+
 	response.Success(c, utils.NewPaginationResponse(page, pageSize, total, gin.H{
 		"items": devices,
 	}))
@@ -195,6 +200,16 @@ func (d *DeviceController) GetDevice(c *gin.Context) {
 			}
 			return
 		}
+		// Redis 实时覆写
+		if device != nil && d.rdb != nil {
+			key := "device_online:" + device.Token
+			exists, err := d.rdb.Exists(c.Request.Context(), key).Result()
+			if err != nil {
+				log.Printf("Redis Exists failed for device %d: %v", device.ID, err)
+			} else {
+				device.IsOnline = exists == 1
+			}
+		}
 		response.Success(c, device)
 		return
 	}
@@ -208,6 +223,16 @@ func (d *DeviceController) GetDevice(c *gin.Context) {
 			response.NotFound(c, err.Error())
 		}
 		return
+	}
+	// Redis 实时覆写
+	if device != nil && d.rdb != nil {
+		key := "device_online:" + device.Token
+		exists, err := d.rdb.Exists(c.Request.Context(), key).Result()
+		if err != nil {
+			log.Printf("Redis Exists failed for device %d: %v", device.ID, err)
+		} else {
+			device.IsOnline = exists == 1
+		}
 	}
 	response.Success(c, device)
 }
