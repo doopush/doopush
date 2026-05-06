@@ -76,6 +76,7 @@ export interface Device {
   app_version: string
   user_agent: string
   status: number
+  is_online: boolean
   last_seen: string
   created_at: string
   updated_at: string

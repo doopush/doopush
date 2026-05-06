@@ -54,6 +54,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { Pagination } from '@/components/pagination'
 import { ANDROID_VENDOR_KEYS } from '@/lib/constants'
+import { cn } from '@/lib/utils'
 
 export function Devices() {
   const { currentApp } = useAuthStore()
@@ -332,7 +333,7 @@ export function Devices() {
                     <TableHead>用户代理</TableHead>
                     <TableHead>平台</TableHead>
                     <TableHead>状态</TableHead>
-                    <TableHead>最后活跃</TableHead>
+                    <TableHead>最后注册</TableHead>
                     <TableHead className="text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -372,9 +373,18 @@ export function Devices() {
                               {getBrandIcon(device.platform, device.brand)}
                             </div>
                             <div>
-                              <div className="font-medium">{device.model}</div>
+                              <div className="font-medium flex items-center gap-2">
+                                <span
+                                  className={cn(
+                                    "inline-block size-2 rounded-full shrink-0",
+                                    device.is_online ? "bg-emerald-500" : "bg-muted-foreground/40"
+                                  )}
+                                  title={device.is_online ? "在线" : "离线"}
+                                />
+                                <span>{device.model}</span>
+                              </div>
                               <div className="text-sm text-muted-foreground font-mono">
-                                {device.token.length > 20 
+                                {device.token.length > 20
                                   ? `${device.token.slice(0, 20)}...`
                                   : device.token
                                 }
