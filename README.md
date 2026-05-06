@@ -30,6 +30,9 @@ make install
 ```bash
 # 一键启动完整开发环境（包含数据库、后端、前端）
 make dev
+
+# 停止数据库容器（前端 / 后端用 Ctrl+C 收回）
+make dev-down
 ```
 
 ### 手动启动

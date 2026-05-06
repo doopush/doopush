@@ -670,6 +670,66 @@ curl -X GET "https://doopush.com/api/v1/apps/123/push/statistics?start_date=2024
 }
 ```
 
+## 📮 消息回执接口
+
+DooPush 暴露一组无需认证的回执接收路由，由各厂商推送平台主动调用。接收到的回执按 `(应用, 厂商, 日期)` 累加到回执统计表。
+
+### 路由列表
+
+| 厂商 | 路由 | 配置位置 |
+|------|------|----------|
+| OPPO | `POST /api/v1/apps/callback/oppo` | DooPush 配置弹窗「消息回执」字段填本路由 URL |
+| 小米 | `POST /api/v1/apps/callback/xiaomi` | 同上 |
+| 魅族 | `POST /api/v1/apps/callback/meizu` | 同上 |
+| vivo | `POST /api/v1/apps/callback/vivo` | vivo 推送后台注册回执，分配的回执 ID 填到 DooPush 弹窗的「消息回执id」字段 |
+| 华为 | `POST /api/v1/apps/callback/huawei` | 在华为开发者联盟 Push Kit 后台直接配置本路由 URL |
+| 荣耀 | `POST /api/v1/apps/callback/honor` | 在荣耀开发者平台「管理中心 → 推送服务 → 应用回执」配置本路由 URL |
+
+::: tip 💡 配置位置差异
+OPPO / 小米 / 魅族 / vivo 的协议要求每条消息在 payload 中携带回执地址，因此在 DooPush 配置弹窗填写；华为 / 荣耀 在厂商后台一次性注册即可，DooPush 弹窗不显示回执字段。
+:::
+
+::: warning ⚠️ FCM 与 iOS APNs
+**FCM** 的回执通过 `delivery_receipt_requested` + Google Cloud Pub/Sub 订阅传递（不是 webhook URL），DooPush 当前未实现该流程；**iOS APNs** 协议本身不提供 delivery webhook，无法以回执形式获取送达状态。
+:::
+
+### 通用入口
+
+```
+POST /api/v1/apps/callback?vendor={huawei|honor|oppo|vivo|xiaomi|meizu}
+```
+
+`/apps/callback` 是兜底入口，需要通过 `vendor` 查询参数指定厂商。直接使用 `/apps/callback/{vendor}` 即可，无需额外参数。
+
+### 认证
+
+回执接口由厂商推送平台主动调用，**无需 API Key**。请求体格式由各厂商决定，DooPush 按厂商解析。
+
+### 响应
+
+无论解析成功或失败，DooPush 一律返回 `"0"`，符合多数厂商对回调端"成功响应即字符串 0"的约定，避免厂商因业务异常重复重试：
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+0
+```
+
+### 统计累加
+
+回执入库后会按 `(app_id, vendor, date)` 唯一键累加以下字段：
+
+| 字段 | 含义 |
+|------|------|
+| `total_count` | 总回执条数 |
+| `success_count` | 成功送达 |
+| `failure_count` | 失败 |
+| `delivery_count` | 送达事件 |
+| `click_count` | 点击事件 |
+
+具体字段填充由各厂商回执报文格式决定。
+
 ## ❌ 错误响应
 
 ### 通用错误格式

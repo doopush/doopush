@@ -415,6 +415,20 @@ val cleared = dooPushManager.clearBadge()
 Log.d("DooPush", "角标清除${if (cleared) "成功" else "失败"}")
 ```
 
+#### 厂商支持
+
+SDK 内部按机型分派到对应的厂商方案：
+
+| 厂商 | 实现方式 | 备注 |
+|------|----------|------|
+| 华为 | ContentProvider (`com.huawei.android.launcher`) | 需启用桌面角标权限 |
+| 荣耀 | ContentProvider (`com.hihonor.android.launcher`) | 需启用桌面角标权限 |
+| 小米 | NotificationChannel + 通知数 | MIUI < 11 走反射 `setMessageCount` |
+| vivo | ContentProvider (Origin OS) / 广播 (Funtouch OS) | 自动按系统识别 |
+| 魅族 | ContentProvider (`com.meizu.flyme.launcher.app_extras`) | — |
+| OPPO | 广播 `com.oppo.unsettledevent` | 部分 ROM 限制第三方角标，效果以系统为准 |
+| 其他 | 通用广播 `android.intent.action.BADGE_COUNT_UPDATE` | 取决于桌面是否监听 |
+
 ### 推送服务状态检测
 
 ```kotlin
@@ -591,7 +605,7 @@ A:
 1. 确保已添加角标相关权限
 2. 在设备设置中开启应用角标功能
 3. 注意部分第三方桌面可能不支持角标
-4. oppo不支持第三方角标设置
+4. OPPO 部分 ROM 限制第三方应用设置角标，效果以厂商系统为准
 
 #### Q: 通知栏不显示消息？
 A: 
