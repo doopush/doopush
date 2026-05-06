@@ -18,7 +18,12 @@ public final class DooPushWebSocketConnection: NSObject {
     private var session: URLSession!
     private var task: URLSessionWebSocketTask?
     private var pingTimer: DispatchSourceTimer?
-    private var active = false
+    private let stateQueue = DispatchQueue(label: "com.doopush.ws.state")
+    private var _active = false
+    private var active: Bool {
+        get { stateQueue.sync { _active } }
+        set { stateQueue.sync { _active = newValue } }
+    }
     private var reconnectDelay: TimeInterval = 1
     private let maxReconnectDelay: TimeInterval = 15
     private var openSinceMs: TimeInterval = 0  // 用于稳态退避重置
@@ -75,12 +80,16 @@ public final class DooPushWebSocketConnection: NSObject {
 
     private func readLoop(_ t: URLSessionWebSocketTask) {
         t.receive { [weak self] result in
+            guard let self = self else { return }
+            // 仅当本次 receive 的 task 仍是当前 task 时才响应；
+            // 否则说明旧 task 已被 reconnect/disconnect 替换，回调过期
+            guard t === self.task else { return }
             switch result {
             case .failure(let err):
-                self?.handleFailure(err)
+                self.handleFailure(err)
             case .success:
                 // 应用层消息预留，本期忽略
-                self?.readLoop(t)
+                self.readLoop(t)
             }
         }
     }
@@ -102,10 +111,6 @@ public final class DooPushWebSocketConnection: NSObject {
         guard active else { return }
         DispatchQueue.main.async { [weak self] in
             self?.listener?.wsDidFail(error)
-        }
-        // 鉴权失败 (HTTP 4xx) 不重连，由上层重新 register 拿新 token
-        if let resp = task?.response as? HTTPURLResponse, (400..<500).contains(resp.statusCode) {
-            return
         }
         scheduleReconnect()
     }
@@ -141,14 +146,30 @@ extension DooPushWebSocketConnection: URLSessionWebSocketDelegate {
     public func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith code: URLSessionWebSocketTask.CloseCode, reason: Data?) {
         let reasonStr = reason.flatMap { String(data: $0, encoding: .utf8) }
         maybeResetBackoff()
+        let raw = code.rawValue
+        let stillActive = active
         DispatchQueue.main.async { [weak self] in
-            self?.listener?.wsDidClose(code: code.rawValue, reason: reasonStr)
+            self?.listener?.wsDidClose(code: raw, reason: reasonStr)
         }
         // 不重连：4001 被新连挤掉、1000/1001 正常关闭
-        // 重连：1008 (pong 超时) 与其他异常
-        let raw = code.rawValue
-        if active && raw != 4001 && raw != 1000 && raw != 1001 {
+        if stillActive && raw != 4001 && raw != 1000 && raw != 1001 {
             scheduleReconnect()
+        }
+    }
+
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        // 只关心当前 task 的失败
+        guard let wt = task as? URLSessionWebSocketTask, wt === self.task else { return }
+        // 鉴权失败 (HTTP 4xx) 不重连，由上层重新 register 拿新 token
+        if let resp = wt.response as? HTTPURLResponse, (400..<500).contains(resp.statusCode) {
+            DispatchQueue.main.async { [weak self] in
+                self?.listener?.wsDidFail(error ?? NSError(domain: "DooPushWS", code: resp.statusCode, userInfo: [NSLocalizedDescriptionKey: "auth failed: HTTP \(resp.statusCode)"]))
+            }
+            return
+        }
+        // 其他失败：交给 handleFailure 走重连
+        if let error = error {
+            handleFailure(error)
         }
     }
 }
