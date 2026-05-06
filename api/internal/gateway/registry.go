@@ -23,7 +23,7 @@ func (r *registry) register(token string, c closer) {
 	old, ok := r.m[token]
 	r.m[token] = c
 	r.mu.Unlock()
-	if ok && old != nil {
+	if ok {
 		// 异步关闭，避免持锁
 		go old.CloseWith(4001, "replaced by new connection")
 	}
