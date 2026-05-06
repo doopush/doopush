@@ -19,8 +19,6 @@
 git clone https://github.com/doopush/doopush.git
 cd doopush
 
-# 修改.env文件中的GATEWAY_HOST为你的IP地址，例如：GATEWAY_HOST=192.168.1.7
-
 # 安装依赖
 make install
 ```

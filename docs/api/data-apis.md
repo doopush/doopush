@@ -4,14 +4,14 @@
 
 ## 📋 接口概览
 
-| 分类 | 接口 | 描述 | 权限要求 |
-|------|------|------|----------|
-| **推送日志** | [获取推送日志](#获取推送日志) | 查询推送记录列表 | `statistics` |
-| | [获取推送详情](#获取推送详情) | 查询单条推送的详细信息 | `statistics` |
-| **推送统计** | [获取推送统计](#获取推送统计) | 查询推送统计数据 | `statistics` |
-| | [上报推送统计](#上报推送统计) | 客户端上报统计信息 | `statistics` |
-| **审计日志** | [获取审计日志](#获取审计日志) | 查询操作审计记录 | 管理员权限 |
-| | [获取操作统计](#获取操作统计) | 查询操作统计数据 | 管理员权限 |
+| 分类 | 接口 | 描述 | 认证 |
+|------|------|------|------|
+| **推送日志** | [获取推送日志](#获取推送日志) | 查询推送记录列表 | JWT |
+| | [获取推送详情](#获取推送详情) | 查询单条推送的详细信息 | JWT |
+| **推送统计** | [获取推送统计](#获取推送统计) | 查询推送统计数据 | JWT |
+| | [上报推送统计](#上报推送统计) | 客户端上报点击 / 送达事件 | API Key |
+| **审计日志** | [获取审计日志](#获取审计日志) | 查询操作审计记录 | JWT（应用权限） |
+| | [获取操作统计](#获取操作统计) | 查询操作统计数据 | JWT（应用权限） |
 
 ## 🌍 Base URL
 
@@ -21,8 +21,10 @@ https://doopush.com/api/v1
 
 ## 🔑 认证要求
 
-- **推送数据查询**：需要 API Key 具有 **`statistics` 权限**
-- **审计日志查询**：需要 **管理员权限**或对应用的访问权限
+- **管理类查询接口**（推送日志、推送统计、审计日志）：需要登录后获得的 **JWT Token**，使用 `Authorization: Bearer <token>` 头
+- **客户端上报接口**（`POST /push/statistics/report`）：使用 **API Key**（`X-API-Key`）
+
+API Key 不再分级（不存在 `statistics` / `device` 权限粒度），凭一把 Key 即可访问其授权的全部接口。
 
 ## 📊 推送日志
 
@@ -50,37 +52,45 @@ https://doopush.com/api/v1
 
 ```bash
 curl -X GET "https://doopush.com/api/v1/apps/123/push/logs?page=1&page_size=10&status=sent&platform=ios" \
-     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     -H "Authorization: Bearer <jwt_token>"
 ```
 
 #### 响应格式
 
-**成功响应** (200):
+**成功响应** (200)：使用统一分页结构。`data.data.items` 为推送日志列表，每条带聚合后的成功 / 失败 / 待发数；`data.current_page` / `data.total_items` / `data.total_pages` 描述分页。
+
 ```json
 {
   "code": 200,
-  "message": "获取成功",
+  "message": "成功",
   "data": {
-    "push_logs": [
-      {
-        "id": 12345,
-        "title": "新功能上线",
-        "content": "我们推出了令人兴奋的新功能",
-        "status": "sent",
-        "channel": "apns",
-        "platform": "ios",
-        "target_count": 1000,
-        "success_count": 950,
-        "failed_count": 50,
-        "click_count": 200,
-        "open_count": 150,
-        "send_at": "2024-01-01T10:00:00Z",
-        "created_at": "2024-01-01T09:55:00Z"
-      }
-    ],
-    "page": 1,
+    "current_page": 1,
     "page_size": 10,
-    "total": 100
+    "total_items": 100,
+    "total_pages": 10,
+    "data": {
+      "items": [
+        {
+          "id": 12345,
+          "app_id": 123,
+          "device_id": 5001,
+          "title": "新功能上线",
+          "content": "我们推出了令人兴奋的新功能",
+          "channel": "apns",
+          "status": "sent",
+          "badge": 1,
+          "send_at": "2024-01-01T10:00:00Z",
+          "created_at": "2024-01-01T09:55:00Z",
+          "result": { "success": true },
+          "total_devices": 1,
+          "success_count": 1,
+          "failed_count": 0,
+          "pending_count": 0,
+          "target_type": "single",
+          "target_value": 5001
+        }
+      ]
+    }
   }
 }
 ```
@@ -101,50 +111,54 @@ curl -X GET "https://doopush.com/api/v1/apps/123/push/logs?page=1&page_size=10&s
 
 ```bash
 curl -X GET "https://doopush.com/api/v1/apps/123/push/logs/12345" \
-     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     -H "Authorization: Bearer <jwt_token>"
 ```
 
 #### 响应格式
 
-**成功响应** (200):
+**成功响应** (200)：返回单条推送日志（含关联 `device`）、对应的所有 `push_result` 记录、以及聚合 `stats`。
+
 ```json
 {
   "code": 200,
-  "message": "获取成功",
+  "message": "成功",
   "data": {
     "log": {
       "id": 12345,
+      "app_id": 123,
+      "device_id": 67890,
       "title": "新功能上线",
       "content": "我们推出了令人兴奋的新功能",
       "payload": "{\"action\":\"open_page\",\"url\":\"https://example.com\"}",
-      "status": "sent",
       "channel": "apns",
-      "platform": "ios",
-      "target_count": 1000,
-      "success_count": 950,
-      "failed_count": 50,
-      "click_count": 200,
-      "open_count": 150,
+      "status": "sent",
       "badge": 1,
       "send_at": "2024-01-01T10:00:00Z",
-      "created_at": "2024-01-01T09:55:00Z"
+      "created_at": "2024-01-01T09:55:00Z",
+      "device": { "id": 67890, "platform": "ios", "model": "iPhone 14" },
+      "result": {
+        "success": true,
+        "error_code": "",
+        "error_message": "",
+        "response_data": "{\"apns-id\":\"abc-...\"}"
+      }
     },
     "results": [
       {
-        "device_id": 67890,
-        "device_token": "abc123def456...",
-        "status": "sent",
-        "error_message": null,
-        "delivered_at": "2024-01-01T10:00:30Z"
-      },
-      {
-        "device_id": 67891,
-        "device_token": "def456ghi789...",
-        "status": "failed",
-        "error_message": "Invalid device token",
-        "delivered_at": null
+        "id": 1,
+        "push_log_id": 12345,
+        "success": true,
+        "error_code": "",
+        "error_message": "",
+        "response_data": "{\"apns-id\":\"abc-...\"}",
+        "created_at": "2024-01-01T10:00:30Z"
       }
-    ]
+    ],
+    "stats": {
+      "total_devices": 1,
+      "success_count": 1,
+      "failed_count": 0
+    }
   }
 }
 ```
@@ -172,7 +186,7 @@ curl -X GET "https://doopush.com/api/v1/apps/123/push/logs/12345" \
 
 ```bash
 curl -X GET "https://doopush.com/api/v1/apps/123/push/statistics?days=7" \
-     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     -H "Authorization: Bearer <jwt_token>"
 ```
 
 #### 响应格式
@@ -236,24 +250,43 @@ curl -X GET "https://doopush.com/api/v1/apps/123/push/statistics?days=7" \
 **路径参数**：
 - `appId` (integer) - 应用ID
 
-**请求体**：
+**请求体**：单次请求批量上报多个事件，所有事件共用同一个 `device_token`。
+
 ```json
 {
-  "push_log_id": 12345,
   "device_token": "abc123def456...",
-  "event_type": "click",
-  "timestamp": 1704110400
+  "statistics": [
+    {
+      "push_log_id": 12345,
+      "event": "click",
+      "timestamp": 1704110400
+    },
+    {
+      "push_log_id": 12345,
+      "event": "open",
+      "timestamp": 1704110405
+    }
+  ]
 }
 ```
 
-**参数说明**：
+**顶层参数**：
 
 | 参数 | 类型 | 必填 | 描述 | 示例 |
 |------|------|------|------|------|
-| `push_log_id` | integer | 是 | 推送日志ID | `12345` |
-| `device_token` | string | 是 | 设备Token | `"abc123def456..."` |
-| `event_type` | string | 是 | 事件类型：`click`, `open`, `dismiss` | `"click"` |
-| `timestamp` | integer | 是 | 事件发生时间戳 | `1704110400` |
+| `device_token` | string | 是 | 设备 Token | `"abc123def456..."` |
+| `statistics` | array | 是 | 事件数组，至少 1 条 | 见下方 |
+
+**事件对象 (`statistics[]`)**：
+
+| 参数 | 类型 | 必填 | 描述 | 示例 |
+|------|------|------|------|------|
+| `push_log_id` | integer | 否* | 推送日志 ID | `12345` |
+| `dedup_key` | string | 否* | 推送去重键，与 `push_log_id` 二选一 | `"abc-123"` |
+| `event` | string | 是 | 事件类型：`click` 或 `open` | `"click"` |
+| `timestamp` | integer | 是 | 事件发生 Unix 时间戳（秒） | `1704110400` |
+
+*`push_log_id` 与 `dedup_key` 至少提供一个，DooPush 用于定位对应的推送记录。
 
 #### 请求示例
 
@@ -262,26 +295,28 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/statistics/report" \
      -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
      -H "Content-Type: application/json" \
      -d '{
-       "push_log_id": 12345,
        "device_token": "abc123def456ghi789...",
-       "event_type": "click",
-       "timestamp": 1704110400
+       "statistics": [
+         { "push_log_id": 12345, "event": "click", "timestamp": 1704110400 }
+       ]
      }'
 ```
 
 #### 响应格式
 
-**成功响应** (200):
+**成功响应** (200)：`data.count` 为本次成功入库的事件条数。
+
 ```json
 {
   "code": 200,
-  "message": "统计数据上报成功",
+  "message": "成功",
   "data": {
-    "recorded": true,
-    "timestamp": "2024-01-01T10:00:00Z"
+    "message": "统计数据上报成功",
+    "count": 1
   }
 }
 ```
+
 
 ## 📋 审计日志
 
@@ -291,7 +326,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/statistics/report" \
 
 #### 请求信息
 
-**接口地址**：`GET /api/v1/apps/{appId}/audit-logs`
+**接口地址**：`GET /apps/{appId}/audit-logs`
 
 **路径参数**：
 - `appId` (integer) - 应用ID
@@ -314,7 +349,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/statistics/report" \
 
 ```bash
 curl -X GET "https://doopush.com/api/v1/apps/123/audit-logs?action=push&start_time=2024-01-01T00:00:00Z&end_time=2024-01-31T23:59:59Z&page=1&page_size=10" \
-     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     -H "Authorization: Bearer <jwt_token>"
 ```
 
 #### 响应格式
@@ -358,7 +393,7 @@ curl -X GET "https://doopush.com/api/v1/apps/123/audit-logs?action=push&start_ti
 
 #### 请求信息
 
-**接口地址**：`GET /api/v1/apps/{appId}/audit-logs/operation-statistics`
+**接口地址**：`GET /apps/{appId}/audit-logs/operation-statistics`
 
 **路径参数**：
 - `appId` (integer) - 应用ID
@@ -367,63 +402,46 @@ curl -X GET "https://doopush.com/api/v1/apps/123/audit-logs?action=push&start_ti
 
 | 参数 | 类型 | 必填 | 描述 | 示例 |
 |------|------|------|------|------|
-| `days` | integer | 否 | 统计天数，默认30天 | `7` |
+| `days` | integer | 否 | 统计天数，范围 1-365，默认 30 | `7` |
+| `limit` | integer | 否 | 返回统计条目数量上限 | `10` |
 
 #### 请求示例
 
 ```bash
 curl -X GET "https://doopush.com/api/v1/apps/123/audit-logs/operation-statistics?days=7" \
-     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     -H "Authorization: Bearer <jwt_token>"
 ```
 
 #### 响应格式
 
-**成功响应** (200):
+**成功响应** (200)：返回按 `(action, resource)` 聚合的操作计数列表，并带统计周期信息。
+
 ```json
 {
   "code": 200,
-  "message": "获取成功",
+  "message": "成功",
   "data": {
-    "operation_counts": {
-      "create": 150,
-      "update": 80,
-      "delete": 20,
-      "push": 500,
-      "login": 100,
-      "logout": 90
-    },
-    "resource_counts": {
-      "device": 200,
-      "push": 500,
-      "config": 30,
-      "template": 50,
-      "group": 25,
-      "api_key": 15
-    },
-    "daily_stats": [
+    "statistics": [
       {
-        "date": "2024-01-01",
-        "total_operations": 120,
-        "unique_users": 8
+        "action": "push",
+        "resource": "push",
+        "count": 500,
+        "action_label": "推送",
+        "resource_label": "推送"
       },
       {
-        "date": "2024-01-02",
-        "total_operations": 95,
-        "unique_users": 6
+        "action": "create",
+        "resource": "device",
+        "count": 200,
+        "action_label": "创建",
+        "resource_label": "设备"
       }
     ],
-    "top_users": [
-      {
-        "user_id": 123,
-        "user_name": "admin",
-        "operation_count": 200
-      },
-      {
-        "user_id": 124,
-        "user_name": "operator",
-        "operation_count": 150
-      }
-    ]
+    "period": {
+      "days": 7,
+      "app_id": 123,
+      "app_name": null
+    }
   }
 }
 ```
@@ -494,8 +512,8 @@ curl -X GET "https://doopush.com/api/v1/apps/123/audit-logs/operation-statistics
 | 状态码 | 错误码 | 描述 | 解决方案 |
 |--------|--------|------|----------|
 | 400 | 400 | 请求参数错误 | 检查查询参数格式 |
-| 401 | 401 | 未认证 | 检查API Key是否有效 |
-| 403 | 403 | 无权限 | 确认API Key具有statistics权限 |
+| 401 | 401 | 未认证 | 检查 Token / API Key 是否有效 |
+| 403 | 403 | 无权限 | 确认当前用户对该应用有访问权限 |
 | 404 | 404 | 资源不存在 | 检查推送日志ID是否正确 |
 
 ### 错误示例
@@ -504,7 +522,7 @@ curl -X GET "https://doopush.com/api/v1/apps/123/audit-logs/operation-statistics
 ```json
 {
   "code": 403,
-  "message": "API密钥缺少statistics权限",
+  "message": "无权限访问该应用",
   "data": null
 }
 ```
@@ -562,7 +580,7 @@ curl -X GET "https://doopush.com/api/v1/apps/123/audit-logs/operation-statistics
 A: 推送统计数据实时更新，用户行为数据（点击、打开）需要客户端主动上报。
 
 ### Q: 审计日志保存多长时间？
-A: 审计日志默认保存90天，可以通过导出功能备份长期数据。
+A: 审计日志默认保留 365 天（由 `AUDIT_RETENTION_DAYS` 环境变量控制），可通过导出功能备份长期数据。
 
 ### Q: 如何获取特定时间段的数据？
 A: 大部分接口支持时间筛选参数，使用start_time和end_time指定查询范围。

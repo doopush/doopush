@@ -11,13 +11,13 @@ graph TB
         Android[Android 应用]
         Web[Web 应用]
     end
-    
+
     subgraph "DooPush 平台"
         API[API 服务器]
         Console[管理控制台]
-        Gateway[推送网关]
+        Gateway[WebSocket 网关<br/>设备长连接 / 在线状态]
     end
-    
+
     subgraph "推送服务"
         APNs[Apple APNs]
         FCM[Google FCM]
@@ -26,23 +26,25 @@ graph TB
         MIUI[小米推送]
         OPPO[OPPO 推送]
         VIVO[VIVO 推送]
+        Meizu[魅族推送]
     end
-    
+
     iOS --> API
     Android --> API
+    iOS -.WebSocket.-> Gateway
+    Android -.WebSocket.-> Gateway
     Web --> Console
-    
-    API --> Gateway
     Console --> API
-    
-    Gateway --> APNs
-    Gateway --> FCM
-    Gateway --> HMS
-    Gateway --> Honor
-    Gateway --> MIUI
-    Gateway --> OPPO
-    Gateway --> VIVO
-    
+
+    API --> APNs
+    API --> FCM
+    API --> HMS
+    API --> Honor
+    API --> MIUI
+    API --> OPPO
+    API --> VIVO
+    API --> Meizu
+
     APNs --> iOS
     FCM --> Android
     HMS --> Android
@@ -50,6 +52,7 @@ graph TB
     MIUI --> Android
     OPPO --> Android
     VIVO --> Android
+    Meizu --> Android
 ```
 
 ## 推送流程图
@@ -59,22 +62,22 @@ sequenceDiagram
     participant App as 移动应用
     participant SDK as DooPush SDK
     participant API as DooPush API
-    participant Gateway as 推送网关
+    participant Gateway as WebSocket 网关
     participant Provider as 推送服务商
-    
+
     App->>SDK: 初始化 SDK
     SDK->>API: 注册设备
-    API-->>SDK: 返回设备ID
-    
+    API-->>SDK: 返回设备信息
+    SDK->>Gateway: WebSocket 握手鉴权
+    Gateway-->>SDK: 维持长连接（在线状态）
+
     Note over API: 管理员发送推送
-    API->>Gateway: 推送请求
-    Gateway->>Provider: 调用推送服务
-    Provider-->>Gateway: 推送结果
-    Gateway-->>API: 返回结果
-    
+    API->>Provider: 调用厂商推送服务（APNs/FCM/HMS/...）
+    Provider-->>API: 返回 message_id
+
     Provider->>App: 推送通知
     App->>SDK: 接收推送
-    SDK->>API: 上报统计
+    SDK->>API: 上报送达 / 点击统计
 ```
 
 ## 数据层次结构

@@ -19,7 +19,7 @@ https://doopush.com/api/v1
 
 ## 🔑 认证要求
 
-所有推送接口都需要 **API Key 认证**，并且 API Key 必须具有 **`push` 权限**。
+所有推送接口都支持 **API Key** (`X-API-Key`) 或登录后的 **JWT Token** (`Authorization: Bearer`) 认证。当前 API Key 不再分级，凭一把 Key 即可调用全部推送接口。
 
 **认证方式**：
 ```bash
@@ -53,7 +53,7 @@ https://doopush.com/api/v1
     "data": "自定义数据"
   },
   "target": {
-    "type": "broadcast",
+    "type": "all",
     "platform": "ios"
   },
   "schedule_time": "2024-12-31T10:00:00Z"
@@ -66,8 +66,9 @@ https://doopush.com/api/v1
 
 | 参数 | 类型 | 描述 | 示例 |
 |------|------|------|------|
-| `title` | string | 推送标题，最大200字符 | `"新消息"` |
-| `content` | string | 推送内容，最大1000字符 | `"您有一条新消息"` |
+| `title` | string | 推送标题，API 强制 ≤ 200 字符 | `"新消息"` |
+| `content` | string | 推送内容，必填。API 不强制长度上限（DB 列为 `TEXT`，最大 64KB）；Web 控制台输入框限制 1000 字符以保证显示效果 | `"您有一条新消息"` |
+| `target` | object | 推送目标配置（必填），见下方 | 见下方说明 |
 
 #### 可选参数
 
@@ -75,27 +76,28 @@ https://doopush.com/api/v1
 |------|------|------|------|
 | `badge` | integer | iOS角标数量 | `1` |
 | `payload` | object | 自定义载荷 | 见下方说明 |
-| `target` | object | 推送目标配置 | 见下方说明 |
 | `schedule_time` | string | 定时发送时间（ISO 8601格式） | `"2024-12-31T10:00:00Z"` |
 
 #### 推送目标配置 (target)
 
 | 参数 | 类型 | 描述 | 示例 |
 |------|------|------|------|
-| `type` | string | 目标类型：`all`, `devices`, `tags`, `groups` | `"devices"` |
-| `device_ids` | array | 设备ID数组（当type为devices时） | `[1, 2, 3]` |
+| `type` | string | 目标类型，**必填**：`all`(全部设备)、`devices`(指定设备 ID)、`tags`(按标签筛选)、`groups`(按设备分组) | `"devices"` |
+| `device_ids` | array&lt;integer&gt; | 设备**主键 ID** 数组（注意：是 `devices.id` 数字 ID，**不是** Token 字符串。如果你拿到的是 Token，请改用 `POST /apps/{appId}/push/batch`） | `[101, 102, 103]` |
 | `tag_ids` | array | 标签ID数组（当type为tags时） | `[1, 2]` |
 | `tags` | array | 设备标签筛选（新版本推荐） | 见标签筛选说明 |
 | `group_ids` | array | 分组ID数组（当type为groups时） | `[1, 2]` |
 | `platform` | string | 平台筛选：`ios`, `android` | `"android"` |
-| `channel` | string | 推送通道筛选 | `"fcm"`, `"huawei"`, `"xiaomi"`, `"oppo"`, `"vivo"`, `"meizu"` |
+| `channel` | string | 推送通道筛选：`apns` (iOS) / `fcm` / `huawei` / `honor` / `xiaomi` / `oppo` / `vivo` / `meizu` (Android) | `"huawei"` |
 
 #### 标签筛选 (tags)
+
+数组里每个对象描述一条「`tag_name=tag_value`」匹配；多条之间为 **OR 并集**（后端逐条取 token 然后合并去重）。如需 AND 交集请改用 `target.type = "groups"` + 设备分组。
 
 | 参数 | 类型 | 描述 | 示例 |
 |------|------|------|------|
 | `tag_name` | string | 标签名称 | `"user_type"` |
-| `tag_value` | string | 标签值（可选） | `"vip"` |
+| `tag_value` | string | 标签值（可选，留空匹配该 `tag_name` 下任意值） | `"vip"` |
 
 #### Android 推送通道说明
 
@@ -127,7 +129,7 @@ Android 平台支持多种推送通道，系统会根据设备品牌智能选择
 
 | 厂商 | 参数 | 类型 | 描述 | 示例 |
 |------|------|------|------|------|
-| 华为 HMS | `huawei` | object | 华为推送参数 | `{"importance": "HIGH", "ttl": 3600}` |
+| 华为 HMS | `huawei` | object | 华为推送参数 | `{"importance": "NORMAL", "category": "IM"}` |
 | 荣耀推送 | `honor` | object | 荣耀推送参数 | `{"importance": "HIGH", "ttl": "3600s", "target_user_type": 0}` |
 | 小米推送 | `xiaomi` | object | 小米推送参数 | `{"pass_through": 0, "notify_type": 1}` |
 | OPPO推送 | `oppo` | object | OPPO推送参数 | `{"channel_id": "important", "notify_level": 2}` |
@@ -136,12 +138,12 @@ Android 平台支持多种推送通道，系统会根据设备品牌智能选择
 
 **厂商参数详细说明**：
 
-- **华为 HMS**：`importance`（重要性）、`ttl`（存活时间）
-- **荣耀推送**：`importance`（消息重要性，NORMAL/HIGH）、`ttl`（消息存活时间，如"3600s"）、`target_user_type`（目标用户类型，0=正式消息/1=测试消息）
-- **小米推送**：`pass_through`（透传模式）、`notify_type`（通知类型）、`time_to_live`（存活时间）
-- **OPPO推送**：`channel_id`（通道ID）、`category`（消息分类）、`notify_level`（通知级别）
-- **VIVO推送**：`classification`（消息分类）、`notify_type`（通知类型）、`skip_type`（跳转类型）、`time_to_live`（存活时间）
-- **魅族推送**：`notice_msg_type`（消息类型，0通知栏/1透传）、`click_type`（点击行为）、`subtitle`（副标题）、`pull_down_top`（置顶功能）、`callback`（回执地址）
+- **华为 HMS**：`importance`（消息分类 `NORMAL`=服务通讯类不受频控 / `LOW`=资讯营销类受频控）、`category`（消息分类，如 `IM` / `VOIP` / `SUBSCRIPTION`，与华为 Push Kit 自分类对齐）
+- **荣耀推送**：`importance`（消息重要性，`NORMAL` / `HIGH`）、`ttl`（消息存活时间，如 `"3600s"`）、`target_user_type`（`0`=正式消息 / `1`=测试消息）
+- **小米推送**：`pass_through`（`0`=通知消息 / `1`=透传消息）、`notify_type`（提醒位掩码：`1`=声音 / `2`=震动 / `4`=指示灯，可按位组合）、`time_to_live`（**毫秒**）、`channel_id`（推送通道 ID）
+- **OPPO推送**：`channel_id`（公信通道 ID）、`category`（10 项之一：`IM` / `ACCOUNT` / `DEVICE_REMINDER` / `ORDER` / `TODO` / `SUBSCRIPTION` / `NEWS` / `CONTENT` / `MARKETING` / `SOCIAL`）、`notify_level`（仅 `1` / `2` / `16`）、`off_line`（布尔）、`off_line_ttl`（秒）
+- **VIVO推送**：`classification`（`0`=运营消息 / `1`=系统消息）、`notify_type`（`1`=通知栏 / `2`=透传）、`skip_type`（`1`=打开应用 / `2`=打开 URL / `3`=自定义）、`skip_content`（配合 `skip_type` 的内容）、`network_type`（`-1`=不限 / `1`=WiFi）、`time_to_live`（**秒**）
+- **魅族推送**：`notice_msg_type`（`0`=公信 / `1`=私信）、`notice_bar_type`（`0`=标准 / `2`=原生）、`notice_expand_type`（`0`=标准 / `1`=文本 / `2`=大图）、`click_type`（`0`=应用 / `1`=页面+`activity` / `2`=URI+`url`）、`off_line` / `valid_time`（小时，1-72）、`subtitle`、`pull_down_top`、`callback` / `callback_param` / `callback_type`（`1`=送达 / `2`=点击 / `3`=送达+点击）
 
 ### 请求示例
 
@@ -179,8 +181,8 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
          "action": "open_page",
          "url": "https://example.com/huawei-special",
          "huawei": {
-           "importance": "HIGH",
-           "ttl": 3600
+           "importance": "NORMAL",
+           "category": "IM"
          }
        },
        "target": {
@@ -306,23 +308,35 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
 
 ### 响应格式
 
-**成功响应** (200):
+**成功响应** (200)：`data.push_logs` 为本次创建的推送日志数组，每个目标设备一条记录；定时推送时 `data.message` 改为 `"推送已加入定时队列"`。
+
 ```json
 {
   "code": 200,
-  "message": "推送发送成功",
-  "data": [
-    {
-      "id": 12345,
-      "app_id": 123,
-      "title": "新功能上线",
-      "content": "我们推出了令人兴奋的新功能，快来体验吧！",
-      "status": "sent",
-      "created_at": "2024-01-01T10:00:00Z"
-    }
-  ]
+  "message": "成功",
+  "data": {
+    "message": "推送发送成功",
+    "count": 1,
+    "push_logs": [
+      {
+        "id": 12345,
+        "app_id": 123,
+        "device_id": 5001,
+        "title": "新功能上线",
+        "content": "我们推出了令人兴奋的新功能，快来体验吧！",
+        "channel": "apns",
+        "status": "pending",
+        "badge": 1,
+        "created_at": "2024-01-01T10:00:00Z"
+      }
+    ]
+  }
 }
 ```
+
+::: tip 异步发送
+`POST /apps/{appId}/push` 创建推送日志后立即返回，实际投递与厂商调用在后台 goroutine 中进行；状态从 `pending` 异步更新为 `sent` / `failed`。需要查询最终结果请用 `GET /apps/{appId}/push/logs`。
+:::
 
 ## 📱 单设备推送
 
@@ -355,7 +369,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
 |------|------|------|------|
 | `title` | string | 推送标题 | `"个人消息"` |
 | `content` | string | 推送内容 | `"您有一条个人消息"` |
-| `device_id` | string | 设备Token | `"device123..."` |
+| `device_id` | string | 设备 Token（即 `devices.token`，**不是**主键数字 ID） | `"abc123def456..."` |
 
 #### 可选参数
 
@@ -385,16 +399,25 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/single" \
 
 ### 响应格式
 
-**成功响应** (200):
+**成功响应** (200)：`data` 为本次创建的推送日志数组（单设备时通常 1 条）。
+
 ```json
 {
   "code": 200,
-  "message": "推送发送成功",
-  "data": {
-    "push_id": 12346,
-    "device_count": 1,
-    "status": "sent"
-  }
+  "message": "成功",
+  "data": [
+    {
+      "id": 12346,
+      "app_id": 123,
+      "device_id": 5001,
+      "title": "您有新订单",
+      "content": "订单号：DD20240101001",
+      "channel": "apns",
+      "status": "pending",
+      "badge": 1,
+      "created_at": "2024-01-01T10:00:00Z"
+    }
+  ]
 }
 ```
 
@@ -433,7 +456,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/single" \
 |------|------|------|------|
 | `title` | string | 推送标题 | `"批量消息"` |
 | `content` | string | 推送内容 | `"批量推送消息内容"` |
-| `device_ids` | array | 设备Token数组，1-1000个 | `["device1", "device2"]` |
+| `device_ids` | array&lt;string&gt; | 设备 Token 数组（**字符串**，不是主键数字 ID），数组长度 1-1000 | `["abc123...", "def456..."]` |
 
 #### 可选参数
 
@@ -467,16 +490,36 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/batch" \
 
 ### 响应格式
 
-**成功响应** (200):
+**成功响应** (200)：`data` 为本次创建的推送日志数组，每个 `device_id` 对应一条；查不到的 token 会被静默跳过，所有 token 均无效时返回 400。
+
 ```json
 {
   "code": 200,
-  "message": "推送发送成功",
-  "data": {
-    "push_id": 12347,
-    "device_count": 3,
-    "status": "sent"
-  }
+  "message": "成功",
+  "data": [
+    {
+      "id": 12347,
+      "app_id": 123,
+      "device_id": 5001,
+      "title": "会员专享活动",
+      "content": "VIP会员专享活动开始了，限时优惠不容错过！",
+      "channel": "apns",
+      "status": "pending",
+      "badge": 1,
+      "created_at": "2024-01-01T10:00:00Z"
+    },
+    {
+      "id": 12348,
+      "app_id": 123,
+      "device_id": 5002,
+      "title": "会员专享活动",
+      "content": "VIP会员专享活动开始了，限时优惠不容错过！",
+      "channel": "fcm",
+      "status": "pending",
+      "badge": 1,
+      "created_at": "2024-01-01T10:00:00Z"
+    }
+  ]
 }
 ```
 
@@ -495,7 +538,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/batch" \
   "content": "系统维护通知",
   "badge": 1,
   "platform": "android",
-  "channel": "huawei",
+  "vendor": "huawei",
   "payload": {
     "action": "open_page",
     "url": "https://example.com/announcement",
@@ -519,7 +562,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/batch" \
 |------|------|------|------|
 | `badge` | integer | iOS角标数量 | `1` |
 | `platform` | string | 指定平台：`ios`, `android` | `"ios"` |
-| `channel` | string | 指定推送通道：`fcm`, `huawei`, `xiaomi`, `oppo`, `vivo`, `meizu` | `"huawei"` |
+| `vendor` | string | 指定厂商通道。**注意**：当前 `SendBroadcast` 实现只把 `platform` 透传到 `target.Platform`，并未把 `vendor` 映射到 `target.Channel`，所以这个字段当前不会真的过滤通道。如要按通道过滤，请改用 `POST /apps/{appId}/push` 并设置 `target.channel` | `"huawei"` |
 | `payload` | object | 自定义载荷 | 见载荷参数说明 |
 
 ### 请求示例
@@ -543,16 +586,25 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/broadcast" \
 
 ### 响应格式
 
-**成功响应** (200):
+**成功响应** (200)：`data` 为本次创建的推送日志数组，每条目标设备一条记录。广播命中设备数较多时数组会很大，注意网络开销。
+
 ```json
 {
   "code": 200,
-  "message": "推送发送成功",
-  "data": {
-    "push_id": 12348,
-    "device_count": 5000,
-    "status": "sent"
-  }
+  "message": "成功",
+  "data": [
+    {
+      "id": 12349,
+      "app_id": 123,
+      "device_id": 5001,
+      "title": "系统公告",
+      "content": "系统维护通知",
+      "channel": "apns",
+      "status": "pending",
+      "badge": 1,
+      "created_at": "2024-01-01T10:00:00Z"
+    }
+  ]
 }
 ```
 
@@ -582,27 +634,43 @@ curl -X GET "https://doopush.com/api/v1/apps/123/push/logs?page=1&page_size=10&s
 
 ### 响应格式
 
-**成功响应** (200):
+**成功响应** (200)：使用统一分页结构。`data.data.items` 为推送日志列表，每条带聚合后的成功/失败/待发数；`data.current_page` / `data.total_items` / `data.total_pages` 描述分页。
+
 ```json
 {
   "code": 200,
-  "message": "获取成功",
+  "message": "成功",
   "data": {
-    "push_logs": [
-      {
-        "id": 12345,
-        "title": "新功能上线",
-        "content": "我们推出了令人兴奋的新功能",
-        "status": "sent",
-        "target_count": 1000,
-        "success_count": 950,
-        "failed_count": 50,
-        "created_at": "2024-01-01T10:00:00Z"
-      }
-    ],
-    "page": 1,
+    "current_page": 1,
     "page_size": 10,
-    "total": 100
+    "total_items": 100,
+    "total_pages": 10,
+    "data": {
+      "items": [
+        {
+          "id": 12345,
+          "app_id": 123,
+          "device_id": 5001,
+          "title": "新功能上线",
+          "content": "我们推出了令人兴奋的新功能",
+          "channel": "apns",
+          "status": "sent",
+          "badge": 1,
+          "created_at": "2024-01-01T10:00:00Z",
+          "result": {
+            "success": true,
+            "error_code": "",
+            "error_message": ""
+          },
+          "total_devices": 1,
+          "success_count": 1,
+          "failed_count": 0,
+          "pending_count": 0,
+          "target_type": "single",
+          "target_value": 5001
+        }
+      ]
+    }
   }
 }
 ```
@@ -619,13 +687,12 @@ curl -X GET "https://doopush.com/api/v1/apps/123/push/logs?page=1&page_size=10&s
 
 | 参数 | 类型 | 必填 | 描述 | 示例 |
 |------|------|------|------|------|
-| `start_date` | string | 否 | 开始日期 (YYYY-MM-DD) | `2024-01-01` |
-| `end_date` | string | 否 | 结束日期 (YYYY-MM-DD) | `2024-01-31` |
+| `days` | integer | 否 | 统计最近 N 天，范围 1-365，默认 30 | `30` |
 
 ### 请求示例
 
 ```bash
-curl -X GET "https://doopush.com/api/v1/apps/123/push/statistics?start_date=2024-01-01&end_date=2024-01-31" \
+curl -X GET "https://doopush.com/api/v1/apps/123/push/statistics?days=30" \
      -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
@@ -635,11 +702,12 @@ curl -X GET "https://doopush.com/api/v1/apps/123/push/statistics?start_date=2024
 ```json
 {
   "code": 200,
-  "message": "获取成功",
+  "message": "成功",
   "data": {
     "total_pushes": 1000,
     "success_pushes": 950,
     "failed_pushes": 50,
+    "total_devices": 320,
     "total_clicks": 200,
     "total_opens": 150,
     "daily_stats": [
@@ -748,7 +816,7 @@ Content-Type: text/plain
 |--------|--------|------|----------|
 | 400 | 400 | 请求参数错误 | 检查请求参数格式和内容 |
 | 401 | 401 | 未认证或API密钥无效 | 检查API Key是否正确和有效 |
-| 403 | 403 | 无权限 | 确认API Key具有push权限 |
+| 403 | 403 | 无权限 | 确认当前用户对该应用有访问权限 |
 | 422 | 422 | 参数验证失败 | 检查必填参数和格式要求 |
 
 ### 错误示例
@@ -766,7 +834,7 @@ Content-Type: text/plain
 ```json
 {
   "code": 403,
-  "message": "API密钥缺少push权限",
+  "message": "无权限发送推送",
   "data": null
 }
 ```

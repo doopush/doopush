@@ -139,6 +139,6 @@ extension YourClass: DooPushDelegate {
 
 ## 技术要求
 
-- iOS 14.0+
-- Xcode 13.0+
-- Swift 5.5+
+- iOS 13.0+
+- Xcode 16.0+
+- Swift 5.9+

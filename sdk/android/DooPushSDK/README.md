@@ -217,30 +217,32 @@ plugins {
 - `setCallback(callback)` - 设置回调监听器
 
 #### 设备信息
-- `getPushToken() -> String?` - 获取推送 Token
+- `getBestPushToken(callback: DooPushTokenCallback)` - 获取最适合当前设备的推送 Token（异步）
 - `getDeviceInfo() -> DeviceInfo?` - 获取设备信息
-- `getDeviceVendorInfo() -> DooPushDeviceVendor` - 获取设备厂商信息
+- `getDeviceVendorInfo() -> DooPushDeviceVendor.DeviceVendorInfo` - 获取设备厂商信息
+- `getSupportedPushServices() -> List<DooPushDeviceVendor.PushService>` - 获取当前设备支持的推送服务列表
 
 #### 角标管理
 - `setBadgeCount(count: Int) -> Boolean` - 设置应用角标数量
 - `clearBadge() -> Boolean` - 清除应用角标
 
 #### 工具方法
-- `checkServiceAvailability()` - 检查推送服务可用性
-- `testConnection()` - 测试网络连接
+- `isFirebaseAvailable() / isHMSAvailable() / isXiaomiAvailable() / isOppoAvailable() / isVivoAvailable() / isMeizuAvailable()` - 检查各推送服务可用性
+- `testNetworkConnection(callback: (Boolean) -> Unit)` - 测试网络连接
 - `clearCache()` - 清除缓存数据
 
 ### DooPushCallback
 
 #### 必需方法
 - `onRegisterSuccess(token: String)` - 推送注册成功
-- `onRegisterError(error: DooPushError)` - 推送注册失败  
+- `onRegisterError(error: DooPushError)` - 推送注册失败
 - `onMessageReceived(message: PushMessage)` - 接收推送消息
 
 #### 可选方法
+- `onTokenReceived(token: String)` / `onTokenError(error)` - FCM Token 状态
 - `onNotificationClick(notificationData)` - 通知点击事件
 - `onNotificationOpen(notificationData)` - 通知打开事件
-- `onTCPStateChanged(state)` - TCP连接状态变化
+- `onWebSocketOpen()` / `onWebSocketClosed(code, reason)` / `onWebSocketFailure(t)` - WebSocket 长连接状态
 
 ## 常见问题
 

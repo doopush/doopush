@@ -23,11 +23,11 @@ DooPush Android SDK 为 Android 应用提供统一的推送通知解决方案，
 - ✅ **推送接收** - 统一的推送消息接收和处理
 - ✅ **权限管理** - 智能处理推送权限申请
 - ✅ **角标管理** - 支持应用图标角标设置和清除
-- ✅ **消息去重** - 防止重复推送处理
+- ✅ **统计事件去重** - SDK 上报点击 / 打开统计时按 `(push_log_id 或 dedup_key, event_type)` 去重，避免同一事件多次入库
 - ✅ **统计上报** - 自动统计推送送达和点击数据
 
 ### 📊 高级特性
-- ✅ **TCP长连接** - Gateway长连接支持实时消息
+- ✅ **WebSocket 长连接** - 基于 OkHttp WebSocket 的 Gateway 长连接，当前用于实时维护设备「在线」状态（server→client 推送暂未实现）
 - ✅ **设备信息** - 详细的设备厂商和能力检测
 - ✅ **网络检测** - 推送服务可用性检测
 - ✅ **生命周期** - 应用前后台状态感知
@@ -365,9 +365,17 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         }
     }
     
-    // 可选：TCP连接状态变化
-    override fun onTCPStateChanged(state: DooPushTCPState) {
-        Log.d("DooPush", "TCP连接状态: ${state.description}")
+    // 可选：WebSocket 长连接状态回调
+    override fun onWebSocketOpen() {
+        Log.d("DooPush", "WebSocket 已连接")
+    }
+
+    override fun onWebSocketClosed(code: Int, reason: String) {
+        Log.d("DooPush", "WebSocket 关闭: code=$code, reason=$reason")
+    }
+
+    override fun onWebSocketFailure(t: Throwable) {
+        Log.w("DooPush", "WebSocket 异常", t)
     }
 }
 ```
@@ -472,14 +480,14 @@ class MyApplication : Application() {
         // 注册应用生命周期监听
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityResumed(activity: Activity) {
-                // 应用进入前台
-                DooPushManager.getInstance().applicationDidBecomeActive()
+                // 应用进入前台（清通知 + 重置角标）
+                DooPushManager.getInstance().applicationDidBecomeActive(activity.applicationContext)
             }
             
             override fun onActivityPaused(activity: Activity) {
                 // 应用进入后台
                 DooPushManager.getInstance().applicationWillResignActive()
-                // 断开TCP连接
+                // 断开 WebSocket 长连接
                 DooPushManager.getInstance().applicationWillTerminate()
             }
             
@@ -659,7 +667,13 @@ adb logcat -s HMSService       # 华为推送日志
 | `onRegisterSuccess()` | 注册成功回调 | token: String |
 | `onRegisterError()` | 注册失败回调 | error: DooPushError |
 | `onMessageReceived()` | 消息接收回调 | message: PushMessage |
+| `onTokenReceived()` | FCM Token 获取成功 | token: String |
+| `onTokenError()` | FCM Token 获取失败 | error: DooPushError |
 | `onNotificationClick()` | 通知点击回调 | notificationData |
+| `onNotificationOpen()` | 通知打开应用 | notificationData |
+| `onWebSocketOpen()` | WebSocket 连接建立 | — |
+| `onWebSocketClosed()` | WebSocket 连接关闭 | code: Int, reason: String |
+| `onWebSocketFailure()` | WebSocket 异常 | t: Throwable |
 
 ## 🔗 相关链接
 

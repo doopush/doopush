@@ -28,13 +28,11 @@ dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 1. 登录 DooPush 控制台：https://doopush.com
 2. 进入 **"应用管理"** 页面
-3. 选择目标应用
-4. 点击 **"API 密钥"** 标签
-5. 点击 **"创建 API 密钥"** 按钮
-6. 填写密钥信息：
-   - **密钥名称**：如 `生产环境密钥`
-7. 点击 **"创建"** 按钮
-8. **立即复制**并安全保存生成的 API Key
+3. 在目标应用所在行末尾点击 **"⋮"** 操作菜单 → 选择 **"API密钥"**
+4. 在弹出的对话框中点击 **"创建 API 密钥"** 按钮
+5. 填写「密钥名称」（如 `生产环境密钥`）
+6. 点击 **"创建"** 按钮
+7. **立即复制**并安全保存生成的完整 API Key（**只展示一次**）
 
 ::: danger 🔒 重要提醒
 API Key 只会在创建时显示一次，请立即复制并安全保存。丢失后需要重新创建。
@@ -47,13 +45,13 @@ API Key 只会在创建时显示一次，请立即复制并安全保存。丢失
 在 HTTP 请求头中添加 API Key：
 
 ```bash
-curl -X POST "https://doopush.com/api/v1/apps/123/push/send" \
+curl -X POST "https://doopush.com/api/v1/apps/123/push" \
      -H "X-API-Key: dp_live_your_api_key_here" \
      -H "Content-Type: application/json" \
      -d '{
        "title": "测试推送",
        "content": "这是一条测试消息",
-       "target_type": "broadcast"
+       "target": { "type": "all" }
      }'
 ```
 
@@ -62,12 +60,12 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/send" \
 将 API Key 作为 URL 参数：
 
 ```bash
-curl -X POST "https://doopush.com/api/v1/apps/123/push/send?api_key=dp_live_your_api_key_here" \
+curl -X POST "https://doopush.com/api/v1/apps/123/push?api_key=dp_live_your_api_key_here" \
      -H "Content-Type: application/json" \
      -d '{
        "title": "测试推送",
        "content": "这是一条测试消息",
-       "target_type": "broadcast"
+       "target": { "type": "all" }
      }'
 ```
 
@@ -77,13 +75,13 @@ Header 认证更安全，不会在 URL 中暴露 API Key，建议优先使用。
 
 ## 📋 支持的接口
 
-使用 API Key 可以访问以下接口类别：
+API Key 仅授予「业务调用」权限，可访问的接口如下；管理类接口（设备列表、推送日志、推送统计、审计日志、应用 / 配置 / 模板管理等）需要登录后获得的 **JWT Token**。
 
 ### 推送接口
 
 | 接口 | 描述 |
 |------|------|
-| `POST /api/v1/apps/{appId}/push/send` | 发送推送 |
+| `POST /api/v1/apps/{appId}/push` | 发送推送（target 内指定广播 / 设备 / 标签等） |
 | `POST /api/v1/apps/{appId}/push/single` | 单设备推送 |
 | `POST /api/v1/apps/{appId}/push/batch` | 批量推送 |
 | `POST /api/v1/apps/{appId}/push/broadcast` | 广播推送 |
@@ -92,16 +90,13 @@ Header 认证更安全，不会在 URL 中暴露 API Key，建议优先使用。
 
 | 接口 | 描述 |
 |------|------|
-| `POST /api/v1/apps/{appId}/devices` | 注册设备 |
-| `GET /api/v1/apps/{appId}/devices` | 查询设备列表 |
-| `PUT /api/v1/apps/{appId}/devices/{deviceId}` | 更新设备信息 |
+| `POST /api/v1/apps/{appId}/devices` | 注册设备（SDK 在握手前先调用） |
 
-### 统计接口
+### 统计上报
 
 | 接口 | 描述 |
 |------|------|
-| `GET /api/v1/apps/{appId}/push/logs` | 推送日志 |
-| `GET /api/v1/apps/{appId}/push/stats` | 推送统计 |
+| `POST /api/v1/apps/{appId}/push/statistics/report` | 客户端上报推送送达 / 点击事件 |
 
 ## 🌍 Base URL
 
@@ -125,13 +120,13 @@ https://doopush.com/api/v1
 ### 发送推送
 
 ```bash
-curl -X POST "https://doopush.com/api/v1/apps/123/push/send" \
+curl -X POST "https://doopush.com/api/v1/apps/123/push" \
      -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
      -H "Content-Type: application/json" \
      -d '{
        "title": "欢迎使用 DooPush",
        "content": "您的推送服务已经配置成功！",
-       "target_type": "broadcast",
+       "target": { "type": "all" },
        "badge": 1
      }'
 ```
@@ -150,11 +145,17 @@ curl -X POST "https://doopush.com/api/v1/apps/123/devices" \
      }'
 ```
 
-### 查询推送统计
+### 上报送达 / 点击事件
 
 ```bash
-curl -X GET "https://doopush.com/api/v1/apps/123/push/stats" \
-     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+curl -X POST "https://doopush.com/api/v1/apps/123/push/statistics/report" \
+     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "push_log_id": 12345,
+       "device_token": "abc123def456...",
+       "event_type": "click"
+     }'
 ```
 
 ## ❌ 错误处理
@@ -246,7 +247,7 @@ const client = axios.create({
 // 发送推送
 async function sendPush(appId, pushData) {
   try {
-    const response = await client.post(`/apps/${appId}/push/send`, pushData);
+    const response = await client.post(`/apps/${appId}/push`, pushData);
     return response.data;
   } catch (error) {
     console.error('推送发送失败:', error.response?.data);
@@ -270,7 +271,7 @@ class DooPushClient:
         }
     
     def send_push(self, app_id, push_data):
-        url = f"{self.base_url}/apps/{app_id}/push/send"
+        url = f"{self.base_url}/apps/{app_id}/push"
         response = requests.post(url, json=push_data, headers=self.headers)
         
         if response.status_code == 200:
@@ -283,14 +284,20 @@ class DooPushClient:
 
 ### 验证 API Key
 
-可以通过查询应用信息来验证 API Key 是否有效：
+API Key 不能访问 GET 类管理接口，可通过发起一次广播推送来验证（命中 0 设备时返回 400 但 Key 仍判定为有效；Key 无效则返回 401）：
 
 ```bash
-curl -X GET "https://doopush.com/api/v1/apps/123" \
-     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+curl -X POST "https://doopush.com/api/v1/apps/123/push" \
+     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "title": "ping",
+       "content": "ping",
+       "target": { "type": "all" }
+     }'
 ```
 
-成功响应表示 API Key 有效。
+返回 200 / 400 表示 Key 有效，返回 401 表示 Key 无效或与应用不匹配。
 
 ### 常见问题排查
 
