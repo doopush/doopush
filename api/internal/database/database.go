@@ -1,8 +1,10 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/doopush/doopush/api/internal/config"
 	"github.com/doopush/doopush/api/internal/models"
@@ -12,9 +14,13 @@ import (
 
 var DB *gorm.DB
 
-// Connect 连接数据库
+const (
+	connectMaxAttempts = 10
+	connectRetryDelay  = 3 * time.Second
+)
+
+// Connect 连接数据库；MySQL 容器冷启动期间端口已开但服务未就绪，最多重试 10 次。
 func Connect() {
-	// 构建数据库连接字符串
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		config.GetString("DB_USERNAME", "root"),
 		config.GetString("DB_PASSWORD", "password"),
@@ -23,16 +29,26 @@ func Connect() {
 		config.GetString("DB_DATABASE", "doopush"),
 	)
 
-	// 连接数据库
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatal("数据库连接失败:", err)
-	}
-
-	// 设置连接池
-	sqlDB, err := db.DB()
-	if err != nil {
-		log.Fatal("数据库配置失败:", err)
+	var (
+		db    *gorm.DB
+		sqlDB *sql.DB
+		err   error
+	)
+	for attempt := 1; attempt <= connectMaxAttempts; attempt++ {
+		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+		if err == nil {
+			if sqlDB, err = db.DB(); err == nil {
+				if err = sqlDB.Ping(); err == nil {
+					break
+				}
+			}
+		}
+		if attempt == connectMaxAttempts {
+			log.Fatalf("数据库连接失败（已重试 %d 次）: %v", connectMaxAttempts, err)
+		}
+		log.Printf("数据库连接失败（第 %d/%d 次），%s 后重试: %v",
+			attempt, connectMaxAttempts, connectRetryDelay, err)
+		time.Sleep(connectRetryDelay)
 	}
 
 	sqlDB.SetMaxIdleConns(10)

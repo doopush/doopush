@@ -83,6 +83,13 @@ dev: ## 启动完整开发环境（数据库、后端、前端并行启动）
 	@echo "启动后端和前端服务..."
 	@$(MAKE) -j api-dev api-gateway web-dev
 
+# 停止开发环境
+.PHONY: dev-down
+dev-down: ## 停止开发环境（数据库容器；前端/后端用 Ctrl+C 收回）
+	@echo "停止数据库服务..."
+	@docker-compose down
+	@echo "开发环境已停止"
+
 .PHONY: build
 build: api-build web-build ## 构建整个项目
 
