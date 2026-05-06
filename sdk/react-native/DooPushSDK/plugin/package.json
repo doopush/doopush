@@ -1,0 +1,20 @@
+{
+  "name": "doopush-react-native-sdk-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "main": "build/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@expo/config-plugins": "^8.0.0",
+    "@expo/config-types": "^51.0.3",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.3.0",
+    "zod": "^3.22.0"
+  }
+}

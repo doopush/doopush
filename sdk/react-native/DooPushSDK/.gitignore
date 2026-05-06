@@ -1,0 +1,9 @@
+node_modules/
+build/
+plugin/build/
+*.log
+.DS_Store
+example/ios
+example/android
+example/.expo
+example/google-services.json

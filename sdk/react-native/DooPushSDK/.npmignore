@@ -1,0 +1,11 @@
+node_modules/
+src/
+plugin/src/
+plugin/jest.config.js
+plugin/__tests__/
+example/
+*.log
+.DS_Store
+tsconfig.json
+tsconfig.plugin.json
+pnpm-workspace.yaml

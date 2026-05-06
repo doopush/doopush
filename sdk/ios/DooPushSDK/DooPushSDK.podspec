@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "DooPushSDK"
-  spec.version      = "1.1.0"
+  spec.version      = "1.1.1"
   spec.summary      = "DooPush iOS SDK - 简单易用的推送通知解决方案"
   spec.description  = <<-DESC
                       DooPush iOS SDK 提供简单易用的推送通知解决方案，支持：
@@ -16,7 +16,7 @@ Pod::Spec.new do |spec|
                       DESC
 
   spec.homepage     = "https://github.com/doopush/ios-sdk"
-  spec.license      = { :type => "MIT", :file => "DooPushSDK/LICENSE" }
+  spec.license      = { :type => "MIT" }
   spec.author       = { "DooPush Team" => "support@doopush.com" }
 
   # 平台和版本要求
@@ -28,18 +28,13 @@ Pod::Spec.new do |spec|
   # 目前使用本地路径进行开发
   spec.source = { :path => "." }
 
-  # 源文件
-  spec.source_files = "Sources/DooPushSDK/**/*.{swift}"
+  # 源文件（仅 Swift；@objc public 自动暴露给 Objective-C，无需 umbrella header）
+  spec.source_files = "Sources/DooPushSDK/**/*.swift"
   
-  # 公共头文件
-  spec.public_header_files = "Sources/DooPushSDK/include/**/*.h"
-  
-  # 资源文件
-  spec.resources = ["README.md"]
-  
-  # 模块映射
-  spec.module_map = "Sources/DooPushSDK/include/module.modulemap"
-  
+  # 模块映射：Swift 模块由编译器自动生成，自定义 modulemap 与静态库不兼容
+  # spec.module_map = "Sources/DooPushSDK/include/module.modulemap"
+
+
   # 系统框架依赖
   spec.frameworks = "Foundation", "UIKit", "UserNotifications"
   

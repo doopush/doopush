@@ -208,3 +208,6 @@ pod spec lint DooPushSDK.podspec --verbose
 - 新增 `setNotificationManagementMode(_:)` 切换运行模式
 - 新增 `registerDevice(withToken:vendor:completion:)` 用于外部 token（如 expo-notifications）的服务端注册
 - 通知代理增加 KVO 自动重装：被第三方替换后自动恢复并向上转发
+
+### v1.1.1
+- 修复 podspec 与 React Native（CocoaPods 静态库链接 + Swift module）的兼容性：移除自定义 `module_map`、不存在的 LICENSE 文件引用、`public_header_files` 直接暴露 ObjC 头（Swift `@objc` 已自动暴露）

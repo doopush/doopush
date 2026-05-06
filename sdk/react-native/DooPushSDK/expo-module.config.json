@@ -1,0 +1,10 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["DooPushReactNativeSDKModule"],
+    "appDelegateSubscribers": ["DooPushAppDelegateSubscriber"]
+  },
+  "android": {
+    "modules": ["com.doopush.reactnative.DooPushReactNativeSDKModule"]
+  }
+}
