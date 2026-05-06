@@ -47,7 +47,7 @@ func application(_ application: UIApplication, didFinishLaunchingWithOptions lau
     DooPushManager.shared.configure(
         appId: "your_app_id",
         apiKey: "your_api_key",
-        baseURL: "http://localhost:5002/api/v1" // 可选，用于本地开发
+        baseURL: "http://localhost:5001/api/v1" // 可选，用于本地开发
     )
     
     // 设置代理

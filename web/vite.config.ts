@@ -30,12 +30,17 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0', '.coder.dootask.com'],
       proxy: {
+        '/ws': {
+          target: 'ws://localhost:50000',
+          ws: true,
+          changeOrigin: true,
+        },
         '/api': {
-          target: `http://localhost:${env.API_PORT}`,
+          target: 'http://localhost:50001',
           changeOrigin: true,
         },
         '/uploads': {
-          target: `http://localhost:${env.API_PORT}`,
+          target: 'http://localhost:50001',
           changeOrigin: true,
         },
       },

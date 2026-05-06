@@ -166,7 +166,7 @@ final class DooPushSDKTests: XCTestCase {
         let devConfig = DooPushConfig(
             appId: "test",
             apiKey: "key",
-            baseURL: "http://localhost:5002/api/v1"
+            baseURL: "http://localhost:5001/api/v1"
         )
         XCTAssertEqual(devConfig.environment, .development)
         

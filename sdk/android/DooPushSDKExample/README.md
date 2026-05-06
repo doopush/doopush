@@ -296,7 +296,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
             context = this,
             appId = globalAppId.ifEmpty { "default_app_id" },
             apiKey = globalApiKey.ifEmpty { "default_api_key" },
-            baseUrl = globalBaseUrl.ifEmpty { "http://localhost:5002/api/v1" }
+            baseUrl = globalBaseUrl.ifEmpty { "http://localhost:5001/api/v1" }
         )
     }
     

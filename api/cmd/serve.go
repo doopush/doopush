@@ -20,6 +20,9 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// ListenPort API 监听内部端口；外部经 nginx (prod) / Vite (dev) 反代
+const ListenPort = 50001
+
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "启动API服务器",
@@ -236,19 +239,15 @@ func startServer() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// 启动服务器
-	port := config.GetString("API_PORT", "5002")
-
-	// 开发环境启动时根据端口结束进程
 	if config.GetString("APP_ENV", "development") == "development" {
-		if portInt, err := strconv.Atoi(port); err == nil {
-			utils.KillProcessByPort(portInt)
-		}
+		utils.KillProcessByPort(ListenPort)
 	}
 
-	log.Printf("服务器启动在端口: %s", port)
-	log.Printf("Swagger文档: http://localhost:%s/swagger/index.html", port)
+	addr := ":" + strconv.Itoa(ListenPort)
+	log.Printf("服务器启动在 %s", addr)
+	log.Printf("Swagger文档: http://localhost%s/swagger/index.html", addr)
 
-	if err := r.Run(":" + port); err != nil {
+	if err := r.Run(addr); err != nil {
 		log.Fatal("服务器启动失败:", err)
 	}
 }

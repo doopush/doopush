@@ -18,6 +18,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// ListenAddr WebSocket 监听内部端口；外部经 nginx (prod) / Vite (dev) 反代
 const ListenAddr = ":50000"
 
 // GatewayServer WebSocket 网关
