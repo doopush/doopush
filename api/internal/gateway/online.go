@@ -68,11 +68,3 @@ func MarkOffline(rdb *redis.Client, appID uint, token string) {
 		}
 	}()
 }
-
-// RefreshOnlineTTL 收到 pong 时刷一下 TTL，避免 Redis key 在长连仍存活时过期
-func RefreshOnlineTTL(rdb *redis.Client, token string) {
-	ctx := context.Background()
-	if err := rdb.Expire(ctx, onlineKeyPrefix+token, onlineTTL).Err(); err != nil {
-		log.Printf("redis refresh ttl failed: %v", err)
-	}
-}

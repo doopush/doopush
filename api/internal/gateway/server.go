@@ -61,12 +61,10 @@ func NewGatewayServer() (*GatewayServer, error) {
 
 // Start 监听并阻塞
 func (s *GatewayServer) Start() error {
-	// 异步清零历史在线态（大表 UPDATE 可能很慢，不能阻塞监听）
-	go func() {
-		if err := services.NewDeviceService().SetAllDevicesOffline(); err != nil {
-			log.Printf("清零在线态失败: %v", err)
-		}
-	}()
+	// 同步清零历史在线态：必须在监听前完成，否则会与首个 device 的 MarkOnline 竞态
+	if err := services.NewDeviceService().SetAllDevicesOffline(); err != nil {
+		log.Printf("清零在线态失败: %v", err)
+	}
 
 	// 信号驱动优雅关闭
 	go s.handleSignals()

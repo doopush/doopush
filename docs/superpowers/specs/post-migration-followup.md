@@ -20,7 +20,7 @@
 
 - `online.go` 的 `MarkOnline` / `MarkOffline` DB 写在两个独立 goroutine，同 token 在快速断连场景仍有 race（部分缓解，未根治）。完整修复需 per-token 串行化。
 - `device_online:<token>` Redis key 缺 appID prefix；目前依赖 token 跨 app 不重复（FCM/APNs token 是设备唯一的）。如未来引入跨 app 共享 token 的产品形态需重新设计。
-- iOS SDK 应用前台 `applicationDidBecomeActive` 不再主动重连；依赖 OkHttp/URLSession 自身的心跳检测。规模化后若发现回前台后连接恢复慢，考虑加显式 nudge。
+- iOS SDK `applicationDidBecomeActive` 主动 disconnect+reconnect 当前连接（与 Android 一致策略：背景态可能死连，前台直接重建）。如规模化后发现重建带来不必要抖动，可改为先发 sendPing 探活、失败再重连。Android 侧目前不做主动 nudge，依赖 OkHttp `pingInterval` 检测。
 
 ## 验收清单（spec §10）
 
