@@ -19,11 +19,7 @@ type HandshakeParams struct {
 	Token  string
 }
 
-var (
-	errMissingParam = errors.New("missing required query param")
-	errBadAppKey    = errors.New("invalid appkey")
-	errBadToken     = errors.New("invalid device token")
-)
+var errMissingParam = errors.New("missing required query param")
 
 // parseHandshakeParams 从请求 query 中解析三参
 func parseHandshakeParams(r *http.Request) (*HandshakeParams, error) {
@@ -59,7 +55,7 @@ func authenticate(db *gorm.DB, p *HandshakeParams) (deviceID uint, err error) {
 	// 2. AppKey 哈希匹配
 	keyHash := utils.HashString(p.AppKey)
 	var apiKey models.AppAPIKey
-	if err := db.Where("app_id = ? AND key_hash = ?", p.AppID, keyHash).First(&apiKey).Error; err != nil {
+	if err := db.Where("app_id = ? AND key_hash = ? AND status = 1", p.AppID, keyHash).First(&apiKey).Error; err != nil {
 		return 0, &authError{status: http.StatusUnauthorized, msg: "invalid appkey"}
 	}
 	// 3. 设备 token 哈希匹配
