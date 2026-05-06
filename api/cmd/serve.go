@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/doopush/doopush/api/internal/config"
 	"github.com/doopush/doopush/api/internal/controllers"
@@ -14,6 +17,7 @@ import (
 	_ "github.com/doopush/doopush/api/docs"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -64,11 +68,26 @@ func startServer() {
 	// 静态文件服务
 	r.Static("/uploads", "./uploads")
 
+	// Redis 客户端（设备在线指示器查询）
+	rdb := redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("%s:%s",
+			config.GetString("REDIS_HOST", "redis"),
+			config.GetString("REDIS_PORT", "6379")),
+		Password: config.GetString("REDIS_PASSWORD", ""),
+		DB:       config.GetInt("REDIS_DB", 0),
+	})
+	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := rdb.Ping(pingCtx).Err(); err != nil {
+		cancel()
+		log.Fatalf("Redis 连接失败: %v", err)
+	}
+	cancel()
+
 	// 控制器
 	healthCtrl := controllers.NewHealthController()
 	authCtrl := controllers.NewAuthController()
 	appCtrl := controllers.NewAppController()
-	deviceCtrl := controllers.NewDeviceController()
+	deviceCtrl := controllers.NewDeviceController(rdb)
 	pushCtrl := controllers.NewPushController()
 	configCtrl := controllers.NewConfigController()
 	templateCtrl := controllers.NewTemplateController()

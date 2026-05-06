@@ -9,17 +9,20 @@ import (
 	"github.com/doopush/doopush/api/pkg/response"
 	"github.com/doopush/doopush/api/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 // DeviceController 设备控制器
 type DeviceController struct {
 	deviceService *services.DeviceService
+	rdb           *redis.Client
 }
 
 // NewDeviceController 创建设备控制器
-func NewDeviceController() *DeviceController {
+func NewDeviceController(rdb *redis.Client) *DeviceController {
 	return &DeviceController{
 		deviceService: services.NewDeviceService(),
+		rdb:           rdb,
 	}
 }
 
