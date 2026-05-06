@@ -32,7 +32,7 @@ public class DooPushNetworking {
         appId: String,
         token: String,
         deviceInfo: DeviceInfo,
-        completion: @escaping (Result<DeviceRegistrationResponse, DooPushError>) -> Void
+        completion: @escaping (Result<Int, DooPushError>) -> Void
     ) {
         registerDeviceWithRetry(
             appId: appId,
@@ -55,7 +55,7 @@ public class DooPushNetworking {
         token: String,
         deviceInfo: DeviceInfo,
         retryCount: Int,
-        completion: @escaping (Result<DeviceRegistrationResponse, DooPushError>) -> Void
+        completion: @escaping (Result<Int, DooPushError>) -> Void
     ) {
         guard let config = config else {
             completion(.failure(.notConfigured))
@@ -80,11 +80,11 @@ public class DooPushNetworking {
             url: url,
             method: .POST,
             body: requestBody,
-            responseType: DeviceRegistrationResponse.self
+            responseType: DeviceResponseInfo.self
         ) { result in
             switch result {
             case .success(let response):
-                completion(.success(response))
+                completion(.success(response.id))
             case .failure(let error):
                 // 检查是否可以重试
                 if retryCount > 0 && self.shouldRetry(error: error) {
@@ -459,25 +459,6 @@ public struct DeviceResponseInfo: Codable {
     /// 获取设备ID字符串形式（兼容旧版本）
     public var deviceId: String {
         return String(id)
-    }
-}
-
-/// 设备注册响应
-public struct DeviceRegistrationResponse: Codable {
-    public let device: DeviceResponseInfo
-
-    enum CodingKeys: String, CodingKey {
-        case device
-    }
-
-    /// 获取设备ID整数形式
-    public var id: Int {
-        return device.id
-    }
-
-    /// 获取设备ID字符串形式（兼容旧版本）
-    public var deviceId: String {
-        return device.deviceId
     }
 }
 

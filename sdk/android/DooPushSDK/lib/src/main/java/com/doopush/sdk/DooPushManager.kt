@@ -985,14 +985,10 @@ class DooPushManager private constructor() {
             deviceInfo,
             token,
             object : DooPushNetworking.RegisterDeviceCallback {
-                override fun onSuccess(response: DooPushNetworking.DeviceRegistrationResponse) {
+                override fun onSuccess() {
                     Log.i(TAG, "设备注册成功")
                     isRegistering.set(false)
-                    
-                    // 连接到Gateway
-                    connectToGateway(response, token)
-                    
-                    // 通知回调
+                    connectToGateway(token)
                     callback?.onSuccess(token) ?: this@DooPushManager.callback?.onRegisterSuccess(token)
                 }
                 
@@ -1010,7 +1006,7 @@ class DooPushManager private constructor() {
     /**
      * 连接到 WebSocket Gateway
      */
-    private fun connectToGateway(response: DooPushNetworking.DeviceRegistrationResponse, token: String) {
+    private fun connectToGateway(token: String) {
         val config = this.config
         if (config == null) {
             Log.e(TAG, "SDK配置缺失，无法连接 WebSocket Gateway")

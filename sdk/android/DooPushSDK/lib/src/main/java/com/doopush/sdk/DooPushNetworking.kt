@@ -4,6 +4,7 @@ import android.util.Log
 import com.doopush.sdk.models.DeviceInfo
 import com.doopush.sdk.models.DooPushError
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -124,14 +125,6 @@ class DooPushNetworking(private val config: DooPushConfig) {
     )
     
     /**
-     * 设备注册响应数据类
-     */
-    data class DeviceRegistrationResponse(
-        @SerializedName("device")
-        val device: Map<String, Any>
-    )
-    
-    /**
      * API响应基类
      */
     data class APIResponse<T>(
@@ -157,7 +150,7 @@ class DooPushNetworking(private val config: DooPushConfig) {
      * 设备注册回调接口
      */
     interface RegisterDeviceCallback {
-        fun onSuccess(response: DeviceRegistrationResponse)
+        fun onSuccess()
         fun onError(error: DooPushError)
     }
     
@@ -220,13 +213,12 @@ class DooPushNetworking(private val config: DooPushConfig) {
                         val responseBody = response.body?.string()
                         
                         if (response.isSuccessful && !responseBody.isNullOrEmpty()) {
-                            // 解析成功响应
-                            val type = object : com.google.gson.reflect.TypeToken<APIResponse<DeviceRegistrationResponse>>() {}.type
-                            val apiResponse: APIResponse<DeviceRegistrationResponse>? = gson.fromJson(responseBody, type)
-                            
+                            val type = object : com.google.gson.reflect.TypeToken<APIResponse<JsonObject>>() {}.type
+                            val apiResponse: APIResponse<JsonObject>? = gson.fromJson(responseBody, type)
+
                             if (apiResponse != null && apiResponse.data != null) {
                                 Log.d(TAG, "设备注册成功: ${apiResponse.message}")
-                                callback.onSuccess(apiResponse.data)
+                                callback.onSuccess()
                             } else {
                                 Log.e(TAG, "设备注册响应数据为空")
                                 callback.onError(DooPushError(

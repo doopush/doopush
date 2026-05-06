@@ -171,12 +171,12 @@ import UserNotifications
             guard let self = self else { return }
 
             switch result {
-            case .success(let response):
-                DooPushLogger.info("设备注册成功: \(response)")
+            case .success(let deviceId):
+                DooPushLogger.info("设备注册成功，设备ID: \(deviceId)")
 
                 // 保存设备信息
                 self.storage.saveDeviceToken(token)
-                self.storage.saveDeviceId(String(response.id))
+                self.storage.saveDeviceId(String(deviceId))
 
                 // 连接 WebSocket Gateway
                 self.connectToGateway(token: token)
