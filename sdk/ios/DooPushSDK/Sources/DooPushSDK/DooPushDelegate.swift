@@ -31,21 +31,6 @@ import Foundation
     ///   - status: 权限状态
     @objc optional func dooPush(_ manager: DooPushManager, didChangePermissionStatus status: Int)
     
-    // MARK: - TCP连接相关代理方法（可选实现）
-    
-    /// TCP连接状态变化
-    /// - Parameters:
-    ///   - manager: DooPush管理器实例
-    ///   - state: 连接状态
-    @objc optional func dooPushTCPConnectionStateChanged(_ manager: DooPushManager, state: DooPushTCPState)
-    
-    /// TCP设备注册成功
-    /// - Parameter manager: DooPush管理器实例
-    @objc optional func dooPushTCPDidRegister(_ manager: DooPushManager)
-    
-    /// TCP心跳响应
-    /// - Parameter manager: DooPush管理器实例
-    @objc optional func dooPushTCPHeartbeatReceived(_ manager: DooPushManager)
 }
 
 // MARK: - 推送通知数据解析

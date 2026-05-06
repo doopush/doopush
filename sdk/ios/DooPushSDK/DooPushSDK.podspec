@@ -20,7 +20,7 @@ Pod::Spec.new do |spec|
   spec.author       = { "DooPush Team" => "support@doopush.com" }
 
   # 平台和版本要求
-  spec.ios.deployment_target = "12.0"
+  spec.ios.deployment_target = "13.0"
   spec.swift_version = "5.9"
   
   # 源码位置
@@ -47,7 +47,7 @@ Pod::Spec.new do |spec|
   spec.requires_arc = true
   spec.pod_target_xcconfig = {
     'SWIFT_VERSION' => '5.9',
-    'IPHONEOS_DEPLOYMENT_TARGET' => '12.0'
+    'IPHONEOS_DEPLOYMENT_TARGET' => '13.0'
   }
   
   # 子模块（如果需要的话）

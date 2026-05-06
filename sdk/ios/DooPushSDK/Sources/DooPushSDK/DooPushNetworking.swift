@@ -462,46 +462,22 @@ public struct DeviceResponseInfo: Codable {
     }
 }
 
-/// Gateway 配置响应
-public struct GatewayConfigResponse: Codable {
-    public let host: String
-    public let port: Int
-    public let ssl: Bool
-    
-    public init(host: String, port: Int, ssl: Bool) {
-        self.host = host
-        self.port = port
-        self.ssl = ssl
-    }
-}
-
-/// 设备注册响应（包含Gateway配置）
+/// 设备注册响应
 public struct DeviceRegistrationResponse: Codable {
     public let device: DeviceResponseInfo
-    public let gateway: GatewayConfigResponse
-    
+
     enum CodingKeys: String, CodingKey {
         case device
-        case gateway
     }
-    
-    /// 获取设备ID字符串形式（兼容旧版本）
+
+    /// 获取设备ID整数形式
     public var id: Int {
         return device.id
     }
-    
+
     /// 获取设备ID字符串形式（兼容旧版本）
     public var deviceId: String {
         return device.deviceId
-    }
-    
-    /// 转换为 DooPushGatewayConfig
-    public var gatewayConfig: DooPushGatewayConfig {
-        return DooPushGatewayConfig(
-            host: gateway.host,
-            port: gateway.port,
-            ssl: gateway.ssl
-        )
     }
 }
 
