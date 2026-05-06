@@ -23,8 +23,6 @@ type Device struct {
 	IsOnline      bool           `gorm:"default:false;index;comment:实时在线状态" json:"is_online"`
 	LastSeen      *time.Time     `gorm:"comment:最后活跃时间" json:"last_seen"`
 	LastHeartbeat *time.Time     `gorm:"comment:最后心跳时间" json:"last_heartbeat"`
-	GatewayNode   string         `gorm:"size:64;comment:所在网关节点" json:"gateway_node"`
-	ConnectionID  string         `gorm:"size:128;comment:连接标识" json:"connection_id"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`

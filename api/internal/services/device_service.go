@@ -221,11 +221,9 @@ func (s *DeviceService) UpdateDeviceStatus(deviceID uint, userID uint, status in
 // SetAllDevicesOffline 将所有设备设为离线状态
 func (s *DeviceService) SetAllDevicesOffline() error {
 	// 批量更新所有设备的在线状态为离线
-	if err := database.DB.Model(&models.Device{}).Where("is_online = ?", true).Updates(map[string]interface{}{
-		"is_online":     false,
-		"gateway_node":  "",
-		"connection_id": "",
-	}).Error; err != nil {
+	if err := database.DB.Model(&models.Device{}).
+		Where("is_online = ?", true).
+		Update("is_online", false).Error; err != nil {
 		return fmt.Errorf("批量设置设备离线状态失败: %w", err)
 	}
 

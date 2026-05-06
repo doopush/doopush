@@ -65,5 +65,9 @@ func AutoMigrate() {
 		log.Fatal("数据库迁移失败:", err)
 	}
 
+	// 一次性清理 TCP 时代的死字段（GORM AutoMigrate 不会删列）
+	_ = DB.Migrator().DropColumn(&models.Device{}, "gateway_node")
+	_ = DB.Migrator().DropColumn(&models.Device{}, "connection_id")
+
 	log.Println("数据库迁移完成")
 }
