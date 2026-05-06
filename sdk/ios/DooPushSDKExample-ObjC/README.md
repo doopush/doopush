@@ -145,6 +145,6 @@ DooPushSDKExample-ObjC/
 
 ## 技术要求
 
-- iOS 12.0+
-- Xcode 12.0+
+- iOS 13.0+
+- Xcode 16.0+
 - DooPush SDK（通过 Swift Package Manager 导入）

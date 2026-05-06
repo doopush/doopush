@@ -34,7 +34,7 @@ DooPush Android SDK 为 Android 应用提供统一的推送通知解决方案，
 
 ## 📋 系统要求
 
-- **Android版本**: 5.0+ (API Level 21)
+- **Android版本**: 8.0+ (API Level 26)
 - **开发语言**: Kotlin 1.9+ / Java 8+
 - **构建工具**: Android Gradle Plugin 8.0+
 - **依赖管理**: Gradle

@@ -173,7 +173,7 @@ jobs:
           ## DooPushSDK v${VERSION}
           
           ### 📱 Android SDK 信息
-          - **最低支持**: Android API 21 (5.0)+
+          - **最低支持**: Android API 26 (8.0)+
           - **编译版本**: Android API 34
           - **Java 版本**: 8+
           - **Kotlin 版本**: 1.8+

@@ -8,7 +8,7 @@
 
 ## 系统要求
 
-- Android 5.0+ (API 21+)
+- Android 8.0+ (API 26+)
 - Kotlin 1.9+
 - Android Gradle Plugin 8.0+
 

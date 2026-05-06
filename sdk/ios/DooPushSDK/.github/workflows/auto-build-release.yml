@@ -172,7 +172,7 @@ jobs:
           ## DooPushSDK v${VERSION}
           
           ### 📱 Framework 信息
-          - **最低支持**: iOS 12.0+
+          - **最低支持**: iOS 13.0+
           - **Xcode 版本**: 16.0+
           - **Swift 版本**: 5.9+
           
