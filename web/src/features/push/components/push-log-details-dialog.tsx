@@ -15,6 +15,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -219,7 +220,7 @@ export function PushLogDetailsDialog({ log, open, onOpenChange }: PushLogDetails
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto -mx-6 px-6">
+        <DialogScrollBody>
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="overview">推送概览</TabsTrigger>
@@ -470,7 +471,7 @@ export function PushLogDetailsDialog({ log, open, onOpenChange }: PushLogDetails
               </div>
             </TabsContent>
           </Tabs>
-        </div>
+        </DialogScrollBody>
       </DialogContent>
     </Dialog>
   )

@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -114,7 +115,7 @@ export function TemplateRenderDialog({ template, open, onOpenChange }: TemplateR
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto -mx-6 px-6 space-y-6">
+        <DialogScrollBody className="space-y-6">
           {/* 变量输入表单 */}
           <div>
             <h3 className="text-lg font-medium mb-4">变量赋值</h3>
@@ -248,7 +249,7 @@ export function TemplateRenderDialog({ template, open, onOpenChange }: TemplateR
               </div>
             </>
           )}
-        </div>
+        </DialogScrollBody>
       </DialogContent>
     </Dialog>
   )

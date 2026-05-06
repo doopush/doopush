@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogScrollBody, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DateTimePicker } from '@/components/date-time-picker'
 import { AuditStatistics } from './components/audit-statistics'
@@ -733,7 +733,7 @@ export function AuditLogs() {
           </DialogHeader>
           
           {selectedLog && (
-            <div className="flex-1 overflow-auto -mx-6 px-6">
+            <DialogScrollBody>
               <div className='space-y-6'>
                 {/* 基本信息 */}
                 <div className='grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded'>
@@ -849,7 +849,7 @@ export function AuditLogs() {
                   </div>
                 )}
               </div>
-            </div>
+            </DialogScrollBody>
           )}
         </DialogContent>
       </Dialog>

@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -139,7 +140,7 @@ export function TestConfigDialog({ config, open, onOpenChange }: TestConfigDialo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto -mx-6 px-6 space-y-6">
+        <DialogScrollBody className="space-y-6">
           {/* 配置信息显示 */}
           <Card>
             <CardHeader>
@@ -293,7 +294,7 @@ export function TestConfigDialog({ config, open, onOpenChange }: TestConfigDialo
               </CardContent>
             </Card>
           )}
-        </div>
+        </DialogScrollBody>
       </DialogContent>
     </Dialog>
   )

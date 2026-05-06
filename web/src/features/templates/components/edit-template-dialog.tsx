@@ -10,6 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -202,7 +203,7 @@ export function EditTemplateDialog({ template, open, onOpenChange, onSuccess }: 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto -mx-6 px-6">
+        <DialogScrollBody>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* 基本信息 */}
@@ -456,18 +457,18 @@ export function EditTemplateDialog({ template, open, onOpenChange, onSuccess }: 
               </div>
             </form>
           </Form>
-        </div>
+        </DialogScrollBody>
 
         <DialogFooter>
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={handleClose}
             disabled={loading}
           >
             取消
           </Button>
-          <Button 
+          <Button
             onClick={form.handleSubmit(onSubmit)}
             disabled={loading}
           >

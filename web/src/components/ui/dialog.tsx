@@ -79,6 +79,18 @@ function DialogContent({
   )
 }
 
+// 弹窗内可滚动主体：抵消 DialogContent 的 p-6 让滚动条贴边，
+// 同时留出 py-1 防止表单控件 focus ring 被 overflow-auto 裁切。
+function DialogScrollBody({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot='dialog-scroll-body'
+      className={cn('flex-1 overflow-auto -mx-6 px-6 py-1', className)}
+      {...props}
+    />
+  )
+}
+
 function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -137,6 +149,7 @@ export {
   DialogHeader,
   DialogOverlay,
   DialogPortal,
+  DialogScrollBody,
   DialogTitle,
   DialogTrigger,
 }

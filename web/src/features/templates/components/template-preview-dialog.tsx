@@ -4,6 +4,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
@@ -69,7 +70,7 @@ export function TemplatePreviewDialog({ template, open, onOpenChange }: Template
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto -mx-6 px-6 space-y-6">
+        <DialogScrollBody className="space-y-6">
           {/* 基本信息 */}
           <div>
             <h3 className="text-lg font-medium mb-4">基本信息</h3>
@@ -196,7 +197,7 @@ export function TemplatePreviewDialog({ template, open, onOpenChange }: Template
               </div>
             </>
           )}
-        </div>
+        </DialogScrollBody>
       </DialogContent>
     </Dialog>
   )

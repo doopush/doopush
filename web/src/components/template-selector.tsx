@@ -25,6 +25,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -338,7 +339,7 @@ export function TemplateSelector({
           </DialogHeader>
           
           {selectedTemplate && (
-            <div className="flex-1 overflow-auto -mx-6 px-6 space-y-4">
+            <DialogScrollBody className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="grid gap-2">
                   <Label className="text-muted-foreground">模板名称</Label>
@@ -391,7 +392,7 @@ export function TemplateSelector({
                   )
                 })()}
               </div>
-            </div>
+            </DialogScrollBody>
           )}
         </DialogContent>
       </Dialog>
@@ -407,7 +408,7 @@ export function TemplateSelector({
           </DialogHeader>
 
           {selectedTemplate && (
-            <div className="flex-1 overflow-auto -mx-6 px-6 space-y-6">
+            <DialogScrollBody className="space-y-6">
               {(() => {
                 const variables = extractVariables(selectedTemplate.title + ' ' + selectedTemplate.content)
                 const templateVars = getTemplateVariables(selectedTemplate)
@@ -520,7 +521,7 @@ export function TemplateSelector({
                   </div>
                 )
               })()}
-            </div>
+            </DialogScrollBody>
           )}
 
           <DialogFooter>

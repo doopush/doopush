@@ -10,6 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -313,7 +314,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto -mx-6 px-6">
+        <DialogScrollBody>
           {/* 配置信息显示 */}
           <div className="mb-6 p-4 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-3">
@@ -782,7 +783,7 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
           )}
             </form>
           </Form>
-        </div>
+        </DialogScrollBody>
 
         <DialogFooter>
           <Button 

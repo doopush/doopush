@@ -10,6 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -102,7 +103,7 @@ export function CreateGroupDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto -mx-6 px-6">
+        <DialogScrollBody>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
               <FormField
@@ -139,7 +140,7 @@ export function CreateGroupDialog({
               />
             </form>
           </Form>
-        </div>
+        </DialogScrollBody>
 
         <DialogFooter>
           <Button

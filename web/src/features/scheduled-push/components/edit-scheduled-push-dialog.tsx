@@ -10,6 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -507,7 +508,7 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto -mx-6 px-6">
+        <DialogScrollBody>
           {/* 任务信息显示 */}
           <div className="mb-6 p-4 bg-muted/50 rounded-lg">
             <div className="flex items-center justify-between">
@@ -1229,18 +1230,18 @@ export function EditScheduledPushDialog({ push, open, onOpenChange, onSuccess }:
               </Card>
             </form>
           </Form>
-        </div>
+        </DialogScrollBody>
 
         <DialogFooter>
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={handleClose}
             disabled={loading}
           >
             取消
           </Button>
-          <Button 
+          <Button
             onClick={form.handleSubmit(onSubmit)}
             disabled={loading}
           >

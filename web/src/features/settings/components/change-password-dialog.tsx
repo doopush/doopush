@@ -10,6 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -94,7 +95,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto -mx-6 px-6">
+        <DialogScrollBody>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -152,7 +153,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
               />
             </form>
           </Form>
-        </div>
+        </DialogScrollBody>
 
         <DialogFooter>
           <Button

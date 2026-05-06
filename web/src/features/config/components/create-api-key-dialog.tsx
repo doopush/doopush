@@ -10,6 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -121,7 +122,7 @@ export function CreateApiKeyDialog({ open, onOpenChange, onSuccess, app }: Creat
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-auto -mx-6 px-6">
+          <DialogScrollBody>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
@@ -142,7 +143,7 @@ export function CreateApiKeyDialog({ open, onOpenChange, onSuccess, app }: Creat
                 />
               </form>
             </Form>
-          </div>
+          </DialogScrollBody>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>

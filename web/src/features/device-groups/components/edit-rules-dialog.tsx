@@ -7,6 +7,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -113,7 +114,7 @@ export function EditRulesDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto -mx-6 px-6 space-y-4">
+        <DialogScrollBody className="space-y-4">
           {filterRules.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
               暂无筛选规则，点击下方按钮添加
@@ -210,7 +211,7 @@ export function EditRulesDialog({
             <Plus className="mr-2 h-4 w-4" />
             添加筛选条件
           </Button>
-        </div>
+        </DialogScrollBody>
 
         <DialogFooter>
           <Button

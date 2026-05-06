@@ -10,6 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -283,7 +284,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto -mx-6 px-6">
+        <DialogScrollBody>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
@@ -756,7 +757,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
               )}
             </form>
           </Form>
-        </div>
+        </DialogScrollBody>
 
         <DialogFooter>
           <Button 

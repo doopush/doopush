@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogScrollBody,
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
@@ -74,7 +75,7 @@ export function APIKeysDialog({ app, open, onOpenChange }: APIKeysDialogProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-auto -mx-6 px-6 space-y-4">
+          <DialogScrollBody className="space-y-4">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium">现有API密钥</h4>
@@ -146,7 +147,7 @@ export function APIKeysDialog({ app, open, onOpenChange }: APIKeysDialogProps) {
                 </Table>
               )}
             </div>
-          </div>
+          </DialogScrollBody>
 
           <Button onClick={() => onOpenChange(false)}>关闭</Button>
         </DialogContent>
