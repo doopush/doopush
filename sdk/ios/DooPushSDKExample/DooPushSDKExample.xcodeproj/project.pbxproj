@@ -280,7 +280,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DooPushSDKExample/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "DooPushSDKExample";
+				INFOPLIST_KEY_CFBundleDisplayName = DooPushSDKExample;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
@@ -312,7 +312,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DooPushSDKExample/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "DooPushSDKExample";
+				INFOPLIST_KEY_CFBundleDisplayName = DooPushSDKExample;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;

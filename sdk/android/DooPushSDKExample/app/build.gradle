@@ -4,9 +4,16 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'org.jetbrains.kotlin.kapt'
-    id 'com.google.gms.google-services'
-    id 'com.huawei.agconnect'
-    id 'com.hihonor.mcs.asplugin'
+}
+
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+}
+if (file('agconnect-services.json').exists()) {
+    apply plugin: 'com.huawei.agconnect'
+}
+if (file('mcs-services.json').exists()) {
+    apply plugin: 'com.hihonor.mcs.asplugin'
 }
 
 android {
