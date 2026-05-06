@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/doopush/doopush/api/internal/config"
 	"github.com/doopush/doopush/api/internal/database"
+	"github.com/doopush/doopush/api/internal/redisclient"
 	"github.com/doopush/doopush/api/internal/services"
 	"github.com/redis/go-redis/v9"
 )
@@ -31,18 +31,9 @@ type GatewayServer struct {
 func NewGatewayServer() (*GatewayServer, error) {
 	database.Connect()
 
-	rdb := redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%s",
-			config.GetString("REDIS_HOST", "redis"),
-			config.GetString("REDIS_PORT", "6379")),
-		Password: config.GetString("REDIS_PASSWORD", ""),
-		DB:       config.GetInt("REDIS_DB", 0),
-	})
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("redis 连接失败: %w", err)
+	rdb, err := redisclient.New()
+	if err != nil {
+		return nil, err
 	}
 
 	h := NewHandler(rdb)

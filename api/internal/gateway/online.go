@@ -7,19 +7,17 @@ import (
 
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
+	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/utils"
 	"github.com/redis/go-redis/v9"
 )
 
-const (
-	onlineKeyPrefix = "device_online:"
-	onlineTTL       = 2 * time.Hour
-)
+const onlineTTL = 2 * time.Hour
 
 // MarkOnline 设置 Redis 在线态 + 更新 MySQL is_online=true
 func MarkOnline(rdb *redis.Client, appID uint, token string) {
 	ctx := context.Background()
-	key := onlineKeyPrefix + token
+	key := services.OnlineKeyPrefix + token
 	if err := rdb.Set(ctx, key, "1", onlineTTL).Err(); err != nil {
 		log.Printf("redis set online failed: %v", err)
 	}
@@ -49,7 +47,7 @@ func MarkOnline(rdb *redis.Client, appID uint, token string) {
 // MarkOffline 删除 Redis 在线态 + 更新 MySQL is_online=false
 func MarkOffline(rdb *redis.Client, appID uint, token string) {
 	ctx := context.Background()
-	key := onlineKeyPrefix + token
+	key := services.OnlineKeyPrefix + token
 	if err := rdb.Del(ctx, key).Err(); err != nil {
 		log.Printf("redis del online failed: %v", err)
 	}

@@ -71,3 +71,39 @@ func TestEnrichOnlineStatus_RedisDown(t *testing.T) {
 		t.Errorf("on Redis error, IsOnline should remain DB value (true)")
 	}
 }
+
+func TestEnrichOnlineStatusOne(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("start miniredis: %v", err)
+	}
+	defer mr.Close()
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer rdb.Close()
+
+	mr.Set("device_online:hit", "1")
+
+	hit := &models.Device{Token: "hit", IsOnline: false}
+	if err := EnrichOnlineStatusOne(context.Background(), rdb, hit); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !hit.IsOnline {
+		t.Errorf("hit token should be online")
+	}
+
+	miss := &models.Device{Token: "miss", IsOnline: true}
+	if err := EnrichOnlineStatusOne(context.Background(), rdb, miss); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if miss.IsOnline {
+		t.Errorf("miss token should override DB to offline")
+	}
+
+	// nil rdb / nil device → no-op
+	if err := EnrichOnlineStatusOne(context.Background(), nil, hit); err != nil {
+		t.Errorf("nil rdb should be no-op, got %v", err)
+	}
+	if err := EnrichOnlineStatusOne(context.Background(), rdb, nil); err != nil {
+		t.Errorf("nil device should be no-op, got %v", err)
+	}
+}

@@ -381,7 +381,7 @@ export function Devices() {
                                   )}
                                   title={device.is_online ? "在线" : "离线"}
                                 />
-                                <span>{device.model}</span>
+                                {device.model}
                               </div>
                               <div className="text-sm text-muted-foreground font-mono">
                                 {device.token.length > 20
