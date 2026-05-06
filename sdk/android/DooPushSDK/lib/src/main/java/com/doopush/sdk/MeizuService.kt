@@ -110,6 +110,11 @@ class MeizuService(private val context: Context) {
      * @return 是否初始化成功
      */
     fun initialize(appId: String, appKey: String): Boolean {
+        if (appId.isBlank() || appKey.isBlank()) {
+            Log.d(TAG, "魅族推送配置为空，跳过初始化（plugin opt-out 语义）")
+            return false
+        }
+
         if (!isMeizuPushAvailable()) {
             Log.w(TAG, "魅族SDK 未集成")
             return false

@@ -112,6 +112,11 @@ class VivoService(private val context: Context) {
      * @return 是否初始化成功
      */
     fun initialize(appId: String, apiKey: String): Boolean {
+        if (appId.isBlank() || apiKey.isBlank()) {
+            Log.d(TAG, "VIVO 推送配置为空，跳过初始化（plugin opt-out 语义）")
+            return false
+        }
+
         if (!isVivoPushAvailable()) {
             Log.w(TAG, "VIVO SDK 未集成")
             return false

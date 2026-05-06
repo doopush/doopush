@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.doopush.sdk.models.PushMessage
@@ -23,7 +24,24 @@ class DooPushFirebaseMessagingService : FirebaseMessagingService() {
         private const val TAG = "DooPushFCMService"
         private const val NOTIFICATION_CHANNEL_ID = "doopush_default_channel"
         private const val NOTIFICATION_ID_BASE = 10000
-        
+        /**
+         * Relay 广播 action。
+         * 同包内分发：发送端通过 `intent.setPackage(packageName)` 限定接收范围，
+         * 仅本应用 UID 注册的 BroadcastReceiver 可以收到。Android 8+ 同 UID 广播
+         * 不需要 <permission> 声明，也不会被其它 App 截获。
+         */
+        const val ACTION_RELAY_NOTIFICATION_RECEIVED = "com.doopush.relay.NOTIFICATION_RECEIVED"
+
+        // ── Relay broadcast extras ──────────────────────────────────────
+        // 这些 key 的字符串值是 wire contract 的一部分，一经发布请勿改动。
+        // 上层 SDK（RN bridge / 用户自定义 BroadcastReceiver）依赖这些常量名。
+        const val EXTRA_DATA = "com.doopush.relay.extra.data"
+        const val EXTRA_NOTIFICATION_TITLE = "com.doopush.relay.extra.notification.title"
+        const val EXTRA_NOTIFICATION_BODY = "com.doopush.relay.extra.notification.body"
+        const val EXTRA_FROM = "com.doopush.relay.extra.from"
+        const val EXTRA_MESSAGE_ID = "com.doopush.relay.extra.messageId"
+        const val EXTRA_SENT_TIME = "com.doopush.relay.extra.sentTime"
+
         /**
          * 全局消息监听器
          */
@@ -77,7 +95,12 @@ class DooPushFirebaseMessagingService : FirebaseMessagingService() {
             
             // 处理通知显示
             handleNotificationDisplay(pushMessage, remoteMessage)
-            
+
+            // 如开启上层转播，则向上层（如 expo-notifications）转播原始 FCM 消息
+            if (DooPushManager.getInstance().isExpoNotificationRelayEnabled) {
+                relayToExpoNotifications(remoteMessage)
+            }
+
             // 记录日志
             logMessageReceived(pushMessage)
             
@@ -107,6 +130,11 @@ class DooPushFirebaseMessagingService : FirebaseMessagingService() {
      * 处理通知显示
      */
     private fun handleNotificationDisplay(pushMessage: PushMessage, remoteMessage: RemoteMessage) {
+        // 上层（expo-notifications / react-native-firebase）接管展示时，跳过 DooPush 自管展示
+        if (!DooPushManager.getInstance().isFCMNotificationDisplayEnabled) {
+            Log.d(TAG, "跳过系统通知显示 (FCM display disabled)")
+            return
+        }
         // 应用在前台时不显示系统通知；后台则无论是否有notification字段都显示
         if (isAppInForeground()) {
             Log.d(TAG, "跳过系统通知显示 (应用在前台)")
@@ -266,6 +294,28 @@ class DooPushFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
     
+    /** 向上层 SDK（如 expo-notifications）转播 FCM 消息 */
+    private fun relayToExpoNotifications(remoteMessage: RemoteMessage) {
+        try {
+            val intent = Intent(ACTION_RELAY_NOTIFICATION_RECEIVED).apply {
+                setPackage(packageName)  // 限本进程；不污染其他 App
+                val dataBundle = Bundle().apply {
+                    for ((k, v) in remoteMessage.data) putString(k, v)
+                }
+                putExtra(EXTRA_DATA, dataBundle)
+                putExtra(EXTRA_NOTIFICATION_TITLE, remoteMessage.notification?.title)
+                putExtra(EXTRA_NOTIFICATION_BODY, remoteMessage.notification?.body)
+                putExtra(EXTRA_FROM, remoteMessage.from)
+                putExtra(EXTRA_MESSAGE_ID, remoteMessage.messageId)
+                putExtra(EXTRA_SENT_TIME, remoteMessage.sentTime)
+            }
+            sendBroadcast(intent)
+            Log.d(TAG, "已转播 FCM 消息到上层（broadcast: ${ACTION_RELAY_NOTIFICATION_RECEIVED}）")
+        } catch (e: Exception) {
+            Log.w(TAG, "转播 FCM 消息失败", e)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "DooPush Firebase消息服务销毁")

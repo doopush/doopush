@@ -40,6 +40,7 @@ data class DooPushError(
         const val CONFIG_INVALID_API_KEY = 2002
         const val CONFIG_INVALID_BASE_URL = 2003
         const val CONFIG_NOT_INITIALIZED = 2004
+        const val CONFIG_INVALID_PARAMETER = 2005
         
         // FCM相关错误码
         const val FCM_TOKEN_FETCH_FAILED = 3001
@@ -118,6 +119,10 @@ data class DooPushError(
         const val ERROR_TCP_REGISTRATION_FAILED = 6003
         const val ERROR_TCP_SERVER_ERROR = 6004
         const val ERROR_TCP_MESSAGE_SEND_FAILED = 6005
+
+        // 注册流程状态相关错误码
+        /** 7001 — 调用方在前一次注册流程未完成时再次发起 registerDevice */
+        const val REGISTRATION_IN_PROGRESS = 7001
 
         // 系统相关错误码
         const val UNKNOWN_ERROR = 9999

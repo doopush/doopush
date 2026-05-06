@@ -19,7 +19,11 @@ class DooPushManager private constructor() {
     
     companion object {
         private const val TAG = "DooPushManager"
-        
+
+        private val VALID_REGISTER_VENDORS = setOf(
+            "apns", "fcm", "hms", "honor", "xiaomi", "oppo", "vivo", "meizu"
+        )
+
         @Volatile
         private var INSTANCE: DooPushManager? = null
         
@@ -49,7 +53,57 @@ class DooPushManager private constructor() {
             return INSTANCE?.callback != null
         }
     }
-    
+
+    /**
+     * 通知管理模式（marker 标记位）
+     *
+     * 此 enum 本身不直接改变 SDK 行为——它是一个**协调标记**，供上层 SDK
+     * （例如 React Native bridge / Expo Module）读取并据此自行调用其它具体开关。
+     *
+     * **典型 PASSIVE 模式配置**（让位给第三方 SDK 处理 FCM）：
+     * ```
+     * DooPushManager.getInstance().setNotificationManagementMode(PASSIVE)
+     * DooPushManager.getInstance().setFCMNotificationDisplayEnabled(false)
+     * DooPushManager.getInstance().setExpoNotificationRelayEnabled(true)
+     * // 之后由上层 SDK 拿到 token 后调用 registerDevice(token, vendor, callback)
+     * ```
+     *
+     * - **ACTIVE**：默认。SDK 自管 FCM 通知展示、token 注册等
+     * - **PASSIVE**：让位标记。SDK 自身行为不会因此改变；调用方需配合上述其它开关
+     */
+    enum class NotificationManagementMode { ACTIVE, PASSIVE }
+
+    /** 当前通知管理模式 */
+    @Volatile
+    var notificationManagementMode: NotificationManagementMode = NotificationManagementMode.ACTIVE
+        private set
+
+    /** 设置通知管理模式 */
+    fun setNotificationManagementMode(mode: NotificationManagementMode) {
+        notificationManagementMode = mode
+        Log.i(TAG, "通知管理模式设置为: $mode")
+    }
+
+    /** FCM 通道是否由 DooPush 自管展示通知（默认 true）。设 false 让位给上层（expo-notifications / react-native-firebase） */
+    @Volatile
+    var isFCMNotificationDisplayEnabled: Boolean = true
+        private set
+
+    fun setFCMNotificationDisplayEnabled(enabled: Boolean) {
+        isFCMNotificationDisplayEnabled = enabled
+        Log.i(TAG, "FCM 通知展示开关: $enabled")
+    }
+
+    /** 是否向上层 SDK（如 expo-notifications）转播 FCM 消息（默认 false） */
+    @Volatile
+    var isExpoNotificationRelayEnabled: Boolean = false
+        private set
+
+    fun setExpoNotificationRelayEnabled(enabled: Boolean) {
+        isExpoNotificationRelayEnabled = enabled
+        Log.i(TAG, "Expo 通知转播开关: $enabled")
+    }
+
     // 核心组件
     private var config: DooPushConfig? = null
     private var deviceManager: DooPushDevice? = null
@@ -973,6 +1027,54 @@ class DooPushManager private constructor() {
         }
     }
     
+    /**
+     * 用调用方已有的推送 token 直接完成 DooPush 服务端注册
+     * 跳过 SDK 内部权限请求 / 厂商 SDK 初始化 / token 获取流程
+     *
+     * @param token  调用方已经从 APNs / FCM / OEM 渠道拿到的设备 token
+     * @param vendor 通道标识："apns"/"fcm"/"hms"/"honor"/"xiaomi"/"oppo"/"vivo"/"meizu"
+     *               用于服务端正确归类设备 channel
+     * @param callback 注册结果回调
+     */
+    fun registerDevice(
+        token: String,
+        vendor: String,
+        callback: DooPushRegisterCallback
+    ) {
+        if (!checkInitialized()) {
+            callback.onError(DooPushError.configNotInitialized())
+            return
+        }
+        if (vendor !in VALID_REGISTER_VENDORS) {
+            callback.onError(
+                DooPushError(
+                    code = DooPushError.CONFIG_INVALID_PARAMETER,
+                    message = "vendor 必须是: ${VALID_REGISTER_VENDORS.joinToString()}"
+                )
+            )
+            return
+        }
+        if (isRegistering.get()) {
+            Log.w(TAG, "另一个注册流程正在进行，registerDevice(token,vendor) 拒绝执行")
+            callback.onError(
+                DooPushError(
+                    code = DooPushError.REGISTRATION_IN_PROGRESS,
+                    message = "另一个注册流程正在进行，请稍后重试"
+                )
+            )
+            return
+        }
+        try {
+            val deviceInfo = deviceManager!!.getCurrentDeviceInfo(vendor)
+            cachedDeviceInfo = deviceInfo
+            cachedToken = token
+            registerDeviceToServer(deviceInfo, token, callback)
+        } catch (e: Exception) {
+            Log.e(TAG, "registerDevice(token,vendor) 失败", e)
+            callback.onError(DooPushError.fromException(e))
+        }
+    }
+
     /**
      * 注册设备到服务器
      */

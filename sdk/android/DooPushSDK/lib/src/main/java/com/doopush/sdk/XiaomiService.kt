@@ -114,6 +114,11 @@ class XiaomiService(private val context: Context) {
      * @return 是否初始化成功
      */
     fun initialize(appId: String, appKey: String): Boolean {
+        if (appId.isBlank() || appKey.isBlank()) {
+            Log.d(TAG, "小米推送配置为空，跳过初始化（plugin opt-out 语义）")
+            return false
+        }
+
         if (!isXiaomiPushAvailable()) {
             Log.w(TAG, "小米推送SDK不可用")
             return false

@@ -1,0 +1,13 @@
+# JitPack 构建配置 —— 触发：doopush-android-sdk 仓库的新 git tag
+# 验证地址：https://jitpack.io/#doopush/doopush-android-sdk
+
+jdk:
+  - openjdk17
+
+before_install:
+  - chmod +x gradlew
+
+install:
+  - ./gradlew :lib:assembleRelease :lib:publishToMavenLocal -x test
+
+# 不在 JitPack 上跑测试（节省构建时间；测试已在 GitHub Actions 跑过）

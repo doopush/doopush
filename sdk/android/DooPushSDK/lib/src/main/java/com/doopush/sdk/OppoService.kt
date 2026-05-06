@@ -108,6 +108,11 @@ class OppoService(private val context: Context) {
      * @return 是否初始化成功
      */
     fun initialize(appKey: String, appSecret: String): Boolean {
+        if (appKey.isBlank() || appSecret.isBlank()) {
+            Log.d(TAG, "OPPO 推送配置为空，跳过初始化（plugin opt-out 语义）")
+            return false
+        }
+
         if (!isOppoPushAvailable()) {
             Log.w(TAG, "OPPO SDK 未集成")
             return false
