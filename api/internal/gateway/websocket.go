@@ -35,6 +35,10 @@ func (w *wsConn) CloseWith(code int, reason string) {
 
 // run 启动 reader + ping，阻塞直到任一返回
 func (w *wsConn) run(ctx context.Context) {
+	// 派生可取消的 ctx：run 一旦返回，两个子 goroutine 都能从 ctx.Done() 收敛退出
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	readerErr := make(chan error, 1)
 	pingErr := make(chan error, 1)
 
@@ -59,9 +63,9 @@ func (w *wsConn) run(ctx context.Context) {
 				pingErr <- ctx.Err()
 				return
 			case <-ticker.C:
-				pctx, cancel := context.WithTimeout(ctx, pongTimeout)
+				pctx, c2 := context.WithTimeout(ctx, pongTimeout)
 				err := w.c.Ping(pctx)
-				cancel()
+				c2()
 				if err != nil {
 					pingErr <- err
 					return
@@ -73,6 +77,8 @@ func (w *wsConn) run(ctx context.Context) {
 	select {
 	case err := <-readerErr:
 		log.Printf("ws reader exit token=%s: %v", w.token, err)
+		// reader 异常通常意味着对端断开；立刻清理在线态，避免最长 30s 的幽灵在线
+		w.CloseWith(int(websocket.StatusNormalClosure), "reader exit")
 	case err := <-pingErr:
 		log.Printf("ws ping exit token=%s: %v", w.token, err)
 		w.CloseWith(int(websocket.StatusPolicyViolation), "pong timeout")
