@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
@@ -58,6 +59,9 @@ func authenticate(db *gorm.DB, p *HandshakeParams) (deviceID uint, err error) {
 	if err := db.Where("app_id = ? AND key_hash = ? AND status = 1", p.AppID, keyHash).First(&apiKey).Error; err != nil {
 		return 0, &authError{status: http.StatusUnauthorized, msg: "invalid appkey"}
 	}
+	if apiKey.ExpiresAt != nil && apiKey.ExpiresAt.Before(time.Now()) {
+		return 0, &authError{status: http.StatusUnauthorized, msg: "appkey expired"}
+	}
 	// 3. 设备 token 哈希匹配
 	tokenHash := utils.HashString(p.Token)
 	var device models.Device
@@ -68,17 +72,28 @@ func authenticate(db *gorm.DB, p *HandshakeParams) (deviceID uint, err error) {
 }
 
 // AuthenticateRequest HTTP 层入口，握手前调用
-func AuthenticateRequest(r *http.Request) (*HandshakeParams, uint, *authError) {
+func AuthenticateRequest(r *http.Request) (*HandshakeParams, uint, error) {
 	p, err := parseHandshakeParams(r)
 	if err != nil {
 		return nil, 0, &authError{status: http.StatusBadRequest, msg: err.Error()}
 	}
 	deviceID, err := authenticate(database.DB, p)
 	if err != nil {
-		if ae, ok := err.(*authError); ok {
+		// pass *authError through; wrap any other error as 500
+		var ae *authError
+		if errors.As(err, &ae) {
 			return nil, 0, ae
 		}
 		return nil, 0, &authError{status: http.StatusInternalServerError, msg: err.Error()}
 	}
 	return p, deviceID, nil
+}
+
+// HTTPStatus returns the HTTP status code from an auth error, or 500 if err is not an auth error.
+func HTTPStatus(err error) int {
+	var ae *authError
+	if errors.As(err, &ae) {
+		return ae.status
+	}
+	return http.StatusInternalServerError
 }
