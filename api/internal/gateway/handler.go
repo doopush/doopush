@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/coder/websocket"
@@ -44,7 +45,14 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. 在线态 + 注册到表，设置清理钩子
+	// 3. 在线态 + 注册到表
+	// 顺序：先 MarkOnline 再 register。这样如果连接在握手后立即断开，
+	// closeFn 触发的 MarkOffline 的 DB goroutine 大概率排在 MarkOnline 的
+	// DB goroutine 之后，避免 is_online=true 卡死。
+	// （完整的 token 级串行化是后续工作，当前依赖 Go 调度的 FIFO 倾向 +
+	//   重启时 SetAllDevicesOffline 兜底）
+	MarkOnline(h.rdb, params.AppID, params.Token)
+
 	wc := &wsConn{c: c, token: params.Token, appID: params.AppID}
 	wc.closeFn = func() {
 		// 仅当 registry 中确实是本连接时才清离线态；
@@ -54,7 +62,8 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.reg.register(params.Token, wc) // 内部会异步关掉同 token 老连
-	MarkOnline(h.rdb, params.AppID, params.Token)
+
+	log.Printf("ws open token=%s appID=%d", params.Token, params.AppID)
 
 	// 4. 跑生命周期，阻塞到断开；返回后调 CloseWith 触发清理
 	ctx, cancel := context.WithCancel(r.Context())
