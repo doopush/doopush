@@ -4,13 +4,11 @@ services:
     image: dootask/doopush:latest
     ports:
       - 5180:80
-      - 5190:5190 # 保持与环境变量GATEWAY_PORT一致
     environment:
       APP_ENV: production
       DB_DATABASE: doopush
       DB_USERNAME: root
       DB_PASSWORD: password
-      GATEWAY_PORT: 5190
     volumes:
       - doopush_uploads:/doopush/uploads
     depends_on:
