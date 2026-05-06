@@ -247,7 +247,9 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
             }
             break
         }
-        configData.call_back_url = buildFieldValue('call_back_url', data.call_back_url || '')
+        if (config.channel !== 'fcm' && config.channel !== 'huawei') {
+          configData.call_back_url = buildFieldValue('call_back_url', data.call_back_url || '')
+        }
       }
       
       const configJson = JSON.stringify(configData)
@@ -458,7 +460,6 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                       </FormItem>
                     )}
                   />
-                  <CallbackUrlField control={form.control} name="call_back_url" />
                 </>
               )}
 
@@ -498,7 +499,6 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                       </FormItem>
                     )}
                   />
-                  
                 </>
               )}
 

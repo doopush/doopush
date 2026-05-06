@@ -167,21 +167,18 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
           bundle_id: data.bundle_id,
           private_key: data.private_key,
           production: data.production || false,
-          call_back_url: data.call_back_url
         }
       } else if (data.platform === 'android') {
         switch (data.channel) {
           case 'fcm':
             configData = {
               service_account_key: data.service_account_key,
-              call_back_url: data.call_back_url
             }
             break
           case 'huawei':
             configData = {
               app_id: data.app_id,
               app_secret: data.app_secret,
-              call_back_url: data.call_back_url
             }
             break
           case 'xiaomi':
@@ -442,8 +439,6 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       </FormItem>
                     )}
                   />
-
-                  <CallbackUrlField control={form.control} name="call_back_url" />
                 </>
               )}
 
@@ -469,8 +464,6 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       </FormItem>
                     )}
                   />
-
-                  <CallbackUrlField control={form.control} name="call_back_url" />
                 </>
               )}
 
@@ -509,8 +502,6 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       </FormItem>
                     )}
                   />
-
-                  
                 </>
               )}
 
