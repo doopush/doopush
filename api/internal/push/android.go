@@ -1691,8 +1691,10 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 	networkType := -1   // 网络类型，默认为-1（不限制）
 	classification := 0 // 消息分类，默认为0（运营消息）
 	extra := make(map[string]string)
-	extra["callback.id"] = a.config.CallBack
-	extra["callback.param"] = "vivo"
+	if a.config.CallBack != "" {
+		extra["callback.id"] = a.config.CallBack
+		extra["callback.param"] = "vivo"
+	}
 	// 构建自定义数据
 	customData := make(map[string]string)
 	customData["badge"] = fmt.Sprintf("%d", pushLog.Badge)
@@ -1960,27 +1962,23 @@ func (a *AndroidProvider) buildMeizuMessage(device *models.Device, pushLog *mode
 				}
 
 				// 解析回执信息
-				if messageBody.Extra == nil {
-					messageBody.Extra = &MeizuExtra{}
-				}
-				messageBody.Extra.Callback = a.config.CallBack
-				if callback, ok := meizuData["callback"].(string); ok {
+				ensureExtra := func() *MeizuExtra {
 					if messageBody.Extra == nil {
 						messageBody.Extra = &MeizuExtra{}
 					}
-					messageBody.Extra.Callback = callback
+					return messageBody.Extra
+				}
+				if a.config.CallBack != "" {
+					ensureExtra().Callback = a.config.CallBack
+				}
+				if callback, ok := meizuData["callback"].(string); ok {
+					ensureExtra().Callback = callback
 				}
 				if callbackParam, ok := meizuData["callback_param"].(string); ok {
-					if messageBody.Extra == nil {
-						messageBody.Extra = &MeizuExtra{}
-					}
-					messageBody.Extra.CallbackParam = callbackParam
+					ensureExtra().CallbackParam = callbackParam
 				}
 				if callbackType, ok := meizuData["callback_type"].(string); ok {
-					if messageBody.Extra == nil {
-						messageBody.Extra = &MeizuExtra{}
-					}
-					messageBody.Extra.CallbackType = callbackType
+					ensureExtra().CallbackType = callbackType
 				}
 			}
 		}
@@ -2064,7 +2062,9 @@ func (a *AndroidProvider) buildXiaomiMessage(device *models.Device, pushLog *mod
 		extraMap["dedup_key"] = pushLog.DedupKey
 	}
 	extraMap["dp_source"] = "doopush"
-	extraMap["callback"] = a.config.CallBack
+	if a.config.CallBack != "" {
+		extraMap["callback"] = a.config.CallBack
+	}
 	extraMap["notify_foreground"] = 0
 
 	// 解析并合并自定义数据到extra字段
@@ -2262,26 +2262,6 @@ func (a *AndroidProvider) sendVivoMessage(message *VivoMessage, device *models.D
 		return "", "", "", fmt.Errorf("获取VIVO认证token失败: %v", err)
 	}
 
-	// // 构建请求参数
-	// requestData := make(map[string]interface{})
-	// // 将VivoMessage的字段直接作为请求参数
-	// requestData["regId"] = message.RegID
-	// requestData["title"] = message.Title
-	// requestData["content"] = message.Content
-	// requestData["notifyType"] = message.NotifyType
-	// requestData["timeToLive"] = message.TimeToLive
-	// requestData["skipType"] = message.SkipType
-	// if message.SkipContent != "" {
-	// 	requestData["skipContent"] = message.SkipContent
-	// }
-	// requestData["networkType"] = message.NetworkType
-	// requestData["classification"] = message.Classification
-	// requestData["requestId"] = message.RequestID
-	// if len(message.ClientCustomMap) > 0 {
-	// 	requestData["clientCustomMap"] = message.ClientCustomMap
-	// }
-
-	// 序列化请求数据为JSON
 	requestJSON, err := json.Marshal(message)
 
 	if err != nil {

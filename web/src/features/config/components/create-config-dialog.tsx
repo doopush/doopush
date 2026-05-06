@@ -36,6 +36,7 @@ import { ConfigService } from '@/services/config-service'
 import { requireApp } from '@/utils/app-utils'
 import { toast } from 'sonner'
 import { ANDROID_VENDOR_CONFIG_OPTIONS } from '@/lib/constants'
+import { CallbackUrlField } from './callback-url-field'
 
 // 通用配置表单验证
 const createConfigSchema = z.object({
@@ -441,22 +442,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="call_back_url"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>消息回执</FormLabel>
-                        <FormControl>
-                          <Input placeholder="输入推送消息回执（可选）" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          推送状态回调地址，用于接收推送结果通知
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <CallbackUrlField control={form.control} name="call_back_url" />
                 </>
               )}
 
@@ -483,22 +469,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="call_back_url"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>消息回执</FormLabel>
-                        <FormControl>
-                          <Input placeholder="输入推送消息回执（可选）" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          推送状态回调地址，用于接收推送结果通知
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <CallbackUrlField control={form.control} name="call_back_url" />
                 </>
               )}
 
@@ -586,22 +557,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="call_back_url"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>消息回执</FormLabel>
-                        <FormControl>
-                          <Input placeholder="输入推送消息回执（可选）" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          推送状态回调地址，用于接收推送结果通知
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <CallbackUrlField control={form.control} name="call_back_url" />
                 </>
               )}
 
@@ -649,22 +605,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="call_back_url"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>消息回执</FormLabel>
-                        <FormControl>
-                          <Input placeholder="输入推送消息回执（可选）" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          推送状态回调地址，用于接收推送结果通知
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <CallbackUrlField control={form.control} name="call_back_url" />
                 </>
               )}
 
@@ -712,21 +653,12 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                     )}
                   />
 
-                  <FormField
+                  <CallbackUrlField
                     control={form.control}
                     name="call_back_url"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>消息回执id</FormLabel>
-                        <FormControl>
-                          <Input placeholder="输入推送消息回执id(可选)" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          推送状态回调地址id, 用于接收推送结果通知
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    label="消息回执id"
+                    placeholder="输入推送消息回执id(可选)"
+                    description="推送状态回调地址id, 用于接收推送结果通知"
                   />
                 </>
               )}
@@ -766,22 +698,7 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="call_back_url"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>消息回执</FormLabel>
-                        <FormControl>
-                          <Input placeholder="输入推送消息回执（可选）" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          推送状态回调地址，用于接收推送结果通知
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <CallbackUrlField control={form.control} name="call_back_url" />
                 </>
               )}
 
@@ -828,21 +745,12 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                       </FormItem>
                     )}
                   />
-                  <FormField
+                  <CallbackUrlField
                     control={form.control}
                     name="call_back_url"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>应用入口Activity类全路径</FormLabel>
-                        <FormControl>
-                          <Input placeholder="应用入口Activity类全路径(设置角标必填)" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          设置应用角标数字,应用入口Activity类全路径必填
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    label="应用入口Activity类全路径"
+                    placeholder="应用入口Activity类全路径(设置角标必填)"
+                    description="设置应用角标数字,应用入口Activity类全路径必填"
                   />
                 </>
               )}

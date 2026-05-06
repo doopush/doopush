@@ -88,28 +88,8 @@ func logAuditAction(auditService *services.AuditService, c *gin.Context, request
 		return // 没有用户信息，跳过记录
 	}
 
-	// 获取应用ID（如果存在）
-	var appID *uint
-	if appIDStr := c.Param("appId"); appIDStr != "" {
-		if id, err := strconv.ParseUint(appIDStr, 10, 64); err == nil {
-			appIDValue := uint(id)
-			appID = &appIDValue
-		}
-	}
-	if appID == nil {
-		if f := c.PostForm("appId"); f != "" {
-			if id, err := strconv.ParseUint(f, 10, 64); err == nil && id > 0 {
-				v := uint(id)
-				appID = &v
-			}
-		}
-		if q := c.Query("appId"); q != "" {
-			if id, err := strconv.ParseUint(q, 10, 64); err == nil && id > 0 {
-				v := uint(id)
-				appID = &v
-			}
-		}
-	}
+	// 获取应用ID：路径参数 > 表单 > 查询参数
+	appID := extractAppID(c)
 
 	// 解析操作类型和资源
 	action, resource, resourceID := parseActionFromRequest(c)
@@ -344,4 +324,18 @@ func isSensitiveParam(param string) bool {
 func isNumeric(s string) bool {
 	_, err := strconv.Atoi(s)
 	return err == nil
+}
+
+// extractAppID 依次从路径、表单、查询参数中提取 appId。
+func extractAppID(c *gin.Context) *uint {
+	for _, raw := range []string{c.Param("appId"), c.PostForm("appId"), c.Query("appId")} {
+		if raw == "" {
+			continue
+		}
+		if id, err := strconv.ParseUint(raw, 10, 64); err == nil && id > 0 {
+			v := uint(id)
+			return &v
+		}
+	}
+	return nil
 }

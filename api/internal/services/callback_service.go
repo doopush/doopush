@@ -9,6 +9,9 @@ import (
 
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
+	"github.com/doopush/doopush/api/pkg/logger"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // CallbackService 回执处理服务
@@ -19,66 +22,137 @@ func NewCallbackService() *CallbackService {
 	return &CallbackService{}
 }
 
+// statDelta 单个回执对当日厂商统计的增量。
+type statDelta struct {
+	total    int
+	success  int
+	failure  int
+	delivery int
+	click    int
+}
+
+// statsAccumulator 累计 (appID, vendor, day) -> 增量，最后一次性 UPSERT 到 DB。
+// 避免在 token 循环中对同一 (app, vendor, day) 反复读改写造成竞态和写放大。
+type statsAccumulator struct {
+	buckets map[string]*statBucket
+}
+
+type statBucket struct {
+	appID  uint
+	vendor string
+	date   time.Time
+	delta  statDelta
+}
+
+func newStatsAccumulator() *statsAccumulator {
+	return &statsAccumulator{buckets: make(map[string]*statBucket)}
+}
+
+func (a *statsAccumulator) add(appID uint, vendor string, date time.Time, d statDelta) {
+	key := fmt.Sprintf("%d|%s|%d", appID, vendor, date.Unix())
+	b, ok := a.buckets[key]
+	if !ok {
+		b = &statBucket{appID: appID, vendor: vendor, date: date}
+		a.buckets[key] = b
+	}
+	b.delta.total += d.total
+	b.delta.success += d.success
+	b.delta.failure += d.failure
+	b.delta.delivery += d.delivery
+	b.delta.click += d.click
+}
+
+// flush 将累计的增量原子地写入 callback_statistics。
+// 使用 ON CONFLICT/DUPLICATE KEY UPDATE 保证并发安全（依赖 (app_id, vendor, date) 唯一索引）。
+func (a *statsAccumulator) flush() {
+	for _, b := range a.buckets {
+		row := models.CallbackStatistics{
+			AppID:         b.appID,
+			Vendor:        b.vendor,
+			Date:          b.date,
+			TotalCount:    b.delta.total,
+			SuccessCount:  b.delta.success,
+			FailureCount:  b.delta.failure,
+			DeliveryCount: b.delta.delivery,
+			ClickCount:    b.delta.click,
+		}
+		err := database.DB.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "app_id"}, {Name: "vendor"}, {Name: "date"}},
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"total_count":    gorm.Expr("total_count + ?", b.delta.total),
+				"success_count":  gorm.Expr("success_count + ?", b.delta.success),
+				"failure_count":  gorm.Expr("failure_count + ?", b.delta.failure),
+				"delivery_count": gorm.Expr("delivery_count + ?", b.delta.delivery),
+				"click_count":    gorm.Expr("click_count + ?", b.delta.click),
+				"updated_at":     time.Now(),
+			}),
+		}).Create(&row).Error
+		if err != nil {
+			logger.Error("更新回执统计失败", b.vendor, err)
+		}
+	}
+}
+
+func todayUTC() time.Time {
+	return time.Now().Truncate(24 * time.Hour)
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 // ProcessHuaweiCallback 处理华为推送回执
 func (s *CallbackService) ProcessHuaweiCallback(callback interface{}) error {
 	data, ok := callback.(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("华为回执数据格式错误")
 	}
-
-	// 解析消息数据
 	message, ok := data["message"].(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("华为回执消息数据格式错误")
 	}
-
-	// 解析tokens
 	tokens, ok := message["token"].([]interface{})
 	if !ok {
 		return fmt.Errorf("华为回执token数据格式错误")
 	}
 
-	// 解析Android数据
-	android, _ := message["android"].(map[string]interface{})
 	biTag := ""
-	if android != nil {
+	if android, _ := message["android"].(map[string]interface{}); android != nil {
 		biTag, _ = android["bi_tag"].(string)
 	}
-
-	// 解析通知数据
 	notification, _ := message["notification"].(map[string]interface{})
 	title, _ := notification["title"].(string)
 	body, _ := notification["body"].(string)
-
-	// 原始数据
 	rawData, _ := json.Marshal(data)
-
 	validateOnly, _ := data["validate_only"].(bool)
 
-	// 处理每个token
-	for _, tokenInterface := range tokens {
-		token, ok := tokenInterface.(string)
+	tokenStrs := toStringSlice(tokens)
+	deviceMap := s.findDevicesByTokens("huawei", tokenStrs)
+
+	stats := newStatsAccumulator()
+	rows := make([]models.HuaweiCallback, 0, len(tokenStrs))
+	for _, token := range tokenStrs {
+		device, ok := deviceMap[token]
 		if !ok {
 			continue
 		}
-
-		// 查找设备
-		device, pushLog, err := s.findDeviceAndPushLog("huawei", token, biTag)
-		if err != nil {
+		pushLog, ok := s.findPushLog("huawei", device.ID, biTag)
+		if !ok {
 			continue
 		}
-
-		// 创建华为回执记录
-		huaweiCallback := models.HuaweiCallback{
+		rows = append(rows, models.HuaweiCallback{
 			BaseCallback: models.BaseCallback{
 				AppID:       device.AppID,
 				DeviceID:    device.ID,
 				PushLogID:   pushLog.ID,
 				MessageID:   biTag,
 				DeviceToken: token,
-				EventType:   1, // 送达事件
+				EventType:   1,
 				Success:     true,
-				Timestamp:   time.Now().Unix() * 1000,
+				Timestamp:   time.Now().UnixMilli(),
 				ProcessedAt: time.Now(),
 			},
 			BiTag:        biTag,
@@ -86,17 +160,11 @@ func (s *CallbackService) ProcessHuaweiCallback(callback interface{}) error {
 			Title:        title,
 			Body:         body,
 			RawData:      string(rawData),
-		}
-
-		// 保存到数据库
-		if err := database.DB.Create(&huaweiCallback).Error; err != nil {
-			fmt.Printf("保存华为回执失败: %v\n", err)
-		}
-
-		// 更新统计
-		s.updateCallbackStatistics(device.AppID, "huawei", 1, true, 1, 0)
+		})
+		stats.add(device.AppID, "huawei", todayUTC(), statDelta{total: 1, success: 1, delivery: 1})
 	}
-
+	createInBatches(rows)
+	stats.flush()
 	return nil
 }
 
@@ -106,37 +174,46 @@ func (s *CallbackService) ProcessHonorCallback(callback interface{}) error {
 	if !ok {
 		return fmt.Errorf("荣耀回执数据格式错误")
 	}
-
 	statuses, ok := data["statuses"].([]interface{})
 	if !ok {
 		return fmt.Errorf("荣耀回执状态数据格式错误")
 	}
-
 	rawData, _ := json.Marshal(data)
 
-	for _, statusInterface := range statuses {
-		status, ok := statusInterface.(map[string]interface{})
+	tokens := make([]string, 0, len(statuses))
+	for _, si := range statuses {
+		if status, ok := si.(map[string]interface{}); ok {
+			if t, _ := status["token"].(string); t != "" {
+				tokens = append(tokens, t)
+			}
+		}
+	}
+	deviceMap := s.findDevicesByTokens("honor", tokens)
+
+	stats := newStatsAccumulator()
+	rows := make([]models.HonorCallback, 0, len(statuses))
+	for _, si := range statuses {
+		status, ok := si.(map[string]interface{})
 		if !ok {
 			continue
 		}
-
 		token, _ := status["token"].(string)
 		biTag, _ := status["biTag"].(string)
 		statusCode, _ := status["status"].(float64)
 		timestamp, _ := status["timestamp"].(float64)
 		requestID, _ := status["requestId"].(string)
 
-		// 查找设备
-		device, pushLog, err := s.findDeviceAndPushLog("honor", token, biTag)
-		if err != nil {
+		device, ok := deviceMap[token]
+		if !ok {
 			continue
 		}
-
-		// 荣耀回执：status为40000002表示成功
+		pushLog, ok := s.findPushLog("honor", device.ID, biTag)
+		if !ok {
+			continue
+		}
+		// 荣耀回执：status 为 40000002 表示送达成功
 		success := int(statusCode) == 40000002
-
-		// 创建荣耀回执记录
-		honorCallback := models.HonorCallback{
+		rows = append(rows, models.HonorCallback{
 			BaseCallback: models.BaseCallback{
 				AppID:       device.AppID,
 				DeviceID:    device.ID,
@@ -152,100 +229,112 @@ func (s *CallbackService) ProcessHonorCallback(callback interface{}) error {
 			Status:    int(statusCode),
 			RequestID: requestID,
 			RawData:   string(rawData),
-		}
-
-		// 保存到数据库
-		if err := database.DB.Create(&honorCallback).Error; err != nil {
-			fmt.Printf("保存荣耀回执失败: %v\n", err)
-		}
-
-		// 更新统计
-		successCount := 0
-		if success {
-			successCount = 1
-		}
-		s.updateCallbackStatistics(device.AppID, "honor", 1, success, successCount, 0)
+		})
+		stats.add(device.AppID, "honor", todayUTC(), statDelta{
+			total:    1,
+			success:  boolToInt(success),
+			failure:  boolToInt(!success),
+			delivery: boolToInt(success),
+		})
 	}
-
+	createInBatches(rows)
+	stats.flush()
 	return nil
 }
 
 // ProcessOppoCallback 处理OPPO推送回执
 func (s *CallbackService) ProcessOppoCallback(callbacks []interface{}) error {
-	for _, callbackInterface := range callbacks {
-		data, ok := callbackInterface.(map[string]interface{})
+	type oppoItem struct {
+		messageID string
+		taskID    string
+		regIDs    string
+		eventTime string
+		param     string
+		eventType string
+		raw       []byte
+		timestamp int64
+	}
+
+	// 第一遍：解析 + 收集所有 token
+	items := make([]oppoItem, 0, len(callbacks))
+	allTokens := make([]string, 0)
+	for _, ci := range callbacks {
+		data, ok := ci.(map[string]interface{})
 		if !ok {
 			continue
 		}
-
-		messageID, _ := data["messageId"].(string)
-		taskID, _ := data["taskId"].(string)
-		registrationIDs, _ := data["registrationIds"].(string)
-		eventTime, _ := data["eventTime"].(string)
-		param, _ := data["param"].(string)
-		eventType, _ := data["eventType"].(string)
-
-		rawData, _ := json.Marshal(data)
-
-		// 解析事件时间
-		timestamp := time.Now().Unix() * 1000
-		if eventTime != "" {
-			if t, err := strconv.ParseInt(eventTime, 10, 64); err == nil {
-				timestamp = t
+		raw, _ := json.Marshal(data)
+		ts := time.Now().UnixMilli()
+		if et, _ := data["eventTime"].(string); et != "" {
+			if t, err := strconv.ParseInt(et, 10, 64); err == nil {
+				ts = t
 			}
 		}
-
-		// 解析事件类型
-		eventTypeCode := 1 // 默认为送达
-		if eventType == "push_arrive" {
-			eventTypeCode = 1
+		messageID, _ := data["messageId"].(string)
+		taskID, _ := data["taskId"].(string)
+		regIDs, _ := data["registrationIds"].(string)
+		eventTimeStr, _ := data["eventTime"].(string)
+		param, _ := data["param"].(string)
+		eventType, _ := data["eventType"].(string)
+		item := oppoItem{
+			messageID: messageID,
+			taskID:    taskID,
+			regIDs:    regIDs,
+			eventTime: eventTimeStr,
+			param:     param,
+			eventType: eventType,
+			raw:       raw,
+			timestamp: ts,
 		}
+		items = append(items, item)
+		for _, r := range strings.Split(regIDs, ",") {
+			if r = strings.TrimSpace(r); r != "" {
+				allTokens = append(allTokens, r)
+			}
+		}
+	}
+	deviceMap := s.findDevicesByTokens("oppo", allTokens)
 
-		// 处理多个注册ID
-		regIDs := strings.Split(registrationIDs, ",")
-		for _, regID := range regIDs {
+	stats := newStatsAccumulator()
+	rows := make([]models.OppoCallback, 0)
+	for _, it := range items {
+		for _, regID := range strings.Split(it.regIDs, ",") {
 			regID = strings.TrimSpace(regID)
 			if regID == "" {
 				continue
 			}
-
-			// 查找设备
-			device, pushLog, err := s.findDeviceAndPushLog("oppo", regID, messageID)
-			if err != nil {
+			device, ok := deviceMap[regID]
+			if !ok {
 				continue
 			}
-
-			// 创建OPPO回执记录
-			oppoCallback := models.OppoCallback{
+			pushLog, ok := s.findPushLog("oppo", device.ID, it.messageID)
+			if !ok {
+				continue
+			}
+			rows = append(rows, models.OppoCallback{
 				BaseCallback: models.BaseCallback{
 					AppID:       device.AppID,
 					DeviceID:    device.ID,
 					PushLogID:   pushLog.ID,
-					MessageID:   messageID,
+					MessageID:   it.messageID,
 					DeviceToken: regID,
-					EventType:   eventTypeCode,
+					EventType:   1,
 					Success:     true,
-					Timestamp:   timestamp,
+					Timestamp:   it.timestamp,
 					ProcessedAt: time.Now(),
 				},
-				TaskID:          taskID,
-				RegistrationIDs: registrationIDs,
-				EventTime:       eventTime,
-				Param:           param,
-				EventTypeName:   eventType,
-				RawData:         string(rawData),
-			}
-
-			// 保存到数据库
-			if err := database.DB.Create(&oppoCallback).Error; err != nil {
-				fmt.Printf("保存OPPO回执失败: %v\n", err)
-			}
-
-			// 更新统计
-			s.updateCallbackStatistics(device.AppID, "oppo", 1, true, 1, 0)
+				TaskID:          it.taskID,
+				RegistrationIDs: it.regIDs,
+				EventTime:       it.eventTime,
+				Param:           it.param,
+				EventTypeName:   it.eventType,
+				RawData:         string(it.raw),
+			})
+			stats.add(device.AppID, "oppo", todayUTC(), statDelta{total: 1, success: 1, delivery: 1})
 		}
 	}
-
+	createInBatches(rows)
+	stats.flush()
 	return nil
 }
 
@@ -253,28 +342,39 @@ func (s *CallbackService) ProcessOppoCallback(callbacks []interface{}) error {
 func (s *CallbackService) ProcessVivoCallback(callback map[string]interface{}) error {
 	rawData, _ := json.Marshal(callback)
 
-	for taskID, dataInterface := range callback {
-		data, ok := dataInterface.(map[string]interface{})
+	tokens := make([]string, 0, len(callback))
+	for _, di := range callback {
+		if data, ok := di.(map[string]interface{}); ok {
+			if t, _ := data["targets"].(string); t != "" {
+				tokens = append(tokens, t)
+			}
+		}
+	}
+	deviceMap := s.findDevicesByTokens("vivo", tokens)
+
+	stats := newStatsAccumulator()
+	rows := make([]models.VivoCallback, 0, len(callback))
+	for taskID, di := range callback {
+		data, ok := di.(map[string]interface{})
 		if !ok {
 			continue
 		}
-
 		targets, _ := data["targets"].(string)
 		ackTime, _ := data["ackTime"].(float64)
 		param, _ := data["param"].(string)
 		ackType, _ := data["ackType"].(string)
 
-		// 查找设备
-		device, pushLog, err := s.findDeviceAndPushLog("vivo", targets, taskID)
-		if err != nil {
+		device, ok := deviceMap[targets]
+		if !ok {
 			continue
 		}
-
-		// VIVO回执：ackType为"0"表示到达回执
+		pushLog, ok := s.findPushLog("vivo", device.ID, taskID)
+		if !ok {
+			continue
+		}
+		// VIVO 回执：ackType "0" 表示送达成功
 		success := ackType == "0"
-
-		// 创建VIVO回执记录
-		vivoCallback := models.VivoCallback{
+		rows = append(rows, models.VivoCallback{
 			BaseCallback: models.BaseCallback{
 				AppID:       device.AppID,
 				DeviceID:    device.ID,
@@ -292,21 +392,16 @@ func (s *CallbackService) ProcessVivoCallback(callback map[string]interface{}) e
 			Param:   param,
 			AckType: ackType,
 			RawData: string(rawData),
-		}
-
-		// 保存到数据库
-		if err := database.DB.Create(&vivoCallback).Error; err != nil {
-			fmt.Printf("保存VIVO回执失败: %v\n", err)
-		}
-
-		// 更新统计
-		successCount := 0
-		if success {
-			successCount = 1
-		}
-		s.updateCallbackStatistics(device.AppID, "vivo", 1, success, successCount, 0)
+		})
+		stats.add(device.AppID, "vivo", todayUTC(), statDelta{
+			total:    1,
+			success:  boolToInt(success),
+			failure:  boolToInt(!success),
+			delivery: boolToInt(success),
+		})
 	}
-
+	createInBatches(rows)
+	stats.flush()
 	return nil
 }
 
@@ -314,12 +409,27 @@ func (s *CallbackService) ProcessVivoCallback(callback map[string]interface{}) e
 func (s *CallbackService) ProcessXiaomiCallback(callback map[string]interface{}) error {
 	rawData, _ := json.Marshal(callback)
 
-	for msgID, dataInterface := range callback {
-		data, ok := dataInterface.(map[string]interface{})
+	allTokens := make([]string, 0)
+	for _, di := range callback {
+		if data, ok := di.(map[string]interface{}); ok {
+			if targets, _ := data["targets"].(string); targets != "" {
+				for _, t := range strings.Split(targets, ",") {
+					if t = strings.TrimSpace(t); t != "" {
+						allTokens = append(allTokens, t)
+					}
+				}
+			}
+		}
+	}
+	deviceMap := s.findDevicesByTokens("xiaomi", allTokens)
+
+	stats := newStatsAccumulator()
+	rows := make([]models.XiaomiCallback, 0)
+	for msgID, di := range callback {
+		data, ok := di.(map[string]interface{})
 		if !ok {
 			continue
 		}
-
 		param, _ := data["param"].(string)
 		typeCode, _ := data["type"].(float64)
 		targets, _ := data["targets"].(string)
@@ -327,26 +437,24 @@ func (s *CallbackService) ProcessXiaomiCallback(callback map[string]interface{})
 		barStatus, _ := data["barStatus"].(string)
 		timestamp, _ := data["timestamp"].(float64)
 
-		// 小米回执：type=1送达，type=2点击，type=16无效设备
-		success := int(typeCode) != 16
+		// 小米回执：type=1 送达，type=2 点击，type=16 无效设备
 		eventType := int(typeCode)
+		success := eventType != 16
 
-		// 处理多个目标设备
-		targetList := strings.Split(targets, ",")
-		for _, target := range targetList {
+		for _, target := range strings.Split(targets, ",") {
 			target = strings.TrimSpace(target)
 			if target == "" {
 				continue
 			}
-
-			// 查找设备
-			device, pushLog, err := s.findDeviceAndPushLog("xiaomi", target, msgID)
-			if err != nil {
+			device, ok := deviceMap[target]
+			if !ok {
 				continue
 			}
-
-			// 创建小米回执记录
-			xiaomiCallback := models.XiaomiCallback{
+			pushLog, ok := s.findPushLog("xiaomi", device.ID, msgID)
+			if !ok {
+				continue
+			}
+			rows = append(rows, models.XiaomiCallback{
 				BaseCallback: models.BaseCallback{
 					AppID:       device.AppID,
 					DeviceID:    device.ID,
@@ -364,26 +472,24 @@ func (s *CallbackService) ProcessXiaomiCallback(callback map[string]interface{})
 				Type:      eventType,
 				BarStatus: barStatus,
 				RawData:   string(rawData),
+			})
+			delta := statDelta{
+				total:   1,
+				success: boolToInt(success),
+				failure: boolToInt(!success),
 			}
-
-			// 保存到数据库
-			if err := database.DB.Create(&xiaomiCallback).Error; err != nil {
-				fmt.Printf("保存小米回执失败: %v\n", err)
-			}
-
-			// 更新统计
-			successCount := 0
-			clickCount := 0
 			if success {
-				successCount = 1
 				if eventType == 2 {
-					clickCount = 1
+					delta.click = 1
+				} else {
+					delta.delivery = 1
 				}
 			}
-			s.updateCallbackStatistics(device.AppID, "xiaomi", 1, success, successCount, clickCount)
+			stats.add(device.AppID, "xiaomi", todayUTC(), delta)
 		}
 	}
-
+	createInBatches(rows)
+	stats.flush()
 	return nil
 }
 
@@ -391,39 +497,51 @@ func (s *CallbackService) ProcessXiaomiCallback(callback map[string]interface{})
 func (s *CallbackService) ProcessMeizuCallback(callback map[string]interface{}) error {
 	rawData, _ := json.Marshal(callback)
 
-	for msgID, dataInterface := range callback {
-		data, ok := dataInterface.(map[string]interface{})
+	allTokens := make([]string, 0)
+	for _, di := range callback {
+		if data, ok := di.(map[string]interface{}); ok {
+			if ts, _ := data["targets"].([]interface{}); ts != nil {
+				for _, t := range ts {
+					if s, ok := t.(string); ok && s != "" {
+						allTokens = append(allTokens, s)
+					}
+				}
+			}
+		}
+	}
+	deviceMap := s.findDevicesByTokens("meizu", allTokens)
+
+	stats := newStatsAccumulator()
+	rows := make([]models.MeizuCallback, 0)
+	for msgID, di := range callback {
+		data, ok := di.(map[string]interface{})
 		if !ok {
 			continue
 		}
-
 		param, _ := data["param"].(string)
 		typeCode, _ := data["type"].(float64)
 		targetsInterface, _ := data["targets"].([]interface{})
 
 		eventType := int(typeCode)
-		success := true // 魅族回执默认成功
 
-		// 处理多个目标设备（数组格式）
-		for _, targetInterface := range targetsInterface {
-			target, ok := targetInterface.(string)
+		for _, ti := range targetsInterface {
+			target, ok := ti.(string)
 			if !ok {
 				continue
 			}
-
 			target = strings.TrimSpace(target)
 			if target == "" {
 				continue
 			}
-
-			// 查找设备
-			device, pushLog, err := s.findDeviceAndPushLog("meizu", target, msgID)
-			if err != nil {
+			device, ok := deviceMap[target]
+			if !ok {
 				continue
 			}
-
-			// 创建魅族回执记录
-			meizuCallback := models.MeizuCallback{
+			pushLog, ok := s.findPushLog("meizu", device.ID, msgID)
+			if !ok {
+				continue
+			}
+			rows = append(rows, models.MeizuCallback{
 				BaseCallback: models.BaseCallback{
 					AppID:       device.AppID,
 					DeviceID:    device.ID,
@@ -431,108 +549,96 @@ func (s *CallbackService) ProcessMeizuCallback(callback map[string]interface{}) 
 					MessageID:   msgID,
 					DeviceToken: target,
 					EventType:   eventType,
-					Success:     success,
-					Timestamp:   time.Now().Unix() * 1000,
+					Success:     true,
+					Timestamp:   time.Now().UnixMilli(),
 					ProcessedAt: time.Now(),
 				},
 				Param:   param,
 				Type:    eventType,
-				Targets: strings.Join([]string{target}, ","),
+				Targets: target,
 				RawData: string(rawData),
-			}
-
-			// 保存到数据库
-			if err := database.DB.Create(&meizuCallback).Error; err != nil {
-				fmt.Printf("保存魅族回执失败: %v\n", err)
-			}
-
-			// 更新统计
-			clickCount := 0
+			})
+			delta := statDelta{total: 1, success: 1}
 			if eventType == 2 {
-				clickCount = 1
+				delta.click = 1
+			} else {
+				delta.delivery = 1
 			}
-			s.updateCallbackStatistics(device.AppID, "meizu", 1, success, 1, clickCount)
+			stats.add(device.AppID, "meizu", todayUTC(), delta)
 		}
 	}
-
+	createInBatches(rows)
+	stats.flush()
 	return nil
 }
 
-// findDeviceAndPushLog 查找设备和推送日志
-func (s *CallbackService) findDeviceAndPushLog(vendor, deviceToken, messageID string) (*models.Device, *models.PushLog, error) {
-	// 查找对应的设备
-	var device models.Device
-	if err := database.DB.Where("token = ? AND channel = ?", deviceToken, vendor).First(&device).Error; err != nil {
-		return nil, nil, fmt.Errorf("设备不存在: vendor=%s, token=%s", vendor, deviceToken)
+// findDevicesByTokens 一次查询批量解析 token -> device，避免 token 循环中的 N+1 查询。
+func (s *CallbackService) findDevicesByTokens(vendor string, tokens []string) map[string]models.Device {
+	result := make(map[string]models.Device)
+	if len(tokens) == 0 {
+		return result
 	}
-
-	// 根据messageID或biTag查找推送日志
-	var pushLog models.PushLog
-	var found bool
-
-	// 尝试通过push_log_id查找（如果messageID是数字）
-	if pushLogID, err := strconv.ParseUint(messageID, 10, 32); err == nil {
-		if err := database.DB.Where("id = ? AND device_id = ?", pushLogID, device.ID).First(&pushLog).Error; err == nil {
-			found = true
+	// 去重
+	seen := make(map[string]struct{}, len(tokens))
+	uniq := make([]string, 0, len(tokens))
+	for _, t := range tokens {
+		if t == "" {
+			continue
 		}
-	}
-
-	// 如果没找到，尝试通过dedup_key查找
-	if !found && messageID != "" {
-		if err := database.DB.Where("dedup_key = ? AND device_id = ?", messageID, device.ID).First(&pushLog).Error; err == nil {
-			found = true
+		if _, ok := seen[t]; ok {
+			continue
 		}
+		seen[t] = struct{}{}
+		uniq = append(uniq, t)
 	}
-
-	// 如果还没找到，尝试通过最近的推送日志
-	if !found {
-		if err := database.DB.Where("device_id = ? AND channel = ?", device.ID, vendor).Order("created_at DESC").First(&pushLog).Error; err == nil {
-			found = true
-		}
+	if len(uniq) == 0 {
+		return result
 	}
-
-	if !found {
-		return nil, nil, fmt.Errorf("推送日志不存在: vendor=%s, messageID=%s, deviceID=%d", vendor, messageID, device.ID)
+	var devices []models.Device
+	if err := database.DB.Where("token IN ? AND channel = ?", uniq, vendor).Find(&devices).Error; err != nil {
+		logger.Error("批量查询设备失败", vendor, err)
+		return result
 	}
-
-	return &device, &pushLog, nil
+	for _, d := range devices {
+		result[d.Token] = d
+	}
+	return result
 }
 
-// updateCallbackStatistics 更新回执统计
-func (s *CallbackService) updateCallbackStatistics(appID uint, vendor string, totalCount int, success bool, deliveryCount, clickCount int) {
-	today := time.Now().Truncate(24 * time.Hour)
-
-	// 查找或创建统计记录
-	var stat models.CallbackStatistics
-	err := database.DB.Where("app_id = ? AND vendor = ? AND date = ?", appID, vendor, today).First(&stat).Error
-	if err != nil {
-		// 创建新的统计记录
-		stat = models.CallbackStatistics{
-			AppID:         appID,
-			Vendor:        vendor,
-			Date:          today,
-			TotalCount:    0,
-			SuccessCount:  0,
-			FailureCount:  0,
-			DeliveryCount: 0,
-			ClickCount:    0,
+// findPushLog 查找设备对应的推送日志：优先 push_log_id 数字 → dedup_key。
+// 已删除"找最近一条"的兜底，避免把回执错误关联到无关推送上。
+func (s *CallbackService) findPushLog(vendor string, deviceID uint, messageID string) (*models.PushLog, bool) {
+	if messageID == "" {
+		return nil, false
+	}
+	var pushLog models.PushLog
+	if pushLogID, err := strconv.ParseUint(messageID, 10, 32); err == nil {
+		if database.DB.Where("id = ? AND device_id = ?", pushLogID, deviceID).First(&pushLog).Error == nil {
+			return &pushLog, true
 		}
 	}
-
-	// 更新统计数据
-	stat.TotalCount += totalCount
-	if success {
-		stat.SuccessCount += 1
-	} else {
-		stat.FailureCount += 1
+	if database.DB.Where("dedup_key = ? AND device_id = ?", messageID, deviceID).First(&pushLog).Error == nil {
+		return &pushLog, true
 	}
-	stat.DeliveryCount += deliveryCount
-	stat.ClickCount += clickCount
+	return nil, false
+}
 
-	// 保存统计数据
-	if stat.ID == 0 {
-		database.DB.Create(&stat)
-	} else {
-		database.DB.Save(&stat)
+// createInBatches 批量插入回执；空切片直接返回。
+func createInBatches[T any](rows []T) {
+	if len(rows) == 0 {
+		return
 	}
+	if err := database.DB.CreateInBatches(rows, 200).Error; err != nil {
+		logger.Error("批量保存回执失败", err)
+	}
+}
+
+func toStringSlice(items []interface{}) []string {
+	out := make([]string, 0, len(items))
+	for _, i := range items {
+		if s, ok := i.(string); ok && s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }

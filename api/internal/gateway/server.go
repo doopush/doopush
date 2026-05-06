@@ -85,11 +85,13 @@ func NewGatewayServer() (*GatewayServer, error) {
 
 // Start 启动网关服务器
 func (s *GatewayServer) Start() error {
-	// 启动时将所有设备设为离线状态
-	if err := s.setAllDevicesOffline(); err != nil {
-		log.Printf("设置设备离线状态失败: %v", err)
-		// 不阻断启动流程，仅记录错误
-	}
+	// 异步将历史在线状态全部清零；该 UPDATE 在大表上可能很慢，
+	// 不能让监听端口等待它完成。
+	go func() {
+		if err := services.NewDeviceService().SetAllDevicesOffline(); err != nil {
+			log.Printf("设置设备离线状态失败: %v", err)
+		}
+	}()
 
 	// 启动监控服务器
 	go s.startMetricsServer()
@@ -225,12 +227,6 @@ func loadGatewayConfig() (*GatewayConfig, error) {
 	}
 
 	return cfg, nil
-}
-
-// setAllDevicesOffline 将所有设备设为离线状态
-func (s *GatewayServer) setAllDevicesOffline() error {
-	deviceService := services.NewDeviceService()
-	return deviceService.SetAllDevicesOffline()
 }
 
 // GetPort 获取端口

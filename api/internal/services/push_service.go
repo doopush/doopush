@@ -82,7 +82,7 @@ func (s *PushService) SendPush(appID uint, userID uint, req PushRequest) ([]mode
 	// 创建推送日志
 	var pushLogs []models.PushLog
 	for _, device := range devices {
-		// 设备在线时不发送通知栏消息
+		// 在线设备走网关直推，跳过通知栏消息（多数路径 SQL 已过滤，此处兜底）
 		if device.IsOnline {
 			continue
 		}
@@ -130,9 +130,10 @@ func (s *PushService) SendPush(appID uint, userID uint, req PushRequest) ([]mode
 	return pushLogs, nil
 }
 
-// getTargetDevices 获取目标设备
+// getTargetDevices 获取目标设备。
+// 在线设备由网关 TCP 通道直接送达，因此推送目标只取离线设备，避免下游再扫一遍 IsOnline。
 func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.Device, error) {
-	query := database.DB.Preload("App").Where("app_id = ? AND status = 1", appID)
+	query := database.DB.Preload("App").Where("app_id = ? AND status = 1 AND is_online = ?", appID, false)
 
 	// 平台筛选
 	if target.Platform != "" {
@@ -193,7 +194,7 @@ func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.
 			// 兼容旧的TagIDs方式（预加载App关联）
 			err := database.DB.Preload("App").Table("devices").
 				Joins("JOIN device_tag_maps ON devices.id = device_tag_maps.device_id").
-				Where("devices.app_id = ? AND devices.status = 1 AND device_tag_maps.tag_id IN ?", appID, target.TagIDs).
+				Where("devices.app_id = ? AND devices.status = 1 AND devices.is_online = ? AND device_tag_maps.tag_id IN ?", appID, false, target.TagIDs).
 				Find(&devices).Error
 			if err != nil {
 				return nil, errors.New("获取标签设备失败")
@@ -228,7 +229,7 @@ func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.
 			}
 
 			// 应用筛选规则查询设备（预加载App关联）
-			groupQuery := database.DB.Preload("App").Debug().Where("app_id = ? AND status = 1", appID)
+			groupQuery := database.DB.Preload("App").Where("app_id = ? AND status = 1 AND is_online = ?", appID, false)
 			groupQuery = s.applyFilterRules(groupQuery, filterRules)
 
 			var groupDevices []models.Device

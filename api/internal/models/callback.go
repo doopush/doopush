@@ -13,7 +13,7 @@ type BaseCallback struct {
 	DeviceID    uint           `gorm:"index;comment:设备ID" json:"device_id"`
 	PushLogID   uint           `gorm:"index;comment:推送日志ID" json:"push_log_id"`
 	MessageID   string         `gorm:"size:200;index;comment:消息ID" json:"message_id"`
-	DeviceToken string         `gorm:"size:500;index;comment:设备Token" json:"device_token"`
+	DeviceToken string         `gorm:"size:500;comment:设备Token" json:"device_token"`
 	EventType   int            `gorm:"comment:事件类型" json:"event_type"`
 	Success     bool           `gorm:"comment:是否成功" json:"success"`
 	Timestamp   int64          `gorm:"comment:回执时间戳" json:"timestamp"`
@@ -109,9 +109,9 @@ type FcmCallback struct {
 // CallbackStatistics 回执统计
 type CallbackStatistics struct {
 	ID            uint           `gorm:"primarykey" json:"id"`
-	AppID         uint           `gorm:"not null;index;comment:应用ID" json:"app_id"`
-	Vendor        string         `gorm:"size:20;not null;index;comment:厂商" json:"vendor"`
-	Date          time.Time      `gorm:"not null;index;comment:统计日期" json:"date"`
+	AppID         uint           `gorm:"not null;uniqueIndex:idx_callback_stat_app_vendor_date,priority:1;comment:应用ID" json:"app_id"`
+	Vendor        string         `gorm:"size:20;not null;uniqueIndex:idx_callback_stat_app_vendor_date,priority:2;comment:厂商" json:"vendor"`
+	Date          time.Time      `gorm:"not null;uniqueIndex:idx_callback_stat_app_vendor_date,priority:3;comment:统计日期" json:"date"`
 	TotalCount    int            `gorm:"default:0;comment:总回执数" json:"total_count"`
 	SuccessCount  int            `gorm:"default:0;comment:成功数" json:"success_count"`
 	FailureCount  int            `gorm:"default:0;comment:失败数" json:"failure_count"`
