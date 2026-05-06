@@ -506,7 +506,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
 
 ## 技术要求
 
-- Android 5.0+ (API 21+)
+- Android 8.0+ (API 26+)
 - Kotlin 1.9+
 - Android Studio 2022.3+
 - Gradle 8.0+

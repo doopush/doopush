@@ -10,6 +10,7 @@
 
 package com.doopush.sdk.badge
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -182,6 +183,7 @@ object BadgeManager {
         return true
     }
 
+    @SuppressLint("WrongConstant")
     private fun setVivoBadge(context: Context, count: Int): Boolean {
         Log.d(TAG, "VIVO设备设置角标: $count")
         val osBuild = getSystemProperty("ro.vivo.os.build.display.id", "Funtouch")
@@ -192,12 +194,13 @@ object BadgeManager {
                 count,
             )
         }
-        // FLAG_RECEIVER_INCLUDE_BACKGROUND 是 API 24 常量，minSdk 26 可直接引用。
+        // FLAG_RECEIVER_INCLUDE_BACKGROUND 在 framework 中标记为 @hide，未暴露到 SDK，需用字面量。
+        val flagReceiverIncludeBackground = 0x01000000
         val intent = Intent("launcher.action.CHANGE_APPLICATION_NOTIFICATION_NUM").apply {
             putExtra("packageName", context.packageName)
             putExtra("className", getLauncherClassName(context))
             putExtra("notificationNum", count)
-            addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND)
+            addFlags(flagReceiverIncludeBackground)
         }
         context.sendBroadcast(intent)
         return true

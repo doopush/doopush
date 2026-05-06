@@ -23,7 +23,7 @@ ext {
     // SDK 版本配置
     compileSdkVersion = 34
     targetSdkVersion = 34
-    minSdkVersion = 21
+    minSdkVersion = 26
     
     // 依赖版本
     kotlinVersion = '1.9.20'

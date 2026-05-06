@@ -408,7 +408,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
                     ) != PackageManager.PERMISSION_GRANTED
                 ) {
                     Log.d(TAG, "Android 13+ 通知权限未授予，请求权限")
-                    notificationPermissionLauncher?.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
             // Android 9-12 检查通知是否被禁用
