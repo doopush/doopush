@@ -26,6 +26,11 @@ func MarkOnline(rdb *redis.Client, appID uint, token string) {
 
 	// 数据库异步更新
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("db mark online panic token=%s: %v", token, r)
+			}
+		}()
 		now := time.Now()
 		tokenHash := utils.HashString(token)
 		err := database.DB.Model(&models.Device{}).
@@ -49,6 +54,11 @@ func MarkOffline(rdb *redis.Client, appID uint, token string) {
 		log.Printf("redis del online failed: %v", err)
 	}
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("db mark offline panic token=%s: %v", token, r)
+			}
+		}()
 		tokenHash := utils.HashString(token)
 		err := database.DB.Model(&models.Device{}).
 			Where("app_id = ? AND token_hash = ?", appID, tokenHash).
