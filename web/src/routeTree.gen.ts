@@ -212,6 +212,7 @@ const AuthenticatedErrorsErrorRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof AuthenticatedIndexRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
@@ -232,7 +233,6 @@ export interface FileRoutesByFullPath {
   '/push': typeof AuthenticatedPushRouteWithChildren
   '/scheduled-push': typeof AuthenticatedScheduledPushRoute
   '/templates': typeof AuthenticatedTemplatesRoute
-  '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/push/logs': typeof AuthenticatedPushLogsRoute
   '/push/send': typeof AuthenticatedPushSendRoute
@@ -240,7 +240,7 @@ export interface FileRoutesByFullPath {
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
-  '/apps': typeof AuthenticatedAppsIndexRoute
+  '/apps/': typeof AuthenticatedAppsIndexRoute
   '/push/': typeof AuthenticatedPushIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
 }
@@ -313,6 +313,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/privacy'
     | '/terms'
     | '/settings'
@@ -333,7 +334,6 @@ export interface FileRouteTypes {
     | '/push'
     | '/scheduled-push'
     | '/templates'
-    | '/'
     | '/errors/$error'
     | '/push/logs'
     | '/push/send'
@@ -341,7 +341,7 @@ export interface FileRouteTypes {
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/profile'
-    | '/apps'
+    | '/apps/'
     | '/push/'
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
@@ -444,7 +444,7 @@ declare module '@tanstack/react-router' {
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -598,7 +598,7 @@ declare module '@tanstack/react-router' {
     '/_authenticated/apps/': {
       id: '/_authenticated/apps/'
       path: '/apps'
-      fullPath: '/apps'
+      fullPath: '/apps/'
       preLoaderRoute: typeof AuthenticatedAppsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
