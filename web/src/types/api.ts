@@ -51,7 +51,6 @@ export interface AppAPIKey {
   updated_at: string
   // 用于显示的字段
   last_4?: string
-  permissions?: string[]
 }
 
 export interface AppConfig {

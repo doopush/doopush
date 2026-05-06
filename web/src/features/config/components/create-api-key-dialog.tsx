@@ -25,6 +25,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { AppService } from '@/services/app-service'
 import { requireApp } from '@/utils/app-utils'
 import { toast } from 'sonner'
+import type { App } from '@/types/api'
 
 // 表单验证规则
 const createApiKeySchema = z.object({
@@ -37,10 +38,12 @@ interface CreateApiKeyDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  app?: App | null
 }
 
-export function CreateApiKeyDialog({ open, onOpenChange, onSuccess }: CreateApiKeyDialogProps) {
+export function CreateApiKeyDialog({ open, onOpenChange, onSuccess, app }: CreateApiKeyDialogProps) {
   const { currentApp } = useAuthStore()
+  const targetApp = app ?? currentApp
   const [loading, setLoading] = useState(false)
   const [createdKey, setCreatedKey] = useState<{ api_key: string; warning?: string } | null>(null)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
@@ -54,13 +57,13 @@ export function CreateApiKeyDialog({ open, onOpenChange, onSuccess }: CreateApiK
   })
 
   const onSubmit = async (data: CreateApiKeyFormData) => {
-    if (!requireApp(currentApp)) {
+    if (!requireApp(targetApp)) {
       return
     }
 
     try {
       setLoading(true)
-      const result = await AppService.createAPIKey(currentApp.id, data)
+      const result = await AppService.createAPIKey(targetApp.id, data)
       
       // 设置创建成功的密钥信息
       setCreatedKey({

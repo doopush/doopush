@@ -62,8 +62,6 @@ export class AppService {
    */
   static async createAPIKey(appId: number, data: {
     name: string
-    permissions?: string[]
-    expires_days?: number
   }): Promise<{ api_key: string; key_info: AppAPIKey; warning?: string }> {
     return apiClient.post(`/apps/${appId}/api-keys`, data)
   }
