@@ -48,3 +48,17 @@ func (r *registry) get(token string) closer {
 	defer r.mu.Unlock()
 	return r.m[token]
 }
+
+// closeAll 主动关闭所有当前注册的连接（用于 server shutdown）
+// 不持锁调用 CloseWith，避免与连接自身的 unregister 形成锁顺序问题
+func (r *registry) closeAll(code int, reason string) {
+	r.mu.Lock()
+	conns := make([]closer, 0, len(r.m))
+	for _, c := range r.m {
+		conns = append(conns, c)
+	}
+	r.mu.Unlock()
+	for _, c := range conns {
+		c.CloseWith(code, reason)
+	}
+}

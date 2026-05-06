@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -81,11 +83,25 @@ func (s *GatewayServer) handleSignals() {
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT)
 	<-ch
 	log.Println("收到关闭信号，开始优雅关闭")
+
+	// 1. 停止接受新连接
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = s.srv.Shutdown(ctx)
+
+	// 2. 关闭所有 WS 连接并等待清理（http.Server.Shutdown 不会等 hijacked 连接）
+	s.handler.Shutdown(10 * time.Second)
+
+	// 3. 释放底层依赖
 	_ = s.rdb.Close()
 }
 
-// 兼容 cmd/gateway.go 中开发期 KillProcessByPort 的调用签名
-func (s *GatewayServer) GetPort() int { return 50000 }
+// GetPort 从 ListenAddr 解析端口，给开发期 KillProcessByPort 用
+func (s *GatewayServer) GetPort() int {
+	_, portStr, err := net.SplitHostPort(ListenAddr)
+	if err != nil {
+		return 0
+	}
+	p, _ := strconv.Atoi(portStr)
+	return p
+}

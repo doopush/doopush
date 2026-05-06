@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/coder/websocket"
 	"github.com/redis/go-redis/v9"
@@ -13,6 +15,7 @@ import (
 type Handler struct {
 	reg *registry
 	rdb *redis.Client
+	wg  sync.WaitGroup
 }
 
 func NewHandler(rdb *redis.Client) *Handler {
@@ -44,6 +47,8 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		// websocket.Accept 失败时已写入响应，无需再 WriteHeader
 		return
 	}
+	h.wg.Add(1)
+	defer h.wg.Done()
 
 	// 3. 在线态 + 注册到表
 	// 顺序：先 MarkOnline 再 register。这样如果连接在握手后立即断开，
@@ -70,4 +75,21 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	wc.run(ctx)
 	wc.CloseWith(int(websocket.StatusNormalClosure), "")
+}
+
+// Shutdown 主动关闭所有 WS 连接并等待清理完成（or timeout）
+// http.Server.Shutdown 不会等待 hijacked 连接，必须在此处单独处理
+func (h *Handler) Shutdown(timeout time.Duration) {
+	h.reg.closeAll(4002, "server shutdown")
+
+	done := make(chan struct{})
+	go func() {
+		h.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		log.Println("shutdown timeout，部分连接清理未完成")
+	}
 }
