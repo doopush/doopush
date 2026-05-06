@@ -45,39 +45,27 @@ interface DooPushCallback {
      */
     fun onTokenError(error: DooPushError)
     
-    // TCP连接相关回调 (可选实现)
-    
+    // WebSocket 连接相关回调 (可选实现)
+
     /**
-     * TCP连接状态变化回调
-     * 
-     * @param state TCP连接状态
+     * WebSocket 连接建立回调
      */
-    fun onTCPStateChanged(state: DooPushTCPState) {}
-    
+    fun onWebSocketOpen() {}
+
     /**
-     * TCP设备注册成功回调
+     * WebSocket 连接关闭回调
+     *
+     * @param code 关闭状态码
+     * @param reason 关闭原因
      */
-    fun onTCPRegistered() {}
-    
+    fun onWebSocketClosed(code: Int, reason: String) {}
+
     /**
-     * TCP连接错误回调
-     * 
-     * @param error 错误信息
-     * @param message 错误消息
+     * WebSocket 连接失败回调
+     *
+     * @param t 失败原因
      */
-    fun onTCPError(error: DooPushError, message: String) {}
-    
-    /**
-     * TCP心跳响应回调
-     */
-    fun onTCPHeartbeat() {}
-    
-    /**
-     * TCP推送消息回调
-     * 
-     * @param message TCP推送消息
-     */
-    fun onTCPPushMessage(message: DooPushTCPMessage) {}
+    fun onWebSocketFailure(t: Throwable) {}
     
     // 推送通知事件回调 (可选实现)
     

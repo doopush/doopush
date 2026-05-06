@@ -61,7 +61,7 @@ class DooPushManager private constructor() {
     private var vivoService: VivoService? = null
     private var meizuService: MeizuService? = null
     private var honorService: HonorService? = null
-    private var tcpConnection: DooPushTCPConnection? = null
+    private var wsConnection: DooPushWebSocketConnection? = null
     private var applicationContext: Context? = null
     
     // 状态管理
@@ -84,36 +84,26 @@ class DooPushManager private constructor() {
     }
     
     /**
-     * TCP连接代理实现
+     * WebSocket 连接监听器实现
      */
-    private val tcpConnectionDelegate = object : DooPushTCPConnectionDelegate {
-        override fun onStateChanged(connection: DooPushTCPConnection, state: DooPushTCPState) {
-            Log.d(TAG, "TCP连接状态变更: ${state.description}")
-            callback?.onTCPStateChanged(state)
+    private val wsListener = object : DooPushWebSocketConnection.Listener {
+        override fun onOpen() {
+            Log.i(TAG, "WebSocket 连接已建立")
+            callback?.onWebSocketOpen()
         }
-        
-        override fun onRegisterSuccessfully(connection: DooPushTCPConnection, message: DooPushTCPMessage) {
-            Log.i(TAG, "TCP设备注册成功")
-            callback?.onTCPRegistered()
+
+        override fun onClosed(code: Int, reason: String) {
+            Log.i(TAG, "WebSocket 连接已关闭: code=$code reason=$reason")
+            callback?.onWebSocketClosed(code, reason)
         }
-        
-        override fun onReceiveError(connection: DooPushTCPConnection, error: DooPushError, message: String) {
-            Log.e(TAG, "TCP连接错误: ${error.message} - $message")
-            callback?.onTCPError(error, message)
-        }
-        
-        override fun onReceiveHeartbeatResponse(connection: DooPushTCPConnection, message: DooPushTCPMessage) {
-            Log.d(TAG, "收到TCP心跳响应")
-            callback?.onTCPHeartbeat()
-        }
-        
-        override fun onReceivePushMessage(connection: DooPushTCPConnection, message: DooPushTCPMessage) {
-            Log.i(TAG, "收到TCP推送消息")
-            // 可以在这里解析推送消息并通过callback传递给应用
-            callback?.onTCPPushMessage(message)
+
+        override fun onFailure(t: Throwable) {
+            Log.w(TAG, "WebSocket 连接失败: ${t.message}")
+            callback?.onWebSocketFailure(t)
         }
     }
-    
+
+
     /**
      * 配置 DooPush SDK
      * 
@@ -271,10 +261,6 @@ class DooPushManager private constructor() {
                     autoInitialize()
                 }
             }
-            tcpConnection = DooPushTCPConnection().apply {
-                delegate = tcpConnectionDelegate
-            }
-            
             // 配置统计管理器
             DooPushStatistics.configure(networking!!) { cachedToken }
             
@@ -847,24 +833,17 @@ class DooPushManager private constructor() {
     }
     
     /**
-     * 获取TCP连接状态
+     * 手动连接 WebSocket（注册成功后由 SDK 自动调用，通常无需手动调用）
      */
-    fun getTCPConnectionState(): DooPushTCPState? {
-        return tcpConnection?.state
+    fun connectWebSocket() {
+        wsConnection?.connect()
     }
-    
+
     /**
-     * 手动连接TCP
+     * 手动断开 WebSocket
      */
-    fun connectTCP() {
-        tcpConnection?.connect()
-    }
-    
-    /**
-     * 手动断开TCP
-     */
-    fun disconnectTCP() {
-        tcpConnection?.disconnect()
+    fun disconnectWebSocket() {
+        wsConnection?.disconnect()
     }
 
     /**
@@ -872,7 +851,6 @@ class DooPushManager private constructor() {
      * @param context Android 上下文，推荐使用 Application 上下文
      */
     fun applicationDidBecomeActive(context: Context) {
-        tcpConnection?.applicationDidBecomeActive()
         Log.d(TAG, "应用进入前台")
         // 清除通知栏消息
         // TODO 如果应用没有初始化 SDK 也可以清除通知？
@@ -887,7 +865,6 @@ class DooPushManager private constructor() {
      * 应用进入后台时调用
      */
     fun applicationWillResignActive() {
-        tcpConnection?.applicationWillResignActive()
         Log.d(TAG, "应用进入后台，上报统计数据")
         // 应用进入后台时上报统计数据
         DooPushStatistics.reportStatistics()
@@ -897,7 +874,7 @@ class DooPushManager private constructor() {
      * 应用即将终止时调用
      */
     fun applicationWillTerminate() {
-        tcpConnection?.applicationWillTerminate()
+        wsConnection?.disconnect()
         Log.d(TAG, "应用即将终止，上报统计数据")
         // 应用终止时上报统计数据
         DooPushStatistics.reportStatistics()
@@ -933,7 +910,7 @@ class DooPushManager private constructor() {
         builder.append("  有回调监听器: ${callback != null}\n")
         builder.append("  有缓存Token: ${!cachedToken.isNullOrEmpty()}\n")
         builder.append("  有缓存设备信息: ${cachedDeviceInfo != null}\n")
-        builder.append("  TCP连接状态: ${tcpConnection?.state?.description ?: "未初始化"}\n")
+        builder.append("  WebSocket连接: ${if (wsConnection != null) "已创建" else "未初始化"}\n")
         builder.append("  ${DooPushStatistics.getStatisticsSummary()}\n")
         
         config?.let { builder.append("\n${it.getSummary()}") }
@@ -969,9 +946,10 @@ class DooPushManager private constructor() {
             // 释放网络资源
             networking?.release()
             
-            // 释放TCP连接
-            tcpConnection?.release()
-            
+            // 断开 WebSocket 连接
+            wsConnection?.disconnect()
+            wsConnection = null
+
             // 清除缓存
             clearCache()
             
@@ -987,8 +965,7 @@ class DooPushManager private constructor() {
             fcmService = null
             hmsService = null
             xiaomiService = null
-            tcpConnection = null
-            
+
             Log.i(TAG, "SDK资源已释放")
             
         } catch (e: Exception) {
@@ -1031,24 +1008,28 @@ class DooPushManager private constructor() {
     }
     
     /**
-     * 连接到Gateway
+     * 连接到 WebSocket Gateway
      */
     private fun connectToGateway(response: DooPushNetworking.DeviceRegistrationResponse, token: String) {
         val config = this.config
         if (config == null) {
-            Log.e(TAG, "SDK配置缺失，无法连接Gateway")
+            Log.e(TAG, "SDK配置缺失，无法连接 WebSocket Gateway")
             return
         }
-        
-        val gatewayConfig = response.gateway.toTCPGatewayConfig()
-        Log.i(TAG, "准备连接Gateway - $gatewayConfig")
-        
-        tcpConnection?.configure(
-            gatewayConfig,
-            config.appId,
-            token
+
+        Log.i(TAG, "准备连接 WebSocket Gateway - ${config.baseURL}")
+
+        // 断开可能存在的旧连接
+        wsConnection?.disconnect()
+
+        wsConnection = DooPushWebSocketConnection(
+            baseUrl = config.baseURL,
+            appId = config.appId,
+            appKey = config.apiKey,
+            token = token,
+            listener = wsListener,
         )
-        tcpConnection?.connect()
+        wsConnection?.connect()
     }
     
     /**

@@ -124,35 +124,11 @@ class DooPushNetworking(private val config: DooPushConfig) {
     )
     
     /**
-     * Gateway配置数据类
-     */
-    data class GatewayConfig(
-        @SerializedName("host")
-        val host: String,
-        
-        @SerializedName("port")
-        val port: Int,
-        
-        @SerializedName("ssl")
-        val ssl: Boolean
-    ) {
-        /**
-         * 转换为TCP连接配置
-         */
-        fun toTCPGatewayConfig(): DooPushGatewayConfig {
-            return DooPushGatewayConfig(host, port, ssl)
-        }
-    }
-    
-    /**
      * 设备注册响应数据类
      */
     data class DeviceRegistrationResponse(
         @SerializedName("device")
-        val device: Map<String, Any>,
-        
-        @SerializedName("gateway")
-        val gateway: GatewayConfig
+        val device: Map<String, Any>
     )
     
     /**
