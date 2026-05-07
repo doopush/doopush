@@ -1,0 +1,123 @@
+name: Auto Publish Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 允许创建标签和 GitHub Release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 拿完整历史，便于 tag 检查
+
+      - name: Read package version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ -z "$VERSION" ] || [ "$VERSION" = "undefined" ]; then
+            echo "❌ 未在 package.json 中找到 version"
+            exit 1
+          fi
+          echo "📦 检测到版本: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+          # 判断 alpha / beta / rc / latest
+          if [[ "$VERSION" == *"-alpha"* ]] || [[ "$VERSION" =~ ^0\.[0-4]\. ]]; then
+            DIST_TAG="alpha"
+          elif [[ "$VERSION" == *"-beta"* ]] || [[ "$VERSION" =~ ^0\.[5-9]\. ]]; then
+            DIST_TAG="beta"
+          elif [[ "$VERSION" == *"-rc"* ]]; then
+            DIST_TAG="rc"
+          else
+            DIST_TAG="latest"
+          fi
+          echo "🏷️  npm dist-tag: $DIST_TAG"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Check if git tag already exists
+        id: check
+        run: |
+          if git ls-remote --tags origin "refs/tags/${{ steps.version.outputs.tag }}" | grep -q "${{ steps.version.outputs.tag }}"; then
+            echo "ℹ️  tag ${{ steps.version.outputs.tag }} 已存在，跳过发布"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "✅ tag 不存在，准备发布"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup pnpm
+        if: steps.check.outputs.exists == 'false'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        if: steps.check.outputs.exists == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        if: steps.check.outputs.exists == 'false'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        if: steps.check.outputs.exists == 'false'
+        run: pnpm build
+
+      - name: Test
+        if: steps.check.outputs.exists == 'false'
+        run: pnpm test
+
+      - name: Configure Git
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          git config --global user.name "DooPush Bot"
+          git config --global user.email "bot@doopush.com"
+
+      - name: Create and push git tag
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          prerelease: ${{ steps.version.outputs.dist_tag != 'latest' }}
+          body: |
+            See [CHANGELOG](https://github.com/doopush/doopush-react-native-sdk/blob/main/README.md#changelog) for details.
+
+            **Install via npm:**
+            ```bash
+            npm install doopush-react-native-sdk@${{ steps.version.outputs.version }}
+            # 或 (alpha/beta 阶段)
+            npm install doopush-react-native-sdk@${{ steps.version.outputs.dist_tag }}
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          # --no-git-checks: pnpm 默认要求工作树干净 + 在跟随分支
+          # --access public: 默认公开包（doopush-react-native-sdk 不带 scope）
+          # --tag: alpha / beta / rc / latest，由版本号自动推断
+          pnpm publish --no-git-checks --access public --tag ${{ steps.version.outputs.dist_tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
