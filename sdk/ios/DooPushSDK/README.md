@@ -211,3 +211,6 @@ pod spec lint DooPushSDK.podspec --verbose
 
 ### v1.1.1
 - 修复 podspec 与 React Native（CocoaPods 静态库链接 + Swift module）的兼容性：移除自定义 `module_map`、不存在的 LICENSE 文件引用、`public_header_files` 直接暴露 ObjC 头（Swift `@objc` 已自动暴露）
+
+### v1.1.2
+- **chore**：发版流水线连通性测试（无功能变更）。验证 monorepo `sync-ios-sdk.yml` → `doopush-ios-sdk` 公仓 → `auto-build-release.yml` → GitHub Release 全链路。

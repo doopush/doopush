@@ -165,6 +165,9 @@ MIT
 
 ## CHANGELOG
 
+### v0.1.2
+- **chore**：发版流水线连通性测试（无功能变更）。验证 monorepo `sync-rn-sdk.yml` → `doopush-react-native-sdk` 公仓 → `auto-publish-release.yml` → GitHub Release + npm publish 全链路。dist-tag 应解析为 `alpha`（0.1.x ≤ 0.4.x）。
+
 ### v0.1.1
 - **修复 (iOS)**：通过 `ExpoAppDelegateSubscriber` 转发 APNs delegate 回调。在此之前，Expo 应用里 AppDelegate 拿到 device token 后没通路回 `DooPushManager.shared.didRegisterForRemoteNotifications(with:)`，导致 `DooPush.register()` 在用户授权后**永远 hang**。新增 `DooPushAppDelegateSubscriber`，并在 `expo-module.config.json` 里注册（autolinking 把它写进 `ExpoModulesProvider`）。同时转发 `didFailToRegister` 与 `didReceiveRemoteNotification:fetchCompletionHandler:`。
 - **依赖底座**：iOS 原生 SDK 升级到 v1.1.1（podspec 兼容性修复，移除自定义 module_map / 不存在的 LICENSE 引用 / 多余的 public_header_files）。

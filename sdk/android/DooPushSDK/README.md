@@ -316,3 +316,6 @@ context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
 ```
 
 > **同包限定**：DooPush 通过 `intent.setPackage(packageName)` 限定接收范围，仅本应用 UID 注册的 BroadcastReceiver 可以收到。其他 App 不会收到此广播，无需 `<permission>` 声明。
+
+### v1.1.1
+- **chore**：发版流水线连通性测试（无功能变更）。验证 monorepo `sync-android-sdk.yml` → `doopush-android-sdk` 公仓 → `auto-build-release.yml` → GitHub Release 全链路；JitPack 需手动访问 pom URL 触发构建。
