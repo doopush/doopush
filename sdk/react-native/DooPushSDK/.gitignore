@@ -3,7 +3,10 @@ build/
 plugin/build/
 *.log
 .DS_Store
-example/ios
-example/android
-example/.expo
-example/google-services.json
+
+# Gradle build cache (Android subproject is consumed via JitPack/maven, source-only here)
+android/.gradle/
+android/build/
+android/.idea/
+android/local.properties
+*.iml

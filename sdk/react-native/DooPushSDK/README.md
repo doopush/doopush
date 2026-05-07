@@ -1,46 +1,49 @@
 # DooPush React Native SDK
 
-> **v0.1.0 alpha** — Minimal API surface for end-to-end validation.
-> FCM (Android) + APNs (iOS) only. OEM channels and React Hooks coming in v0.5.0 beta.
+> **v0.1.1 alpha** —— 最小 API surface，端到端真实可用。
+> 仅支持 FCM (Android) + APNs (iOS)。OEM 通道、React Hooks 在 v0.5.0 beta。
 
-React Native SDK for [DooPush](https://doopush.com) push notification service. Built with Expo Modules API; works in Expo (managed / prebuild) and bare React Native.
+[DooPush](https://doopush.com) 推送通知服务的 React Native SDK。基于 Expo Modules API 实现，可在 Expo（managed / prebuild）和 bare React Native 项目里使用。
 
-## What's in v0.1.0 alpha
+## v0.1.x alpha 提供什么
 
 - ✅ `DooPush.configure(config)`
-- ✅ `DooPush.register()` — APNs (iOS) / FCM (Android) auto flow
-- ✅ `DooPush.registerWithToken(token, vendor)` — for callers with a token already
-- 🟡 `DooPush.getDeviceToken()` / `getDeviceId()` — both return `null` in v0.1.0 (native getters not yet exposed; arrives in v0.5.0)
-- ✅ Event listeners: `addRegisterListener`, `addRegisterErrorListener`, `addMessageListener`
-- ✅ Config plugin: FCM vendor (google-services.json), iOS entitlements
-- ✅ Active mode (Android): DooPush owns notification UI; coexistence with `expo-notifications` via broadcast relay (opt-in, JS bridge in v0.5.0)
+- ✅ `DooPush.register()` —— iOS APNs / Android FCM 自动流程
+- ✅ `DooPush.registerWithToken(token, vendor)` —— 调用方已经有 token 时（如配合 expo-notifications 共存）
+- 🟡 `DooPush.getDeviceToken()` / `getDeviceId()` —— 当前都返回 `null`，原生 getter 还没暴露，v0.5.0 上线
+- ✅ 事件监听：`addRegisterListener`、`addRegisterErrorListener`、`addMessageListener`
+- ✅ Config 插件：FCM 厂商（google-services.json）、iOS entitlement
+- ✅ Android Active 模式：DooPush 接管通知 UI；与 `expo-notifications` 通过广播 relay 共存（opt-in，JS bridge 在 v0.5.0）
 
-### Known v0.1 limitations
+### v0.1 已知限制
 
-- `register()` resolves `{token, deviceId, vendor}` but `deviceId` is currently the empty string on Android (server-side deviceId not yet captured by the bridge — wired up in v0.5.0). The `token` and `vendor` fields are correct.
-- `getDeviceToken()` / `getDeviceId()` always return `null` on Android (no public getter on the underlying SDK yet).
+- `register()` 返回 `{token, deviceId, vendor}`，但 Android 端 `deviceId` 当前是空字符串（服务端 deviceId 还没在 bridge 层捕获，v0.5.0 修）。`token` 和 `vendor` 字段是对的。
+- `getDeviceToken()` / `getDeviceId()` 在 Android 上一直返回 `null`（底层 SDK 还没公开 getter）。
 
-## Not in v0.1.0 (coming in v0.5.0+)
+## v0.1 不包含（v0.5.0+ 才有）
 
-- React hooks (`useDooPush`, `useDooPushToken`)
-- OEM vendors (HMS / Honor / Xiaomi / OPPO / VIVO / Meizu)
-- WebSocket gateway JS API
-- Statistics / badge / channel JS API
-- npm publication (use git tag for now)
+- React Hooks（`useDooPush`、`useDooPushToken`）
+- OEM 通道（HMS / Honor / Xiaomi / OPPO / VIVO / Meizu）
+- WebSocket gateway 的 JS API
+- 统计 / 角标 / 通道相关的 JS API
+- npm 发布（当前用 git tag）
 
-## Prerequisites
+## 前置条件
 
-- iOS native SDK ≥ 1.1.0 (SPM tag `v1.1.0` of `doopush-ios-sdk`, OR path-based dev dependency)
-- Android native SDK ≥ 1.1.0 (JitPack `com.github.doopush:doopush-android-sdk:v1.1.0`, OR mavenLocal)
-- Expo SDK 50+ (or RN 0.73+ bare)
+- iOS 原生 SDK ≥ **1.1.1**（SPM tag `v1.1.1` of `doopush-ios-sdk`，或路径方式本地引用）
+- Android 原生 SDK ≥ **1.1.0**（JitPack `com.github.doopush:doopush-android-sdk:v1.1.0`，或本地 mavenLocal）
+- Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
-## Quick install (once published)
+## 快速安装（公开发布后）
 
 ```bash
 npx expo install doopush-react-native-sdk
 ```
 
-In `app.json`:
+> v0.1.x alpha **暂未发到 npm**，公开仓走 git tag：
+> `npm install github:doopush/doopush-react-native-sdk#v0.1.1`
+
+`app.json` 配 plugin：
 
 ```json
 {
@@ -67,10 +70,10 @@ In `app.json`:
 
 ```bash
 npx expo prebuild --clean
-npx expo run:android   # or run:ios
+npx expo run:android   # 或 run:ios
 ```
 
-## Usage
+## 用法
 
 ```tsx
 import { useEffect, useState } from 'react';
@@ -83,7 +86,7 @@ export default function App() {
       apiKey: 'your_api_key',
     });
     const sub = DooPush.addMessageListener((m: DooPushMessage) => {
-      console.log('push received', m);
+      console.log('收到推送', m);
     });
     return () => sub.remove();
   }, []);
@@ -91,9 +94,9 @@ export default function App() {
   const handleRegister = async () => {
     try {
       const { token, deviceId } = await DooPush.register();
-      console.log('registered', token, deviceId);
+      console.log('注册成功', token, deviceId);
     } catch (e) {
-      console.error('register failed', e);
+      console.error('注册失败', e);
     }
   };
 
@@ -101,40 +104,52 @@ export default function App() {
 }
 ```
 
-## Local development
+## 本地开发
 
-This package is part of the [doopush monorepo](https://github.com/doopush/doopush). To develop:
+本包是 [doopush monorepo](https://github.com/doopush/doopush) 的一部分，跟 iOS / Android 原生 SDK 平级。本地开发流程：
 
 ```bash
-# 1) Build the SDK
+# 1) 编译 SDK
 cd sdk/react-native/DooPushSDK
 pnpm install
 pnpm build
-pnpm test                   # plugin Jest tests
+pnpm test                   # plugin Jest 测试
 
-# 2) Use the sibling demo app
+# 2) 用同级的 demo app 验证
 cd ../DooPushSDKExample
 npm install
-npm install file:../DooPushSDK --install-links   # copy SDK (avoid symlink so Metro resolves)
-npx expo run:ios            # iOS sim or --device "<device name>"
-npx expo run:android        # Android emulator or --device <id>
+npm install file:../DooPushSDK --install-links   # 用拷贝替代 symlink，避开 Metro 解析坑
+npx expo run:ios            # 模拟器，或 --device "<设备名>"
+npx expo run:android        # 模拟器，或 --device <id>
 ```
 
-The demo lives at `sdk/react-native/DooPushSDKExample/` (peer of the SDK, not nested), keeping the same shape as the iOS / Android native examples in this monorepo.
+详细的真机跑步骤、故障排查、Mac LAN IP 注入等见 `../DooPushSDKExample/README.md`。
 
-## Coexistence
+仓库结构跟 iOS / Android SDK 对齐：
 
-### With `expo-notifications`
+```
+sdk/react-native/
+├── DooPushSDK/         ← SDK 源（npm 包 doopush-react-native-sdk）
+│   ├── src/            #  JS API 层
+│   ├── plugin/         #  Expo config plugin（编译期 native 配置注入）
+│   ├── ios/            #  iOS 原生 bridge + AppDelegate subscriber
+│   └── android/        #  Android 原生 bridge
+└── DooPushSDKExample/  ← 用 SDK 的 demo（与 iOS/Android example 平级）
+```
 
-Compatible by default. DooPush owns `UNUserNotificationCenterDelegate` (iOS) but uses delegate-forwarding to keep `expo-notifications` listeners working. On Android, DooPush owns `FirebaseMessagingService`; if you need `expo-notifications` to also receive FCM messages, call (in v0.5.0+):
+## 与第三方共存
+
+### 与 `expo-notifications`
+
+默认兼容。iOS 上 DooPush 接管 `UNUserNotificationCenterDelegate` 但走 delegate-forwarding，`expo-notifications` 的监听依然能收到。Android 上 DooPush 接管 `FirebaseMessagingService`，如果你也想让 `expo-notifications` 收到 FCM 消息，调（v0.5.0+）：
 
 ```ts
 DooPush.setExpoNotificationRelayEnabled(true);
 ```
 
-### With `@react-native-firebase/messaging`
+### 与 `@react-native-firebase/messaging`
 
-**Choose one** — both libraries declare `FirebaseMessagingService` and only one wins manifest merger. If you already use `react-native-firebase`, omit the FCM vendor from the DooPush plugin and use `react-native-firebase`'s token API:
+**二选一** —— 两个库都声明 `FirebaseMessagingService`，manifest merger 只能留一个。如果你已经在用 `react-native-firebase`，就在 DooPush plugin 里**省略 fcm 厂商**，用 `react-native-firebase` 拿 token 后再交给 DooPush：
 
 ```ts
 import messaging from '@react-native-firebase/messaging';
@@ -151,8 +166,9 @@ MIT
 ## CHANGELOG
 
 ### v0.1.1
-- **Fix (iOS)**: Forward APNs delegate callbacks via `ExpoAppDelegateSubscriber`. Without this, on Expo apps the device token never reached `DooPushManager.shared.didRegisterForRemoteNotifications(with:)` and `DooPush.register()` hung forever after the user granted permission. Adds `DooPushAppDelegateSubscriber` registered in `expo-module.config.json`.
-- **Repo hygiene**: removed nested `DooPushSDK/example/` workspace; the demo lives at `sdk/react-native/DooPushSDKExample/` (peer of the SDK), aligning with the iOS / Android example layout.
+- **修复 (iOS)**：通过 `ExpoAppDelegateSubscriber` 转发 APNs delegate 回调。在此之前，Expo 应用里 AppDelegate 拿到 device token 后没通路回 `DooPushManager.shared.didRegisterForRemoteNotifications(with:)`，导致 `DooPush.register()` 在用户授权后**永远 hang**。新增 `DooPushAppDelegateSubscriber`，并在 `expo-module.config.json` 里注册（autolinking 把它写进 `ExpoModulesProvider`）。同时转发 `didFailToRegister` 与 `didReceiveRemoteNotification:fetchCompletionHandler:`。
+- **依赖底座**：iOS 原生 SDK 升级到 v1.1.1（podspec 兼容性修复，移除自定义 module_map / 不存在的 LICENSE 引用 / 多余的 public_header_files）。
+- **结构整理**：删除嵌套的 `DooPushSDK/example/` workspace，demo 移到同级的 `sdk/react-native/DooPushSDKExample/`，跟 iOS/Android example 对齐。
 
 ### v0.1.0
-- Initial alpha. `configure`, `register`, `registerWithToken`, message / register listeners. iOS APNs (active mode) + Android FCM only. Config plugin with FCM google-services injection.
+- 首个 alpha。`configure`、`register`、`registerWithToken`、消息 / 注册监听器。仅 iOS APNs（active 模式）+ Android FCM。Config plugin 注入 FCM google-services。
