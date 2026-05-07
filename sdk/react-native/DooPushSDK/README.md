@@ -1,6 +1,6 @@
 # DooPush React Native SDK
 
-> **v0.1.1 alpha** —— 最小 API surface，端到端真实可用。
+> **v0.1.2 alpha** —— 最小 API surface，端到端真实可用。
 > 仅支持 FCM (Android) + APNs (iOS)。OEM 通道、React Hooks 在 v0.5.0 beta。
 
 [DooPush](https://doopush.com) 推送通知服务的 React Native SDK。基于 Expo Modules API 实现，可在 Expo（managed / prebuild）和 bare React Native 项目里使用。
@@ -34,14 +34,17 @@
 - Android 原生 SDK ≥ **1.1.0**（JitPack `com.github.doopush:doopush-android-sdk:v1.1.0`，或本地 mavenLocal）
 - Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
-## 快速安装（公开发布后）
+## 快速安装
 
 ```bash
-npx expo install doopush-react-native-sdk
+# alpha 阶段使用 dist-tag
+npx expo install doopush-react-native-sdk@alpha
+# 或精确版本
+npx expo install doopush-react-native-sdk@0.1.2
 ```
 
-> v0.1.x alpha **暂未发到 npm**，公开仓走 git tag：
-> `npm install github:doopush/doopush-react-native-sdk#v0.1.1`
+> v0.1.x 在 npm 走 `alpha` dist-tag，1.0.0 stable 发布前**不要省略 `@alpha`**。
+> 也支持 git tag 安装作为兜底：`npm install github:doopush/doopush-react-native-sdk#v0.1.2`
 
 `app.json` 配 plugin：
 

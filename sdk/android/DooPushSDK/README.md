@@ -1,7 +1,7 @@
 # DooPushSDK for Android
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9+-purple.svg)](https://kotlinlang.org)
-[![Platform](https://img.shields.io/badge/Platform-Android%2021+-green.svg)](https://developer.android.com)
+[![Platform](https://img.shields.io/badge/Platform-Android%208.0+-green.svg)](https://developer.android.com)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 简单易用的 Android 推送通知 SDK，支持 Google FCM 和华为 HMS Push，为移动应用提供统一的推送解决方案。

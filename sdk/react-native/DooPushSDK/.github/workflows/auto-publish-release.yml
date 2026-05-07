@@ -121,3 +121,20 @@ jobs:
           pnpm publish --no-git-checks --access public --tag ${{ steps.version.outputs.dist_tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Reset latest dist-tag (npm first-publish guard)
+        if: steps.check.outputs.exists == 'false' && steps.version.outputs.dist_tag != 'latest'
+        run: |
+          # npm 在包首次发布时会强制把 dist-tag latest 指向该版本，即使 publish
+          # 显式传了 --tag alpha/beta/rc。这里检查并主动 rm，避免污染默认
+          # `npm install doopush-react-native-sdk` 用户的依赖（skill 红线）。
+          CURRENT_LATEST=$(npm view doopush-react-native-sdk dist-tags.latest 2>/dev/null || echo "")
+          PUBLISHED_VERSION="${{ steps.version.outputs.version }}"
+          if [ "$CURRENT_LATEST" = "$PUBLISHED_VERSION" ]; then
+            echo "⚠️  npm 把 latest 自动指向本次 ${{ steps.version.outputs.dist_tag }} 版本 $CURRENT_LATEST，主动移除"
+            npm dist-tag rm doopush-react-native-sdk latest
+          else
+            echo "✅ latest 当前指向 ${CURRENT_LATEST:-(none)}，无需调整"
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
