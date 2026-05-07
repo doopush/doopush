@@ -890,7 +890,12 @@ class DooPushManager private constructor() {
      * 手动连接 WebSocket（注册成功后由 SDK 自动调用，通常无需手动调用）
      */
     fun connectWebSocket() {
-        wsConnection?.connect()
+        val token = cachedToken
+        if (token.isNullOrEmpty()) {
+            Log.w(TAG, "无法连接 WebSocket：设备token缺失")
+            return
+        }
+        connectToGateway(token)
     }
 
     /**
@@ -898,6 +903,7 @@ class DooPushManager private constructor() {
      */
     fun disconnectWebSocket() {
         wsConnection?.disconnect()
+        wsConnection = null
     }
 
     /**
@@ -909,9 +915,10 @@ class DooPushManager private constructor() {
         // 清除通知栏消息
         // TODO 如果应用没有初始化 SDK 也可以清除通知？
         DooPushNotificationHandler.clearNotifications(context)
-        // 清除角标（仅在SDK已初始化时执行）
         if (checkInitialized()) {
             clearBadge()
+            val token = cachedToken
+            if (!token.isNullOrEmpty()) connectToGateway(token)
         }
     }
 
@@ -919,8 +926,10 @@ class DooPushManager private constructor() {
      * 应用进入后台时调用
      */
     fun applicationWillResignActive() {
-        Log.d(TAG, "应用进入后台，上报统计数据")
-        // 应用进入后台时上报统计数据
+        Log.d(TAG, "应用进入后台")
+        // 后台限制：主动断开，等前台恢复后再重连（与 iOS 行为对齐）
+        wsConnection?.disconnect()
+        wsConnection = null
         DooPushStatistics.reportStatistics()
     }
     

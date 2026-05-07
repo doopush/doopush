@@ -50,6 +50,8 @@ class DooPushWebSocketConnection(
 
     fun disconnect() {
         active.set(false)
+        // 取消任何已排队的重连任务，避免闭包持有本对象到下次定时触发（最长 15s）
+        handler.removeCallbacksAndMessages(null)
         ws?.close(1000, "client disconnect")
         ws = null
     }

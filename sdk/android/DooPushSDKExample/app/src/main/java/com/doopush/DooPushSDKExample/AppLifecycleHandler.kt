@@ -32,33 +32,33 @@ class AppLifecycleHandler : Application.ActivityLifecycleCallbacks {
         Log.d(TAG, "Activity创建: ${activity.javaClass.simpleName}")
     }
     
+    // 用 Started/Stopped（而不是 Resumed/Paused）跟踪可见 Activity 数：
+    // 在 Android 跨 Activity 跳转时，新 Activity 的 onStart 先于旧 Activity 的 onStop，
+    // 计数从 1→2→1，不会触达 0；Resumed/Paused 则会瞬时降到 0，导致内部跳转误判后台并重建 WebSocket。
     override fun onActivityStarted(activity: Activity) {
-        Log.d(TAG, "Activity启动: ${activity.javaClass.simpleName}")
-    }
-    
-    override fun onActivityResumed(activity: Activity) {
         activityCount++
-        Log.d(TAG, "Activity恢复: ${activity.javaClass.simpleName}, 活跃数量: $activityCount")
-        
-        // 第一个Activity恢复时，通知SDK应用进入前台
+        Log.d(TAG, "Activity启动: ${activity.javaClass.simpleName}, 活跃数量: $activityCount")
+
         if (activityCount == 1) {
             DooPushManager.getInstance().applicationDidBecomeActive(activity.applicationContext)
         }
     }
-    
+
+    override fun onActivityResumed(activity: Activity) {
+        Log.d(TAG, "Activity恢复: ${activity.javaClass.simpleName}")
+    }
+
     override fun onActivityPaused(activity: Activity) {
+        Log.d(TAG, "Activity暂停: ${activity.javaClass.simpleName}")
+    }
+
+    override fun onActivityStopped(activity: Activity) {
         activityCount--
-        Log.d(TAG, "Activity暂停: ${activity.javaClass.simpleName}, 活跃数量: $activityCount")
-        
-        // 最后一个Activity暂停时，通知SDK应用进入后台
+        Log.d(TAG, "Activity停止: ${activity.javaClass.simpleName}, 活跃数量: $activityCount")
+
         if (activityCount == 0) {
             DooPushManager.getInstance().applicationWillResignActive()
-            DooPushManager.getInstance().applicationWillTerminate()
         }
-    }
-    
-    override fun onActivityStopped(activity: Activity) {
-        Log.d(TAG, "Activity停止: ${activity.javaClass.simpleName}")
     }
     
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {
