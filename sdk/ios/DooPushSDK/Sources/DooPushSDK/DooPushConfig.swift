@@ -114,7 +114,7 @@ import Foundation
 }
 
 /// DooPush 环境类型
-public enum DooPushEnvironment: Codable, CustomStringConvertible {
+public enum DooPushEnvironment: Codable, Equatable, CustomStringConvertible {
     case production      // 生产环境
     case development     // 开发环境
     case custom(String)  // 自定义环境

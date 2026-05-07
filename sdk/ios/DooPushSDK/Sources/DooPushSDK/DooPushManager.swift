@@ -2,6 +2,16 @@ import Foundation
 import UIKit
 import UserNotifications
 
+/// 通知管理模式：决定 SDK 是否接管通知 UI 与权限请求
+@objc public enum DooPushNotificationManagementMode: Int {
+    /// 默认：SDK 安装 UNUserNotificationCenterDelegate（带转发）、请求权限、自管前台展示
+    case active = 0
+    /// 让位：SDK 不请求权限、不安装 delegate、不调 registerForRemoteNotifications；
+    /// 由调用方（例如 expo-notifications 或 react-native-firebase）拿 token 后通过
+    /// `registerDevice(withToken:vendor:completion:)` 完成服务端注册
+    case passive = 1
+}
+
 /// DooPush SDK 主管理类
 @objc public class DooPushManager: NSObject {
     /// 单例实例
@@ -9,6 +19,17 @@ import UserNotifications
 
     /// 配置信息
     private var config: DooPushConfig?
+
+    /// 当前通知管理模式（默认 .active）
+    public private(set) var notificationManagementMode: DooPushNotificationManagementMode = .active
+
+    /// 设置通知管理模式
+    /// - 切到 .passive 时：不再自动安装通知代理；如已安装则保留当前安装状态（用户可显式调 disableAutomaticNotificationTracking 卸载）
+    /// - 切到 .active 时：不会自动安装代理；调用方仍需显式 configure 后由 SDK 流程触发 enableAutomaticNotificationTracking
+    @objc public func setNotificationManagementMode(_ mode: DooPushNotificationManagementMode) {
+        self.notificationManagementMode = mode
+        DooPushLogger.info("通知管理模式设置为: \(mode == .active ? "active" : "passive")")
+    }
 
     /// 代理
     @objc public weak var delegate: DooPushDelegate?
@@ -151,6 +172,50 @@ import UserNotifications
     }
 
     // MARK: - 设备管理
+
+    /// 用调用方已有的推送 token 直接完成 DooPush 服务端注册
+    /// - Parameters:
+    ///   - token: 调用方已经从 APNs / FCM / OEM 渠道拿到的设备 token（hex 编码）
+    ///   - vendor: 通道标识。可选值："apns"/"fcm"/"hms"/"honor"/"xiaomi"/"oppo"/"vivo"/"meizu"。
+    ///             iOS 端目前只可能是 "apns"，参数预留是为了与 Android 端 API 对齐及未来扩展。
+    ///             传 nil 时默认使用 "apns"。
+    ///   - completion: 完成回调，成功返回 deviceId 字符串
+    @objc public func registerDevice(
+        withToken token: String,
+        vendor: String? = nil,
+        completion: @escaping (String?, Error?) -> Void
+    ) {
+        guard let config = config else {
+            completion(nil, DooPushError.notConfigured)
+            return
+        }
+
+        let resolvedVendor = vendor ?? "apns"
+        let deviceInfo = deviceManager.getCurrentDeviceInfo()
+
+        // 缓存 token 与回调，复用已有的服务端注册流程
+        networking.registerDevice(
+            appId: config.appId,
+            token: token,
+            deviceInfo: deviceInfo
+        ) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let deviceId):
+                DooPushLogger.info("外部 token 注册成功，vendor=\(resolvedVendor), deviceId=\(deviceId)")
+                self.storage.saveDeviceToken(token)
+                self.storage.saveDeviceId(String(deviceId))
+                // 与 registerForPushNotifications 保持一致：成功后连接 Gateway
+                self.connectToGateway(token: token)
+                self.delegate?.dooPush(self, didRegisterWithToken: token)
+                completion(String(deviceId), nil)
+            case .failure(let error):
+                DooPushLogger.error("外部 token 注册失败: \(error)")
+                self.delegate?.dooPush(self, didFailWithError: error)
+                completion(nil, error)
+            }
+        }
+    }
 
     /// 注册设备到服务器
     /// - Parameter token: 设备token
@@ -315,7 +380,7 @@ import UserNotifications
 
     /// 获取当前SDK版本
     @objc public static var sdkVersion: String {
-        return "1.0.0"
+        return "1.1.0"
     }
 
     /// 获取设备token

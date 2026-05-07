@@ -201,3 +201,10 @@ swift test
 # CocoaPods验证
 pod spec lint DooPushSDK.podspec --verbose
 ```
+## 更新日志
+
+### v1.1.0
+- 新增 `DooPushNotificationManagementMode`（active/passive）以支持第三方 SDK 共存
+- 新增 `setNotificationManagementMode(_:)` 切换运行模式
+- 新增 `registerDevice(withToken:vendor:completion:)` 用于外部 token（如 expo-notifications）的服务端注册
+- 通知代理增加 KVO 自动重装：被第三方替换后自动恢复并向上转发
