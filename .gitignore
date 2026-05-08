@@ -1,3 +1,5 @@
+.idea/
 .data/
 .vscode/
+.pnpm-store/
 sdk/ios/**/DooPushLocalConfig.plist

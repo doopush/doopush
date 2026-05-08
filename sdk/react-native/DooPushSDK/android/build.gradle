@@ -22,11 +22,11 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 }
 
@@ -44,7 +44,7 @@ dependencies {
     // DooPush native Android SDK v1.2.0+
     // During v0.1 alpha dev: rely on mavenLocal (./gradlew :lib:publishToMavenLocal in sdk/android/DooPushSDK).
     // Once published, this resolves from JitPack via the maven{} block above.
-    implementation 'com.github.doopush:doopush-android-sdk:1.2.0'
+    implementation 'com.doopush:android-sdk:1.2.0'
 
     // FCM (transitive via DooPush AAR's runtime deps for FCM, but explicit here for clarity).
     implementation platform('com.google.firebase:firebase-bom:32.7.0')

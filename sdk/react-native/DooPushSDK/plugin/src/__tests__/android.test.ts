@@ -19,8 +19,9 @@ describe('withAndroid', () => {
       },
     });
     expect(result.mods?.android).toBeDefined();
-    // The mod compiler accumulates all 3 mods (project, app, dangerous).
+    // The mod compiler accumulates Gradle + file-copy mods.
     // We at least verify the registration shape exists.
+    expect(typeof result.mods.android.gradleProperties).toBe('function');
     expect(typeof result.mods.android.projectBuildGradle).toBe('function');
     expect(typeof result.mods.android.appBuildGradle).toBe('function');
     expect(typeof result.mods.android.dangerous).toBe('function');
@@ -34,6 +35,7 @@ describe('withAndroid', () => {
     });
     // projectBuildGradle and appBuildGradle still register (for placeholders + maven repos),
     // but dangerous (file copy) is skipped because no FCM file is provided.
+    expect(result.mods?.android?.gradleProperties).toBeDefined();
     expect(result.mods?.android?.projectBuildGradle).toBeDefined();
     expect(result.mods?.android?.dangerous).toBeUndefined();
   });

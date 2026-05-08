@@ -27,7 +27,6 @@ function mergeManifestPlaceholders(
   placeholderValues: Record<string, string | undefined>
 ): string {
   const entries = Object.entries(placeholderValues)
-    .filter(([, value]) => value !== undefined && value !== '')
     .map(([key, value]) => `${key}: ${q(value)}`);
 
   if (entries.length === 0) return contents;
@@ -75,7 +74,7 @@ export const withDooPushAppBuildGradle: ConfigPlugin<PluginConfig> = (config, va
     });
 
     // 3. Inject DooPush Android SDK dependency if not present.
-    contents = addDependency(contents, "implementation 'com.github.doopush:doopush-android-sdk:1.2.0'");
+    contents = addDependency(contents, "implementation 'com.doopush:android-sdk:1.2.0'");
 
     const vendorDependencies: Array<[boolean, string]> = [
       [!!v.hms, "implementation 'com.huawei.hms:push:6.11.0.300'"],
