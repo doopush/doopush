@@ -109,7 +109,7 @@ public class DooPushReactNativeSDKModule: Module, DooPushDelegate {
 
         AsyncFunction("checkPermissionStatus") { (promise: Promise) in
             DooPushManager.shared.checkPushPermissionStatus { status in
-                promise.resolve(normalizePermissionStatus(status))
+                promise.resolve(self.normalizePermissionStatus(status))
             }
         }
 

@@ -24,6 +24,7 @@ describe('withIOS', () => {
     expect(iosMods).toBeDefined();
     expect(typeof iosMods?.infoPlist).toBe('function');
     expect(typeof iosMods?.entitlements).toBe('function');
+    expect(typeof iosMods?.dangerous).toBe('function');
   });
 
   test('records ios.mode for entitlements', () => {
