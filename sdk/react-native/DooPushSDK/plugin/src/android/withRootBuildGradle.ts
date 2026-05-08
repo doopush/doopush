@@ -62,6 +62,10 @@ export const withDooPushRootBuildGradle: ConfigPlugin<PluginConfig> = (config, v
 
     addAllProjectsRepo(`maven { url 'https://jitpack.io' }`, 'jitpack.io');
 
+    if (validated.android.vendors.fcm) {
+      addClasspath("'com.google.gms:google-services:4.4.2'");
+    }
+
     if (validated.android.vendors.hms) {
       const huaweiRepo = `maven { url 'https://developer.huawei.com/repo/' }`;
       addAllProjectsRepo(huaweiRepo, 'developer.huawei.com/repo');
