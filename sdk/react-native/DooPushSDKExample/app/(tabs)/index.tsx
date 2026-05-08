@@ -6,12 +6,35 @@ export default function HomeScreen() {
   const [out, setOut] = useState<string>('not registered');
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<DooPushMessage[]>([]);
+  const [events, setEvents] = useState<string[]>([]);
 
   useEffect(() => {
-    const sub = DooPush.addMessageListener((m) => {
+    const messageSub = DooPush.addMessageListener((m) => {
       setMessages((prev) => [m, ...prev].slice(0, 20));
     });
-    return () => sub.remove();
+    const clickSub = DooPush.addNotificationClickListener((m) => {
+      setEvents((prev) => [`click: ${m.title ?? m.pushLogId ?? '(no title)'}`, ...prev].slice(0, 20));
+    });
+    const openSub = DooPush.addNotificationOpenListener((m) => {
+      setEvents((prev) => [`open: ${m.title ?? m.pushLogId ?? '(no title)'}`, ...prev].slice(0, 20));
+    });
+    const gatewayOpenSub = DooPush.addGatewayOpenListener(() => {
+      setEvents((prev) => ['gateway: open', ...prev].slice(0, 20));
+    });
+    const gatewayClosedSub = DooPush.addGatewayClosedListener((e) => {
+      setEvents((prev) => [`gateway: closed ${e.code} ${e.reason ?? ''}`, ...prev].slice(0, 20));
+    });
+    const gatewayErrorSub = DooPush.addGatewayErrorListener((e) => {
+      setEvents((prev) => [`gateway: error ${e.message}`, ...prev].slice(0, 20));
+    });
+    return () => {
+      messageSub.remove();
+      clickSub.remove();
+      openSub.remove();
+      gatewayOpenSub.remove();
+      gatewayClosedSub.remove();
+      gatewayErrorSub.remove();
+    };
   }, []);
 
   const onRegister = async () => {
@@ -27,7 +50,15 @@ export default function HomeScreen() {
         baseURL: 'https://doopush.com/api/v1',
       });
       const r = await DooPush.register();
-      setOut(`token: ${r.token.slice(0, 24)}…\ndeviceId: ${r.deviceId}\nvendor: ${r.vendor}`);
+      const token = await DooPush.getDeviceToken();
+      const deviceId = await DooPush.getDeviceId();
+      setOut(
+        `token: ${r.token.slice(0, 24)}…\n` +
+        `deviceId: ${r.deviceId}\n` +
+        `vendor: ${r.vendor}\n` +
+        `getter token: ${token?.slice(0, 24) ?? '(null)'}…\n` +
+        `getter deviceId: ${deviceId ?? '(null)'}`
+      );
     } catch (e: any) {
       setError(e.message ?? String(e));
       setOut('failed');
@@ -36,7 +67,7 @@ export default function HomeScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.h1}>DooPush RN SDK v0.1.0</Text>
+      <Text style={styles.h1}>DooPush RN SDK v0.5.0</Text>
       <View style={styles.row}>
         <Button title="Configure + Register" onPress={onRegister} />
       </View>
@@ -59,6 +90,13 @@ export default function HomeScreen() {
             <Text>{m.body ?? '(no body)'}</Text>
             <Text style={styles.mono}>{JSON.stringify(m.data)}</Text>
           </View>
+        ))}
+      </View>
+      <View style={styles.section}>
+        <Text style={styles.label}>Events ({events.length}):</Text>
+        {events.length === 0 && <Text style={styles.mono}>(none yet)</Text>}
+        {events.map((e, i) => (
+          <Text key={i} style={styles.mono}>{e}</Text>
         ))}
       </View>
     </ScrollView>

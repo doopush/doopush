@@ -16,9 +16,7 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   # Native SDK dependency.
-  # During v0.1.0 alpha development, use path-based to avoid waiting for SPM publish.
-  # Switch to `s.dependency 'DooPushSDK', '~> 1.1'` once published.
-  s.dependency 'DooPushSDK'
+  s.dependency 'DooPushSDK', '~> 1.2'
 
   s.dependency 'ExpoModulesCore'
 

@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "DooPushSDK"
-  spec.version      = "1.1.2"
+  spec.version      = "1.2.0"
   spec.summary      = "DooPush iOS SDK - 简单易用的推送通知解决方案"
   spec.description  = <<-DESC
                       DooPush iOS SDK 提供简单易用的推送通知解决方案，支持：

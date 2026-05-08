@@ -5,6 +5,7 @@
 - `DooPush.configure({...})` 配置
 - `DooPush.register()` —— 真机走完整 APNs / FCM token + 服务端注册流程
 - `DooPush.addMessageListener(...)` —— 收前/后台推送
+- `DooPush.addNotificationClickListener(...)` / Gateway 事件 —— 验证 v0.5.0 事件
 
 它是 monorepo 里 `sdk/ios/DooPushSDKExample/`、`sdk/android/DooPushSDKExample/` 的 RN 对应版本。
 
@@ -132,7 +133,7 @@ DooPushSDKExample/
 │   ├── _layout.tsx
 │   ├── (tabs)/
 │   │   ├── _layout.tsx
-│   │   ├── index.tsx      # demo 页 —— Configure + Register 按钮 + 消息列表
+│   │   ├── index.tsx      # demo 页 —— Configure + Register 按钮 + 消息/事件列表
 │   │   └── explore.tsx
 │   └── modal.tsx
 ├── assets/                # 图标 / 启动图

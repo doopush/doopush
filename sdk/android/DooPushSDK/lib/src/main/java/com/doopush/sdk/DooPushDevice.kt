@@ -19,7 +19,7 @@ class DooPushDevice(private val context: Context) {
         /**
          * SDK版本号
          */
-        const val SDK_VERSION = "1.0.0"
+        const val SDK_VERSION = "1.2.0"
         
         /**
          * 用户代理格式模板
@@ -151,7 +151,7 @@ class DooPushDevice(private val context: Context) {
     
     /**
      * 生成用户代理字符串
-     * 格式: DooPush-Android-SDK/1.0.0 (com.example.app; Google Pixel 7; Android 14)
+     * 格式: DooPush-Android-SDK/1.2.0 (com.example.app; Google Pixel 7; Android 14)
      * 
      * @return 用户代理字符串
      */

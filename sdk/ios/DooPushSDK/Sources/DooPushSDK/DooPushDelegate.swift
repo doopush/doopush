@@ -30,6 +30,21 @@ import Foundation
     ///   - manager: DooPush管理器实例
     ///   - status: 权限状态
     @objc optional func dooPush(_ manager: DooPushManager, didChangePermissionStatus status: Int)
+
+    /// 用户点击通知（可选实现）
+    @objc optional func dooPush(_ manager: DooPushManager, didClickNotification userInfo: [AnyHashable: Any])
+
+    /// 通知导致应用打开（可选实现）
+    @objc optional func dooPush(_ manager: DooPushManager, didOpenNotification userInfo: [AnyHashable: Any])
+
+    /// Gateway WebSocket 已连接（可选实现）
+    @objc optional func dooPushGatewayDidOpen(_ manager: DooPushManager)
+
+    /// Gateway WebSocket 已关闭（可选实现）
+    @objc optional func dooPush(_ manager: DooPushManager, gatewayDidCloseWithCode code: Int, reason: String?)
+
+    /// Gateway WebSocket 连接失败（可选实现）
+    @objc optional func dooPush(_ manager: DooPushManager, gatewayDidFailWithError error: Error)
     
 }
 

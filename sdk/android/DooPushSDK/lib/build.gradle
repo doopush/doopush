@@ -16,7 +16,7 @@ android {
         consumerProguardFiles "consumer-rules.pro"
 
         // 版本信息
-        buildConfigField "String", "SDK_VERSION", "\"1.1.1\""
+        buildConfigField "String", "SDK_VERSION", "\"1.2.0\""
         buildConfigField "String", "BUILD_TIME", "\"${new Date().format('yyyy-MM-dd HH:mm:ss')}\""
     }
 
@@ -102,7 +102,7 @@ afterEvaluate {
                 
                 groupId = 'com.doopush'
                 artifactId = 'android-sdk'
-                version = '1.1.1'
+                version = '1.2.0'
 
                 pom {
                     name = 'DooPush Android SDK'

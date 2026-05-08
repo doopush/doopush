@@ -1,50 +1,40 @@
 # DooPush React Native SDK
 
-> **v0.1.2 alpha** —— 最小 API surface，端到端真实可用。
-> 仅支持 FCM (Android) + APNs (iOS)。OEM 通道、React Hooks 在 v0.5.0 beta。
+> **v0.5.0 beta** —— React Native / Expo SDK，支持 APNs、FCM、Android 6 类 OEM 通道、Hooks、通知事件、WebSocket Gateway、角标、统计和第三方共存控制。
 
 [DooPush](https://doopush.com) 推送通知服务的 React Native SDK。基于 Expo Modules API 实现，可在 Expo（managed / prebuild）和 bare React Native 项目里使用。
 
-## v0.1.x alpha 提供什么
+## v0.5.0 提供什么
 
 - ✅ `DooPush.configure(config)`
-- ✅ `DooPush.register()` —— iOS APNs / Android FCM 自动流程
-- ✅ `DooPush.registerWithToken(token, vendor)` —— 调用方已经有 token 时（如配合 expo-notifications 共存）
-- 🟡 `DooPush.getDeviceToken()` / `getDeviceId()` —— 当前都返回 `null`，原生 getter 还没暴露，v0.5.0 上线
-- ✅ 事件监听：`addRegisterListener`、`addRegisterErrorListener`、`addMessageListener`
-- ✅ Config 插件：FCM 厂商（google-services.json）、iOS entitlement
-- ✅ Android Active 模式：DooPush 接管通知 UI；与 `expo-notifications` 通过广播 relay 共存（opt-in，JS bridge 在 v0.5.0）
-
-### v0.1 已知限制
-
-- `register()` 返回 `{token, deviceId, vendor}`，但 Android 端 `deviceId` 当前是空字符串（服务端 deviceId 还没在 bridge 层捕获，v0.5.0 修）。`token` 和 `vendor` 字段是对的。
-- `getDeviceToken()` / `getDeviceId()` 在 Android 上一直返回 `null`（底层 SDK 还没公开 getter）。
-
-## v0.1 不包含（v0.5.0+ 才有）
-
-- React Hooks（`useDooPush`、`useDooPushToken`）
-- OEM 通道（HMS / Honor / Xiaomi / OPPO / VIVO / Meizu）
-- WebSocket gateway 的 JS API
-- 统计 / 角标 / 通道相关的 JS API
-- npm 发布（当前用 git tag）
+- ✅ `DooPush.register()` —— iOS APNs / Android FCM 或 OEM 自动流程
+- ✅ `DooPush.registerWithToken(token, vendor)` —— 调用方已有 token 时的 passive 模式
+- ✅ `DooPush.getDeviceToken()` / `getDeviceId()` / `getDeviceInfo()` —— iOS 与 Android 均返回原生 SDK 缓存值
+- ✅ `DooPush.updateDeviceInfo()` / `reportStatistics()` / `checkPermissionStatus()`
+- ✅ 角标 API：`setBadge()` / `clearBadge()` / `getBadge()`
+- ✅ React Hooks：`useDooPush()` / `useDooPushMessage()`
+- ✅ 事件监听：注册、注册错误、消息、通知点击、通知打开、Gateway 状态
+- ✅ 第三方共存控制：`setNotificationManagementMode`、`setExpoNotificationRelayEnabled`、`setNotificationDisplayEnabled`
+- ✅ Config Plugin：iOS entitlement / background mode、Android FCM/HMS/Honor 配置文件、OEM 配置文件生成、Gradle plugin/dependency 注入和 manifest placeholders 合并
+- 🟡 Android OEM 通道依赖原生 SDK 与厂商配置，需在对应真机上验证
 
 ## 前置条件
 
-- iOS 原生 SDK ≥ **1.1.1**（SPM tag `v1.1.1` of `doopush-ios-sdk`，或路径方式本地引用）
-- Android 原生 SDK ≥ **1.1.0**（JitPack `com.github.doopush:doopush-android-sdk:v1.1.0`，或本地 mavenLocal）
+- iOS 原生 SDK ≥ **1.2.0**（SPM tag `v1.2.0` of `doopush-ios-sdk`，或路径方式本地引用）
+- Android 原生 SDK ≥ **1.2.0**（JitPack `com.github.doopush:doopush-android-sdk:1.2.0`，或本地 mavenLocal）
 - Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
 ## 快速安装
 
 ```bash
-# alpha 阶段使用 dist-tag
-npx expo install doopush-react-native-sdk@alpha
+# beta 阶段使用 dist-tag
+npx expo install doopush-react-native-sdk@beta
 # 或精确版本
-npx expo install doopush-react-native-sdk@0.1.2
+npx expo install doopush-react-native-sdk@0.5.0
 ```
 
-> v0.1.x 在 npm 走 `alpha` dist-tag，1.0.0 stable 发布前**不要省略 `@alpha`**。
-> 也支持 git tag 安装作为兜底：`npm install github:doopush/doopush-react-native-sdk#v0.1.2`
+> v0.5.x 在 npm 走 `beta` dist-tag，1.0.0 stable 发布前建议显式安装 `@beta`。
+> 也支持 git tag 安装作为兜底：`npm install github:doopush/doopush-react-native-sdk#v0.5.0`
 
 `app.json` 配 plugin：
 
@@ -61,7 +51,15 @@ npx expo install doopush-react-native-sdk@0.1.2
           "ios": { "mode": "production" },
           "android": {
             "vendors": {
-              "fcm": { "googleServicesFile": "./google-services.json" }
+              "fcm": { "googleServicesFile": "./google-services.json" },
+              "hms": { "agconnectServicesFile": "./agconnect-services.json" },
+              "honor": {
+                "mcsServicesFile": "./mcs-services.json"
+              },
+              "xiaomi": { "appId": "mi_app_id", "appKey": "mi_app_key" },
+              "oppo": { "appKey": "oppo_app_key", "appSecret": "oppo_app_secret" },
+              "vivo": { "appId": "vivo_app_id", "apiKey": "vivo_api_key" },
+              "meizu": { "appId": "meizu_app_id", "appKey": "meizu_app_key" }
             }
           }
         }
@@ -71,6 +69,8 @@ npx expo install doopush-react-native-sdk@0.1.2
 }
 ```
 
+> OEM 配置支持两种方式：传 `servicesFile`/`mcsServicesFile`/`agconnectServicesFile` 复制厂商 JSON；或对 Xiaomi / OPPO / VIVO / Meizu / Honor 传内联凭证，prebuild 时会生成对应 `android/app/src/main/assets/*-services.json`。HMS 仍需 `agconnect-services.json` 文件。
+
 ```bash
 npx expo prebuild --clean
 npx expo run:android   # 或 run:ios
@@ -79,10 +79,12 @@ npx expo run:android   # 或 run:ios
 ## 用法
 
 ```tsx
-import { useEffect, useState } from 'react';
-import { DooPush, type DooPushMessage } from 'doopush-react-native-sdk';
+import { useEffect } from 'react';
+import { DooPush, useDooPush, type DooPushMessage } from 'doopush-react-native-sdk';
 
 export default function App() {
+  const { token, deviceId, register, lastMessage, error } = useDooPush();
+
   useEffect(() => {
     DooPush.configure({
       appId: 'your_app_id',
@@ -91,19 +93,32 @@ export default function App() {
     const sub = DooPush.addMessageListener((m: DooPushMessage) => {
       console.log('收到推送', m);
     });
-    return () => sub.remove();
+    const clickSub = DooPush.addNotificationClickListener((m) => {
+      console.log('点击推送', m);
+    });
+    return () => { sub.remove(); clickSub.remove(); };
   }, []);
 
   const handleRegister = async () => {
     try {
-      const { token, deviceId } = await DooPush.register();
+      const { token, deviceId } = await register();
       console.log('注册成功', token, deviceId);
     } catch (e) {
       console.error('注册失败', e);
     }
   };
 
-  // ...
+  // 也可以直接使用 hook 暴露的状态：token / deviceId / lastMessage / error
+  console.log({ token, deviceId, lastMessage, error });
+}
+
+// 常用补充 API：
+async function maintenance() {
+  await DooPush.setBadge(3);
+  await DooPush.clearBadge();
+  await DooPush.reportStatistics();
+  const permission = await DooPush.checkPermissionStatus();
+  console.log(permission);
 }
 ```
 
@@ -147,8 +162,12 @@ sdk/react-native/
 默认兼容。iOS 上 DooPush 接管 `UNUserNotificationCenterDelegate` 但走 delegate-forwarding，`expo-notifications` 的监听依然能收到。Android 上 DooPush 接管 `FirebaseMessagingService`，如果你也想让 `expo-notifications` 收到 FCM 消息，调（v0.5.0+）：
 
 ```ts
+DooPush.setNotificationManagementMode('active');
+// relay 是独立开关；setNotificationManagementMode 不会覆盖该值。
 DooPush.setExpoNotificationRelayEnabled(true);
 ```
+
+> `setNotificationDisplayEnabled` 仅控制 Android FCM 由 DooPush 自管展示通知的开关；iOS 端是 no-op。`setExpoNotificationRelayEnabled` 是独立开关，不会被 active/passive 模式切换重置。若 iOS 需要让位给其它通知库，请使用 `setNotificationManagementMode('passive')`。
 
 ### 与 `@react-native-firebase/messaging`
 
@@ -167,6 +186,15 @@ const { deviceId } = await DooPush.registerWithToken(token, 'fcm');
 MIT
 
 ## CHANGELOG
+
+### v0.5.0
+- **能力补齐**：Android `register()` / `registerWithToken()` 返回真实 `deviceId`，`getDeviceToken()` / `getDeviceId()` / `getDeviceInfo()` 接入原生缓存。
+- **新增 Hooks**：`useDooPush()`、`useDooPushMessage()`。
+- **新增 API**：角标、权限状态、设备信息更新、统计上报。
+- **新增事件**：通知点击、通知打开、Gateway open/closed/error；`connectGateway()` 在缺少 token 时会拒绝。
+- **共存控制**：新增 active/passive 管理模式、Expo relay、通知展示开关。
+- **Config Plugin**：扩展 Android OEM vendor 配置入口；支持内联凭证生成 services JSON，HMS/Honor Gradle plugin 注入，HMS/Honor services 文件同时复制到 app 根目录和 assets。
+- **依赖底座**：iOS / Android 原生 SDK 对齐到 v1.2.0。
 
 ### v0.1.2
 - **chore**：发版流水线连通性测试（无功能变更）。验证 monorepo `sync-rn-sdk.yml` → `doopush-react-native-sdk` 公仓 → `auto-publish-release.yml` → GitHub Release + npm publish 全链路。dist-tag 应解析为 `alpha`（0.1.x ≤ 0.4.x）。

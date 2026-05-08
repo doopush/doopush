@@ -203,14 +203,19 @@ pod spec lint DooPushSDK.podspec --verbose
 ```
 ## 更新日志
 
+### v1.2.0
+- 新增 WebSocket Gateway 连接事件、通知点击/打开统计链路。
+- 新增角标管理 API、权限状态检查、设备信息更新与统计上报能力。
+- 与 React Native SDK v0.5.0 对齐。
+
+### v1.1.2
+- **chore**：发版流水线连通性测试（无功能变更）。验证 monorepo `sync-ios-sdk.yml` → `doopush-ios-sdk` 公仓 → `auto-build-release.yml` → GitHub Release 全链路。
+
+### v1.1.1
+- 修复 podspec 与 React Native（CocoaPods 静态库链接 + Swift module）的兼容性：移除自定义 `module_map`、不存在的 LICENSE 文件引用、`public_header_files` 直接暴露 ObjC 头（Swift `@objc` 已自动暴露）
+
 ### v1.1.0
 - 新增 `DooPushNotificationManagementMode`（active/passive）以支持第三方 SDK 共存
 - 新增 `setNotificationManagementMode(_:)` 切换运行模式
 - 新增 `registerDevice(withToken:vendor:completion:)` 用于外部 token（如 expo-notifications）的服务端注册
 - 通知代理增加 KVO 自动重装：被第三方替换后自动恢复并向上转发
-
-### v1.1.1
-- 修复 podspec 与 React Native（CocoaPods 静态库链接 + Swift module）的兼容性：移除自定义 `module_map`、不存在的 LICENSE 文件引用、`public_header_files` 直接暴露 ObjC 头（Swift `@objc` 已自动暴露）
-
-### v1.1.2
-- **chore**：发版流水线连通性测试（无功能变更）。验证 monorepo `sync-ios-sdk.yml` → `doopush-ios-sdk` 公仓 → `auto-build-release.yml` → GitHub Release 全链路。

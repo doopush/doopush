@@ -353,6 +353,9 @@ import UserNotifications
         // 记录点击统计
         statisticsManager.recordNotificationClick(pushData: pushData, userInfo: userInfo)
 
+        // 通知代理
+        delegate?.dooPush?(self, didClickNotification: userInfo)
+
         return true
     }
 
@@ -368,6 +371,9 @@ import UserNotifications
         // 记录打开统计
         statisticsManager.recordNotificationOpen(pushData: pushData, userInfo: userInfo)
 
+        // 通知代理
+        delegate?.dooPush?(self, didOpenNotification: userInfo)
+
         return true
     }
 
@@ -380,7 +386,12 @@ import UserNotifications
 
     /// 获取当前SDK版本
     @objc public static var sdkVersion: String {
-        return "1.1.2"
+        return "1.2.0"
+    }
+
+    /// 获取当前设备信息
+    public func getDeviceInfo() -> DeviceInfo {
+        return deviceManager.getCurrentDeviceInfo()
     }
 
     /// 获取设备token
@@ -605,14 +616,16 @@ extension DooPushManager: DooPushWebSocketConnection.Listener {
 
     public func wsDidOpen() {
         DooPushLogger.info("WebSocket 连接已建立")
+        delegate?.dooPushGatewayDidOpen?(self)
     }
 
     public func wsDidClose(code: Int, reason: String?) {
         DooPushLogger.info("WebSocket 连接关闭 code=\(code) reason=\(reason ?? "-")")
+        delegate?.dooPush?(self, gatewayDidCloseWithCode: code, reason: reason)
     }
 
     public func wsDidFail(_ error: Error) {
         DooPushLogger.error("WebSocket 连接错误: \(error)")
-        delegate?.dooPush(self, didFailWithError: error)
+        delegate?.dooPush?(self, gatewayDidFailWithError: error)
     }
 }

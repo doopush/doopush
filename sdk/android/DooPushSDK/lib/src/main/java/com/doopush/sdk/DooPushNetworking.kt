@@ -58,7 +58,7 @@ class DooPushNetworking(private val config: DooPushConfig) {
             val authenticatedRequest = originalRequest.newBuilder()
                 .header("X-API-Key", config.apiKey)
                 .header("Content-Type", "application/json")
-                .header("User-Agent", "DooPush-Android-SDK/1.0.0")
+                .header("User-Agent", "DooPush-Android-SDK/1.2.0")
                 .build()
             chain.proceed(authenticatedRequest)
         }
@@ -150,7 +150,7 @@ class DooPushNetworking(private val config: DooPushConfig) {
      * 设备注册回调接口
      */
     interface RegisterDeviceCallback {
-        fun onSuccess()
+        fun onSuccess(deviceId: String)
         fun onError(error: DooPushError)
     }
     
@@ -217,8 +217,18 @@ class DooPushNetworking(private val config: DooPushConfig) {
                             val apiResponse: APIResponse<JsonObject>? = gson.fromJson(responseBody, type)
 
                             if (apiResponse != null && apiResponse.data != null) {
+                                val deviceId = extractDeviceId(apiResponse.data)
+                                if (deviceId.isNullOrBlank()) {
+                                    Log.e(TAG, "设备注册响应缺少设备ID")
+                                    callback.onError(DooPushError(
+                                        code = DooPushError.ERROR_API_INVALID_RESPONSE,
+                                        message = "服务器响应缺少设备ID",
+                                        details = responseBody
+                                    ))
+                                    return
+                                }
                                 Log.d(TAG, "设备注册成功: ${apiResponse.message}")
-                                callback.onSuccess()
+                                callback.onSuccess(deviceId)
                             } else {
                                 Log.e(TAG, "设备注册响应数据为空")
                                 callback.onError(DooPushError(
@@ -249,6 +259,22 @@ class DooPushNetworking(private val config: DooPushConfig) {
             Log.e(TAG, "设备注册请求构建失败", e)
             callback.onError(DooPushError.fromException(e))
         }
+    }
+
+    /**
+     * 从服务端注册响应中提取设备 ID。
+     *
+     * 当前 API 直接返回 Device 模型，主键字段是 `id`；这里同时兼容未来可能
+     * 使用的 `device_id` / `deviceId` 字段。
+     */
+    private fun extractDeviceId(data: JsonObject): String? {
+        val candidateKeys = listOf("id", "device_id", "deviceId")
+        for (key in candidateKeys) {
+            val value = data.get(key)
+            if (value == null || value.isJsonNull || !value.isJsonPrimitive) continue
+            return value.asString
+        }
+        return null
     }
     
     /**

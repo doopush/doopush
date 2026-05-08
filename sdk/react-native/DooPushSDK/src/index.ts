@@ -1,5 +1,6 @@
 export * as DooPush from './DooPush';
 export * from './types';
+export * from './hooks';
 export type {
   OnRegisterEvent,
   OnRegisterErrorEvent,

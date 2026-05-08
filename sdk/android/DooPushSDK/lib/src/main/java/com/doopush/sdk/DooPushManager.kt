@@ -19,6 +19,11 @@ class DooPushManager private constructor() {
     
     companion object {
         private const val TAG = "DooPushManager"
+        private const val PREFS_NAME = "DooPushSDK.Storage"
+        private const val PREF_DEVICE_TOKEN = "device_token"
+        private const val PREF_DEVICE_ID = "device_id"
+        private const val PREF_VENDOR = "vendor"
+        private const val PREF_BADGE_COUNT = "badge_count"
 
         private val VALID_REGISTER_VENDORS = setOf(
             "apns", "fcm", "hms", "honor", "xiaomi", "oppo", "vivo", "meizu"
@@ -131,6 +136,7 @@ class DooPushManager private constructor() {
     // 设备信息缓存
     private var cachedDeviceInfo: DeviceInfo? = null
     private var cachedToken: String? = null
+    private var cachedDeviceId: String? = null
     
     init {
         Log.d(TAG, "DooPushManager 初始化")
@@ -191,6 +197,7 @@ class DooPushManager private constructor() {
             
             // 保存应用上下文
             applicationContext = context.applicationContext
+            loadPersistedRegistration()
             
             // 智能配置处理：华为设备自动启用HMS
             val finalHmsConfig = if (hmsConfig == null) {
@@ -846,13 +853,75 @@ class DooPushManager private constructor() {
      */
     fun getDeviceInfo(): DeviceInfo? {
         return if (checkInitialized()) {
-            cachedDeviceInfo ?: deviceManager?.getCurrentDeviceInfo()?.also { 
-                cachedDeviceInfo = it 
+            cachedDeviceInfo ?: deviceManager?.getCurrentDeviceInfo(getCurrentVendor() ?: "fcm")?.also {
+                cachedDeviceInfo = it
             }
         } else {
             null
         }
     }
+
+
+    /**
+     * 更新当前设备信息到服务器。Android 与 iOS 保持一致：复用注册接口，
+     * 后端根据 token 识别并更新现有设备。
+     */
+    fun updateDeviceInfo(callback: ((Boolean, DooPushError?) -> Unit)? = null) {
+        if (!checkInitialized()) {
+            val error = DooPushError.configNotInitialized()
+            callback?.invoke(false, error)
+            return
+        }
+
+        val token = getDeviceToken()
+        if (token.isNullOrBlank()) {
+            val error = DooPushError(
+                code = DooPushError.CONFIG_NOT_INITIALIZED,
+                message = "无法更新设备信息：设备token缺失"
+            )
+            Log.w(TAG, error.message)
+            callback?.invoke(false, error)
+            return
+        }
+
+        val channel = getCurrentVendor() ?: "fcm"
+        val deviceInfo = deviceManager?.getCurrentDeviceInfo(channel)
+        if (deviceInfo == null) {
+            val error = DooPushError.configNotInitialized()
+            callback?.invoke(false, error)
+            return
+        }
+
+        cachedDeviceInfo = deviceInfo
+        networking?.registerDevice(deviceInfo, token, object : DooPushNetworking.RegisterDeviceCallback {
+            override fun onSuccess(deviceId: String) {
+                cachedDeviceId = deviceId
+                persistRegistration(token, deviceId, channel)
+                Log.i(TAG, "设备信息更新成功")
+                callback?.invoke(true, null)
+            }
+
+            override fun onError(error: DooPushError) {
+                Log.e(TAG, "设备信息更新失败: ${error.message}")
+                callback?.invoke(false, error)
+            }
+        })
+    }
+
+    /**
+     * 获取当前设备推送 token。
+     */
+    fun getDeviceToken(): String? = cachedToken ?: prefs()?.getString(PREF_DEVICE_TOKEN, null)
+
+    /**
+     * 获取服务端分配的设备 ID。
+     */
+    fun getDeviceId(): String? = cachedDeviceId ?: prefs()?.getString(PREF_DEVICE_ID, null)
+
+    /**
+     * 获取当前注册通道。
+     */
+    fun getCurrentVendor(): String? = cachedDeviceInfo?.channel ?: prefs()?.getString(PREF_VENDOR, null)
     
     /**
      * 获取SDK配置信息
@@ -861,6 +930,26 @@ class DooPushManager private constructor() {
      */
     fun getConfig(): DooPushConfig? {
         return config
+    }
+
+    private fun prefs() = applicationContext?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    private fun loadPersistedRegistration() {
+        val prefs = prefs() ?: return
+        if (cachedToken.isNullOrEmpty()) {
+            cachedToken = prefs.getString(PREF_DEVICE_TOKEN, null)
+        }
+        if (cachedDeviceId.isNullOrEmpty()) {
+            cachedDeviceId = prefs.getString(PREF_DEVICE_ID, null)
+        }
+    }
+
+    private fun persistRegistration(token: String, deviceId: String, vendor: String) {
+        prefs()?.edit()
+            ?.putString(PREF_DEVICE_TOKEN, token)
+            ?.putString(PREF_DEVICE_ID, deviceId)
+            ?.putString(PREF_VENDOR, vendor)
+            ?.apply()
     }
     
     /**
@@ -972,6 +1061,7 @@ class DooPushManager private constructor() {
         builder.append("  注册中: ${isRegistering.get()}\n")
         builder.append("  有回调监听器: ${callback != null}\n")
         builder.append("  有缓存Token: ${!cachedToken.isNullOrEmpty()}\n")
+        builder.append("  有缓存设备ID: ${!cachedDeviceId.isNullOrEmpty()}\n")
         builder.append("  有缓存设备信息: ${cachedDeviceInfo != null}\n")
         builder.append("  WebSocket连接: ${if (wsConnection != null) "已创建" else "未初始化"}\n")
         builder.append("  ${DooPushStatistics.getStatisticsSummary()}\n")
@@ -986,13 +1076,23 @@ class DooPushManager private constructor() {
         return builder.toString()
     }
     
+    private fun clearMemoryCache() {
+        cachedToken = null
+        cachedDeviceId = null
+        cachedDeviceInfo = null
+    }
+
     /**
-     * 清除缓存数据
+     * 清除缓存数据（内存 + 持久化注册信息）。
      */
     fun clearCache() {
         Log.d(TAG, "清除缓存数据")
-        cachedToken = null
-        cachedDeviceInfo = null
+        clearMemoryCache()
+        prefs()?.edit()
+            ?.remove(PREF_DEVICE_TOKEN)
+            ?.remove(PREF_DEVICE_ID)
+            ?.remove(PREF_VENDOR)
+            ?.apply()
     }
     
     /**
@@ -1013,8 +1113,8 @@ class DooPushManager private constructor() {
             wsConnection?.disconnect()
             wsConnection = null
 
-            // 清除缓存
-            clearCache()
+            // 清除内存缓存。release() 只释放运行时资源，不清除持久化注册信息。
+            clearMemoryCache()
             
             // 重置状态
             isConfigured.set(false)
@@ -1074,12 +1174,14 @@ class DooPushManager private constructor() {
             return
         }
         try {
+            isRegistering.set(true)
             val deviceInfo = deviceManager!!.getCurrentDeviceInfo(vendor)
             cachedDeviceInfo = deviceInfo
             cachedToken = token
             registerDeviceToServer(deviceInfo, token, callback)
         } catch (e: Exception) {
             Log.e(TAG, "registerDevice(token,vendor) 失败", e)
+            isRegistering.set(false)
             callback.onError(DooPushError.fromException(e))
         }
     }
@@ -1096,11 +1198,20 @@ class DooPushManager private constructor() {
             deviceInfo,
             token,
             object : DooPushNetworking.RegisterDeviceCallback {
-                override fun onSuccess() {
-                    Log.i(TAG, "设备注册成功")
+                override fun onSuccess(deviceId: String) {
+                    Log.i(TAG, "设备注册成功，设备ID: $deviceId")
                     isRegistering.set(false)
+                    cachedToken = token
+                    cachedDeviceId = deviceId
+                    cachedDeviceInfo = deviceInfo
+                    persistRegistration(token, deviceId, deviceInfo.channel)
                     connectToGateway(token)
-                    callback?.onSuccess(token) ?: this@DooPushManager.callback?.onRegisterSuccess(token)
+                    val result = DooPushRegisterResult(
+                        token = token,
+                        deviceId = deviceId,
+                        vendor = deviceInfo.channel
+                    )
+                    callback?.onSuccess(result) ?: this@DooPushManager.callback?.onRegisterSuccess(result)
                 }
                 
                 override fun onError(error: DooPushError) {
@@ -1168,6 +1279,11 @@ class DooPushManager private constructor() {
     private fun handleTokenRefresh(newToken: String) {
         val oldToken = cachedToken
         cachedToken = newToken
+        val deviceId = getDeviceId()
+        val vendor = getCurrentVendor()
+        if (!deviceId.isNullOrEmpty() && !vendor.isNullOrEmpty()) {
+            persistRegistration(newToken, deviceId, vendor)
+        }
         
         // 如果已配置且有旧token，更新服务器
         if (isConfigured.get() && !oldToken.isNullOrEmpty() && oldToken != newToken) {
@@ -1244,7 +1360,11 @@ class DooPushManager private constructor() {
                 Log.e(TAG, "Context为空，无法设置角标")
                 return false
             }
-            BadgeManager.setBadgeCount(context, count)
+            val success = BadgeManager.setBadgeCount(context, count)
+            if (success) {
+                prefs()?.edit()?.putInt(PREF_BADGE_COUNT, count.coerceAtLeast(0))?.apply()
+            }
+            success
 
         } catch (e: Exception) {
             Log.e(TAG, "设置角标数量失败", e)
@@ -1259,5 +1379,12 @@ class DooPushManager private constructor() {
     fun clearBadge(): Boolean {
         Log.d(TAG, "清除应用角标")
         return setBadgeCount(0)
+    }
+
+    /**
+     * 获取最近一次由 SDK 设置成功的应用角标数量。
+     */
+    fun getBadgeCount(): Int {
+        return prefs()?.getInt(PREF_BADGE_COUNT, 0) ?: 0
     }
 }

@@ -1,6 +1,5 @@
 /**
  * Vendor channel identifier — must match server-side device.channel field.
- * v0.1.0 alpha only validates "apns" / "fcm"; OEM channels added in v0.5.0.
  */
 export type DooPushVendor =
   | 'apns'
@@ -14,6 +13,16 @@ export type DooPushVendor =
 
 export type DooPushLogLevel = 'debug' | 'info' | 'warning' | 'error' | 'off';
 
+export type DooPushNotificationManagementMode = 'active' | 'passive';
+
+export type DooPushPermissionStatus =
+  | 'authorized'
+  | 'denied'
+  | 'notDetermined'
+  | 'provisional'
+  | 'ephemeral'
+  | 'unknown';
+
 export interface DooPushConfig {
   /** DooPush platform appId (assigned by server) */
   appId: string;
@@ -23,6 +32,23 @@ export interface DooPushConfig {
   baseURL?: string;
   /** Log level for native SDK side. */
   log?: DooPushLogLevel;
+}
+
+export interface DooPushRegisterResult {
+  token: string;
+  deviceId: string;
+  vendor: DooPushVendor;
+}
+
+export interface DooPushDeviceInfo {
+  platform: 'ios' | 'android' | string;
+  channel: DooPushVendor | string;
+  bundleId: string;
+  brand: string;
+  model: string;
+  systemVersion: string;
+  appVersion: string;
+  userAgent: string;
 }
 
 /**
@@ -54,4 +80,18 @@ export interface DooPushError {
   code: string;
   message: string;
   vendor?: DooPushVendor;
+}
+
+export interface DooPushGatewayOpenEvent {
+  connected: true;
+}
+
+export interface DooPushGatewayClosedEvent {
+  code: number;
+  reason?: string;
+}
+
+export interface DooPushGatewayErrorEvent {
+  code: string;
+  message: string;
 }

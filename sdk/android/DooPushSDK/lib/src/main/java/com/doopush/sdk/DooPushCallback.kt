@@ -11,11 +11,20 @@ import com.doopush.sdk.models.PushMessage
 interface DooPushCallback {
     
     /**
-     * 设备注册成功回调
-     * 
-     * @param token FCM推送token
+     * 设备注册成功回调（旧版兼容，仅包含推送 token）。
+     *
+     * @param token 推送 token
      */
     fun onRegisterSuccess(token: String)
+
+    /**
+     * 设备注册成功回调（v1.2+，包含服务端 deviceId 与推送通道）。
+     *
+     * 默认委托给旧版 onRegisterSuccess(token)，保持既有实现源码兼容。
+     */
+    fun onRegisterSuccess(result: DooPushRegisterResult) {
+        onRegisterSuccess(result.token)
+    }
     
     /**
      * 设备注册失败回调
