@@ -30,10 +30,9 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
-          # 判断 alpha / beta / rc / latest
-          if [[ "$VERSION" == *"-alpha"* ]] || [[ "$VERSION" =~ ^0\.[0-4]\. ]]; then
+          if [[ "$VERSION" == *"-alpha"* ]]; then
             DIST_TAG="alpha"
-          elif [[ "$VERSION" == *"-beta"* ]] || [[ "$VERSION" =~ ^0\.[5-9]\. ]]; then
+          elif [[ "$VERSION" == *"-beta"* ]]; then
             DIST_TAG="beta"
           elif [[ "$VERSION" == *"-rc"* ]]; then
             DIST_TAG="rc"
@@ -105,9 +104,9 @@ jobs:
 
             **Install via npm:**
             ```bash
+            npm install doopush-react-native-sdk
+            # 或精确版本
             npm install doopush-react-native-sdk@${{ steps.version.outputs.version }}
-            # 或 (alpha/beta 阶段)
-            npm install doopush-react-native-sdk@${{ steps.version.outputs.dist_tag }}
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -117,7 +116,6 @@ jobs:
         run: |
           # --no-git-checks: pnpm 默认要求工作树干净 + 在跟随分支
           # --access public: 默认公开包（doopush-react-native-sdk 不带 scope）
-          # --tag: alpha / beta / rc / latest，由版本号自动推断
           pnpm publish --no-git-checks --access public --tag ${{ steps.version.outputs.dist_tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -127,7 +125,7 @@ jobs:
         run: |
           # npm 在包首次发布时会强制把 dist-tag latest 指向该版本，即使 publish
           # 显式传了 --tag alpha/beta/rc。这里检查并主动 rm，避免污染默认
-          # `npm install doopush-react-native-sdk` 用户的依赖（skill 红线）。
+          # `npm install doopush-react-native-sdk` 用户的依赖。
           CURRENT_LATEST=$(npm view doopush-react-native-sdk dist-tags.latest 2>/dev/null || echo "")
           PUBLISHED_VERSION="${{ steps.version.outputs.version }}"
           if [ "$CURRENT_LATEST" = "$PUBLISHED_VERSION" ]; then
