@@ -1,6 +1,6 @@
 # DooPush React Native SDK
 
-> **v0.5.0 beta** —— React Native / Expo SDK，支持 APNs、FCM、Android 6 类 OEM 通道、Hooks、通知事件、WebSocket Gateway、角标、统计和第三方共存控制。
+> **v0.5.0** —— React Native / Expo SDK，支持 APNs、FCM、Android 6 类 OEM 通道、Hooks、通知事件、WebSocket Gateway、角标、统计和第三方共存控制。
 
 [DooPush](https://doopush.com) 推送通知服务的 React Native SDK。基于 Expo Modules API 实现，可在 Expo（managed / prebuild）和 bare React Native 项目里使用。
 
@@ -16,7 +16,7 @@
 - ✅ 事件监听：注册、注册错误、消息、通知点击、通知打开、Gateway 状态
 - ✅ 第三方共存控制：`setNotificationManagementMode`、`setExpoNotificationRelayEnabled`、`setNotificationDisplayEnabled`
 - ✅ Config Plugin：iOS entitlement / background mode、Android FCM/HMS/Honor 配置文件、OEM 配置文件生成、Gradle plugin/dependency 注入和 manifest placeholders 合并
-- 🟡 Android OEM 通道依赖原生 SDK 与厂商配置，需在对应真机上验证
+- ✅ Android OEM 通道：HMS / Honor / Xiaomi / OPPO / VIVO / Meizu
 
 ## 前置条件
 
@@ -27,13 +27,13 @@
 ## 快速安装
 
 ```bash
-# beta 阶段使用 dist-tag
+# 走 npm @beta dist-tag 通道
 npx expo install doopush-react-native-sdk@beta
 # 或精确版本
 npx expo install doopush-react-native-sdk@0.5.0
 ```
 
-> v0.5.x 在 npm 走 `beta` dist-tag，1.0.0 stable 发布前建议显式安装 `@beta`。
+> v0.5.x 在 npm 走 `@beta` dist-tag；v1.x 起转 `@latest`。安装命令请显式带 `@beta` 或精确版本，省略 tag 不会装到 v0.5.x。
 > 也支持 git tag 安装作为兜底：`npm install github:doopush/doopush-react-native-sdk#v0.5.0`
 
 `app.json` 配 plugin：

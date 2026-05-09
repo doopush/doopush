@@ -1,11 +1,13 @@
 # DooPush React Native SDK 示例 App
 
-基于 Expo SDK 54 的最小 demo，import 同级目录的 `doopush-react-native-sdk`（路径：`../DooPushSDK/`），用来真实验证：
+基于 Expo SDK 54 的最小 demo，import 同级目录的 `doopush-react-native-sdk`（路径：`../DooPushSDK/`），用来真实验证 v0.5.0 全部能力：
 
 - `DooPush.configure({...})` 配置
-- `DooPush.register()` —— 真机走完整 APNs / FCM token + 服务端注册流程
-- `DooPush.addMessageListener(...)` —— 收前/后台推送
-- `DooPush.addNotificationClickListener(...)` / Gateway 事件 —— 验证 v0.5.0 事件
+- `DooPush.register()` —— 真机走完整 APNs / FCM / OEM token + 服务端注册流程
+- 命令式 API：`getDeviceToken / getDeviceId / getDeviceInfo / updateDeviceInfo / reportStatistics / checkPermissionStatus`
+- 角标 API：`setBadge / clearBadge / getBadge`
+- React Hooks：`useDooPush()` / `useDooPushMessage()`
+- 事件订阅：`addMessageListener / addNotificationClickListener / addNotificationOpenListener / addGatewayOpen|Closed|ErrorListener`
 
 它是 monorepo 里 `sdk/ios/DooPushSDKExample/`、`sdk/android/DooPushSDKExample/` 的 RN 对应版本。
 
@@ -80,7 +82,39 @@ DooPush.configure({
 cp /path/to/your/google-services.json ./google-services.json
 ```
 
+并在 `app.json` 的 plugin 配置里加 `android.vendors.fcm`：
+
+```json
+"android": {
+  "vendors": {
+    "fcm": { "googleServicesFile": "./google-services.json" }
+  }
+}
+```
+
 `google-services.json` 已被 `.gitignore` 排除，**不要**把它 commit 进版本库。
+
+### Android OEM（可选）
+
+如果要在 OEM 真机（华为 / 荣耀 / 小米 / OPPO / VIVO / 魅族）上启用推送，按需在 `app.json` 的 `android.vendors` 下加对应配置。**两种方式二选一**：
+
+**方式 A — services file**（HMS 必需用此方式；其它 vendor 推荐）：
+
+```json
+"hms":    { "agconnectServicesFile": "./agconnect-services.json" },
+"honor":  { "mcsServicesFile": "./mcs-services.json" },
+"xiaomi": { "servicesFile": "./xiaomi-services.json" },
+"vivo":   { "servicesFile": "./vivo-services.json" }
+```
+
+**方式 B — 内联凭证**（plugin 在 prebuild 时自动生成对应 services JSON 写到 assets）：
+
+```json
+"xiaomi": { "appId": "...", "appKey": "..." },
+"oppo":   { "appKey": "...", "appSecret": "..." },
+"vivo":   { "appId": "...", "apiKey": "..." },
+"meizu":  { "appId": "...", "appKey": "..." }
+```
 
 ## 3）跑 iOS 模拟器
 
