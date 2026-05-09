@@ -235,8 +235,7 @@ jobs:
           echo "   $POM_URL"
 
           # JitPack 第一次 GET 把构建从 cold 变成 queued -> building -> built。
-          # 多 ping 几次等它完成，但不要因失败 fail 整个 workflow——
-          # 用户可以从 https://jitpack.io/#doopush/doopush-android-sdk 手动访问兜底。
+          # 失败不 fail workflow——可以从 https://jitpack.io/#doopush/doopush-android-sdk 手动访问兜底。
           for attempt in 1 2 3 4; do
             if curl -fsSL --max-time 60 "$POM_URL" -o /dev/null; then
               echo "✅ JitPack build available (attempt $attempt)"

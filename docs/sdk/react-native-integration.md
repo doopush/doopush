@@ -20,7 +20,7 @@ DooPush React Native SDK 基于 Expo Modules API 实现，可在 Expo（managed/
 ## 📋 系统要求
 
 - **iOS**：iOS 13.0+，原生 SDK ≥ 1.2.0
-- **Android**：Android 8.0+ (API 26+)，原生 SDK ≥ 1.2.0（JitPack `com.github.doopush:doopush-android-sdk:1.2.0`）
+- **Android**：Android 8.0+ (API 26+)，原生 SDK ≥ 1.2.0
 - **React Native**：RN 0.73+ 或 Expo SDK 50+。**新项目推荐 Expo SDK 54+**
 
 ## 🛠 快速集成
@@ -28,14 +28,8 @@ DooPush React Native SDK 基于 Expo Modules API 实现，可在 Expo（managed/
 ### 1. 安装
 
 ```bash
-# 走 npm @beta dist-tag 通道
-npx expo install doopush-react-native-sdk@beta
-# 或精确版本
-npx expo install doopush-react-native-sdk@0.5.0
+npx expo install doopush-react-native-sdk
 ```
-
-> v0.5.x 在 npm 走 `@beta` dist-tag；v1.x 起转 `@latest`。安装命令请显式带 `@beta` 或精确版本，省略 tag 不会装到 v0.5.x。
-> 也支持 git tag 安装作为兜底：`npm install github:doopush/doopush-react-native-sdk#v0.5.0`
 
 ### 2. 配置 Expo plugin
 
@@ -270,17 +264,12 @@ const { deviceId } = await DooPush.registerWithToken(token, 'fcm');
 
 ## 🐛 故障排查
 
-- **`registering…` 一直转**（用户已点 Allow）—— iOS 上检查是否使用了 v0.1.1+，更早版本未注册 `ExpoAppDelegateSubscriber`，APNs token 不会回到 DooPush。
 - **Android `expo prebuild` 报 `manifestPlaceholders` 找不到字段** —— 检查 `app.json` 里 OEM 凭证是否齐全（schema 校验会要求 servicesFile 或对应内联字段）。
 - **HMS / Honor 真机注册失败** —— 确认 `agconnect-services.json` / `mcs-services.json` 真机可读、`app.json` 的 `bundleIdentifier` 与 services file 中的 `package_name` 一致。
 - **`Unable to resolve "doopush-react-native-sdk"`** —— monorepo 本地开发用 `file:` 依赖时加 `--install-links`，避免 npm 默认软链导致 Metro 解析失败。
 
 ## 📦 版本与发布
 
-- npm 包：`doopush-react-native-sdk`，dist-tag `@beta`（v0.5.x）/ `@latest`（v1.x 起）
+- npm 包：`doopush-react-native-sdk`
 - monorepo 源码：`sdk/react-native/DooPushSDK/`
 - 公仓 mirror：`https://github.com/doopush/doopush-react-native-sdk`（由 `sync-rn-sdk.yml` 自动同步）
-
----
-
-*文档基于 React Native SDK v0.5.0，与 iOS SDK v1.2.0 / Android SDK v1.2.0 对齐。*

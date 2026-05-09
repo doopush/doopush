@@ -1,6 +1,6 @@
 # DooPush React Native SDK 示例 App
 
-基于 Expo SDK 54 的最小 demo，import 同级目录的 `doopush-react-native-sdk`（路径：`../DooPushSDK/`），用来真实验证 v0.5.0 全部能力：
+基于 Expo SDK 54 的最小 demo，import 同级目录的 `doopush-react-native-sdk`（路径：`../DooPushSDK/`），用来真实验证 SDK 全部能力：
 
 - `DooPush.configure({...})` 配置
 - `DooPush.register()` —— 真机走完整 APNs / FCM / OEM token + 服务端注册流程
@@ -156,7 +156,6 @@ npx expo run:android
 - **红框 `Registered callable JavaScript modules (n = 0)`** —— Metro 模式不对。在跑 `expo start` 的终端里按 `s` 切到 "development build"（custom dev build 不能跑在 Expo Go 里）。
 - **`Unable to resolve "doopush-react-native-sdk"`** —— `node_modules/doopush-react-native-sdk` 是个 symlink（npm 7+ 装 `file:` 依赖默认行为）。重装时加 `--install-links`，或者用上面的 `cp -R` 兜底。
 - **真机红框 `Could not connect to development server`** —— 检查 `REACT_NATIVE_PACKAGER_HOSTNAME` 是 Mac 的实际 LAN IP（不是 `localhost`），iPhone 跟 Mac 要在同一 Wi-Fi。
-- **`registering…` 一直转**（点了 Allow 但 token 不出来）—— 你用的 SDK 版本早于 v0.1.1。v0.1.1 加了 `ExpoAppDelegateSubscriber`，把 APNs 回调从 AppDelegate 转回 SDK。升级 SDK 即可。
 - **真机 `bundle URL = null` 红屏** —— 缺 `expo-dev-client` 包。装上 `npx expo install expo-dev-client` 后重 prebuild + 重 build。
 
 ## 项目结构

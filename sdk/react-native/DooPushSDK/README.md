@@ -1,10 +1,10 @@
 # DooPush React Native SDK
 
-> **v0.5.0** —— React Native / Expo SDK，支持 APNs、FCM、Android 6 类 OEM 通道、Hooks、通知事件、WebSocket Gateway、角标、统计和第三方共存控制。
+> React Native / Expo SDK，支持 APNs、FCM、Android 6 类 OEM 通道、Hooks、通知事件、WebSocket Gateway、角标、统计和第三方共存控制。
 
 [DooPush](https://doopush.com) 推送通知服务的 React Native SDK。基于 Expo Modules API 实现，可在 Expo（managed / prebuild）和 bare React Native 项目里使用。
 
-## v0.5.0 提供什么
+## 功能
 
 - ✅ `DooPush.configure(config)`
 - ✅ `DooPush.register()` —— iOS APNs / Android FCM 或 OEM 自动流程
@@ -20,21 +20,15 @@
 
 ## 前置条件
 
-- iOS 原生 SDK ≥ **1.2.0**（SPM tag `v1.2.0` of `doopush-ios-sdk`，或路径方式本地引用）
-- Android 原生 SDK ≥ **1.2.0**（JitPack `com.github.doopush:doopush-android-sdk:1.2.0`，或本地 mavenLocal）
+- iOS 原生 SDK ≥ **1.2.0**（monorepo 本地开发可路径引用未发布版本）
+- Android 原生 SDK ≥ **1.2.0**（monorepo 本地开发可走 mavenLocal 用未发布版本）
 - Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
 ## 快速安装
 
 ```bash
-# 走 npm @beta dist-tag 通道
-npx expo install doopush-react-native-sdk@beta
-# 或精确版本
-npx expo install doopush-react-native-sdk@0.5.0
+npx expo install doopush-react-native-sdk
 ```
-
-> v0.5.x 在 npm 走 `@beta` dist-tag；v1.x 起转 `@latest`。安装命令请显式带 `@beta` 或精确版本，省略 tag 不会装到 v0.5.x。
-> 也支持 git tag 安装作为兜底：`npm install github:doopush/doopush-react-native-sdk#v0.5.0`
 
 `app.json` 配 plugin：
 

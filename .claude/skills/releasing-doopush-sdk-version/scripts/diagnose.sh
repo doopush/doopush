@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Diagnose which DooPush SDKs need a new release.
-# Hard-prechecks: must be on main branch with a clean working tree.
-# Then reports per-SDK pending changes since last bump, plus cross-SDK version coupling.
-# See ../SKILL.md "Step 0：诊断" for how to interpret the output.
+# Diagnose which DooPush SDKs need a new release. See ../SKILL.md for output interpretation.
 
 set -euo pipefail
 
@@ -17,8 +14,6 @@ if [ ! -d "sdk/ios/DooPushSDK" ] || [ ! -d "sdk/android/DooPushSDK" ] || [ ! -d 
   echo "ERROR: not in doopush monorepo (no sdk/{ios,android,react-native}/DooPushSDK)" >&2
   exit 1
 fi
-
-# ---------- preconditions: must be on main, working tree clean ----------
 
 current_branch=$(git rev-parse --abbrev-ref HEAD)
 if [ "$current_branch" != "main" ]; then
@@ -35,8 +30,6 @@ if [ -n "$(git status --porcelain)" ]; then
   echo "→ 先 commit 或 stash，再回来跑诊断" >&2
   exit 1
 fi
-
-# ---------- helpers ----------
 
 extract_version() {
   local file pattern
@@ -66,14 +59,12 @@ sdk_path() {
   esac
 }
 
-# Most recent commit that introduced the current version string into the version file.
 last_bump_commit() {
   local sdk="$1" version="$2" file
   file=$(version_file "$sdk")
   git log -1 --format=%H -S"$version" -- "$file" 2>/dev/null || true
 }
 
-# Pick bump type from commit subjects: BREAKING/!: → major; feat → minor; else patch.
 bump_type_from_commits() {
   local msgs="$1"
   if printf '%s' "$msgs" | grep -qiE 'BREAKING CHANGE|^[a-f0-9]+ [a-z]+(\([^)]+\))?!:'; then
@@ -97,12 +88,9 @@ next_version() {
   esac
 }
 
-# Returns 0 if $1 >= $2 (semver compare via sort -V).
 version_ge() {
   printf '%s\n%s\n' "$2" "$1" | sort -V -C
 }
-
-# ---------- per-SDK status ----------
 
 echo "# DooPush SDK Release Diagnosis"
 echo
@@ -143,8 +131,6 @@ for sdk in iOS Android RN; do
   printf '%s\n' "$log_oneline" | sed 's/^/    /'
   echo
 done
-
-# ---------- cross-SDK coupling ----------
 
 echo "## Cross-SDK coupling (read from sdk/react-native/DooPushSDK/README.md)"
 echo

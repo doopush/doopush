@@ -127,7 +127,7 @@ dependencies {
 }
 ```
 
-> JitPack 是 lazy build，公仓 `auto-build-release.yml` 在 Release 创建后会自动 curl pom URL 触发；通常 5-10 分钟后即可拉。如果 Gradle 报 `Could not find com.github.doopush:doopush-android-sdk:X.Y.Z`，浏览器手动访问对应 pom URL 触发一次。
+> 如果 Gradle 报 `Could not find com.github.doopush:doopush-android-sdk:X.Y.Z`，浏览器访问对应 pom URL 触发一次（JitPack 是 lazy build）。
 
 #### 方式三：源码集成（开发调试）
 
