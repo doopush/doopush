@@ -36,6 +36,11 @@ yarn-error.*
 # DooPush local credentials — keep real keys / Firebase config out of VCS
 agconnect-services.json
 google-services.json
+mcs-services.json
+meizu-services.json
+oppo-services.json
+vivo-services.json
+xiaomi-services.json
 GoogleService-Info.plist
 *.local.json
 *.local.tsx
