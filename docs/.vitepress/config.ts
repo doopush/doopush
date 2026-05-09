@@ -7,6 +7,9 @@ export default withMermaid(
     title: 'DooPush 帮助文档',
     description: 'DooPush推送平台完整使用指南',
     base: '/docs/',
+
+    // 排除内部规划/设计文档（brainstorming / writing-plans skill 产物，不进公开文档站）
+    srcExclude: ['superpowers/**'],
     
     // 主题配置
     themeConfig: {
@@ -56,7 +59,8 @@ export default withMermaid(
             text: 'SDK 接入',
             items: [
               { text: 'iOS 集成', link: '/sdk/ios-integration' },
-              { text: 'Android 集成', link: '/sdk/android-integration' }
+              { text: 'Android 集成', link: '/sdk/android-integration' },
+              { text: 'React Native 集成', link: '/sdk/react-native-integration' }
             ]
           }
         ]
