@@ -181,6 +181,13 @@ MIT
 
 ## CHANGELOG
 
+### v0.5.1
+- **Fix (Android)**：`expo prebuild` 流程缺失 `google-services` Gradle 插件 classpath 注入，原生工程 sync 失败；config plugin 现在补齐 `withRootBuildGradle` / `withSettingsGradle` / `withGradleProperties`，prebuild 全流程跑通。
+- **Fix (config plugin)**：`zod` 等 plugin 运行时依赖错误地放在 `devDependencies` 里，用户 `npx expo prebuild` 时 plugin 解析失败；改为生产依赖。
+- **Fix (iOS)**：`normalizePermissionStatus` 在 `AsyncFunction` 闭包里少了 `self.` 前缀，调用 permission 相关 API 时崩溃；同步修复。
+- **Dev**：example app 的 Podfile 在 monorepo 中可自动指向同仓库 `sdk/ios/DooPushSDK`，便于联动调试本地原生 SDK。
+- **Install**：默认 npm dist-tag 改为 `latest`（不再要求 `@beta`），`npm install doopush-react-native-sdk` 直接安装最新版。
+
 ### v0.5.0
 - **能力补齐**：Android `register()` / `registerWithToken()` 返回真实 `deviceId`，`getDeviceToken()` / `getDeviceId()` / `getDeviceInfo()` 接入原生缓存。
 - **新增 Hooks**：`useDooPush()`、`useDooPushMessage()`。
