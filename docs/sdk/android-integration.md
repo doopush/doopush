@@ -56,7 +56,7 @@ allprojects {
 }
 ```
 
-#### 方式一：使用发布的AAR包（推荐）
+#### 方式一：手动下载发布的 AAR 包
 
 1. 访问 [DooPush Android SDK Releases](https://github.com/doopush/doopush-android-sdk/releases)
 2. 下载最新版本的 `DooPushSDK.aar` 文件
@@ -95,7 +95,41 @@ dependencies {
 }
 ```
 
-#### 方式二：源码集成（开发调试）
+#### 方式二：JitPack（推荐）
+
+无需手动下载 AAR，Gradle 直接从 JitPack 拉取已发布版本。
+
+在项目根目录的 `build.gradle` 仓库列表里加 JitPack：
+
+```kotlin
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://developer.huawei.com/repo/' }
+        maven { url 'https://developer.hihonor.com/repo' }
+        maven { url 'https://jitpack.io' } // JitPack 仓库
+    }
+}
+```
+
+在 app 模块的 `build.gradle` 加依赖（版本号请对照 [Releases 页](https://github.com/doopush/doopush-android-sdk/releases)）：
+
+```kotlin
+dependencies {
+    // DooPush SDK - JitPack
+    implementation 'com.github.doopush:doopush-android-sdk:1.2.0'
+
+    // Firebase / 厂商推送依赖同方式一
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation 'com.google.firebase:firebase-messaging-ktx'
+    // …
+}
+```
+
+> JitPack 是 lazy build，公仓 `auto-build-release.yml` 在 Release 创建后会自动 curl pom URL 触发；通常 5-10 分钟后即可拉。如果 Gradle 报 `Could not find com.github.doopush:doopush-android-sdk:X.Y.Z`，浏览器手动访问对应 pom URL 触发一次。
+
+#### 方式三：源码集成（开发调试）
 
 如果你需要修改SDK源码或进行深度定制，可以直接集成源码：
 
