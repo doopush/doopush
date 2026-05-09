@@ -23,8 +23,8 @@ RUN CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags="-w -s -extldflags '-s
 # ===================== 阶段2: 构建前端 Web =====================
 FROM node:22-slim AS web-builder
 
-# 安装 pnpm
-RUN npm install -g pnpm
+# 安装 pnpm（钉到 v8，匹配仓库 lockfileVersion: '6.0'；v10 在读老格式 lockfile 时 build-scripts approval 行为不稳）
+RUN npm install -g pnpm@8
 
 # 设置工作目录
 WORKDIR /app
