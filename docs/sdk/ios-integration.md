@@ -618,8 +618,46 @@ func disconnectWebSocket()
 
     // 推送权限状态变更（可选，传入 UNAuthorizationStatus 的 rawValue）
     @objc optional func dooPush(_ manager: DooPushManager, didChangePermissionStatus status: Int)
+
+    // 用户点击通知（可选）— v1.2.0+
+    @objc optional func dooPush(_ manager: DooPushManager, didClickNotification userInfo: [AnyHashable: Any])
+
+    // 通知导致应用打开（可选）— v1.2.0+
+    @objc optional func dooPush(_ manager: DooPushManager, didOpenNotification userInfo: [AnyHashable: Any])
+
+    // Gateway WebSocket 已连接（可选）— v1.2.0+
+    @objc optional func dooPushGatewayDidOpen(_ manager: DooPushManager)
+
+    // Gateway WebSocket 已关闭（可选）— v1.2.0+
+    @objc optional func dooPush(_ manager: DooPushManager, gatewayDidCloseWithCode code: Int, reason: String?)
+
+    // Gateway WebSocket 连接失败（可选）— v1.2.0+
+    @objc optional func dooPush(_ manager: DooPushManager, gatewayDidFailWithError error: Error)
 }
 ```
+
+## 🤝 第三方 SDK 共存（v1.1.0+）
+
+如果你已经在用 `expo-notifications`、`react-native-firebase`、自定义 APNs 集成或其它推送 SDK，可以让 DooPush 切到 **passive 模式**：不请求权限、不接管 `UNUserNotificationCenterDelegate`、不调 `registerForRemoteNotifications`，由调用方拿到 token 后通过 `registerDevice(withToken:vendor:completion:)` 完成 DooPush 服务端注册。
+
+```swift
+// 切到 passive 模式（默认 .active）
+DooPushManager.shared.setNotificationManagementMode(.passive)
+
+// 用调用方拿到的 token（APNs hex 字符串）直接注册到 DooPush
+DooPushManager.shared.registerDevice(
+    withToken: tokenFromHostSDK,
+    vendor: "apns" // iOS 端传 nil 也会默认按 "apns" 处理
+) { deviceId, error in
+    if let deviceId = deviceId {
+        print("DooPush 已注册，deviceId=\(deviceId)")
+    } else if let error = error {
+        print("DooPush 注册失败: \(error.localizedDescription)")
+    }
+}
+```
+
+> 切换模式只决定 SDK 是否自动安装通知 delegate / 请求权限 / 调系统注册接口；统计上报、Gateway WebSocket、角标 API 在两种模式下都可用。
 
 ## 🔍 调试和测试
 

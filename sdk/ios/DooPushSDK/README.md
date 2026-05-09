@@ -188,6 +188,11 @@ let currentBadge = DooPushManager.shared.getCurrentBadgeNumber()
 #### 可选方法
 - `dooPushDidUpdateDeviceInfo(_:)` - 设备信息更新成功
 - `dooPush(_:didChangePermissionStatus:)` - 推送权限状态变更
+- `dooPush(_:didClickNotification:)` - 用户点击通知（v1.2.0+）
+- `dooPush(_:didOpenNotification:)` - 通知导致应用打开（v1.2.0+）
+- `dooPushGatewayDidOpen(_:)` - Gateway WebSocket 已连接（v1.2.0+）
+- `dooPush(_:gatewayDidCloseWithCode:reason:)` - Gateway WebSocket 已关闭（v1.2.0+）
+- `dooPush(_:gatewayDidFailWithError:)` - Gateway WebSocket 连接失败（v1.2.0+）
 
 ## 开发工具
 
@@ -204,9 +209,9 @@ pod spec lint DooPushSDK.podspec --verbose
 ## 更新日志
 
 ### v1.2.0
-- 新增 WebSocket Gateway 连接事件、通知点击/打开统计链路。
-- 新增角标管理 API、权限状态检查、设备信息更新与统计上报能力。
-- 与 React Native SDK v0.5.0 对齐。
+- 新增 5 个 `DooPushDelegate` 可选方法：通知点击 / 打开（`didClickNotification` / `didOpenNotification`），以及 Gateway WebSocket 连接 / 关闭 / 失败（`dooPushGatewayDidOpen` / `gatewayDidCloseWithCode:reason:` / `gatewayDidFailWithError:`）。
+- 与 Android SDK v1.2.0 对齐 `updateDeviceInfo` / 角标 / 权限 API（这些 API 已在更早版本可用，此版本主要是跨端统一）。
+- 与 React Native SDK v0.5.0 对齐底座版本。
 
 ### v1.1.2
 - **chore**：发版流水线连通性测试（无功能变更）。验证 monorepo `sync-ios-sdk.yml` → `doopush-ios-sdk` 公仓 → `auto-build-release.yml` → GitHub Release 全链路。

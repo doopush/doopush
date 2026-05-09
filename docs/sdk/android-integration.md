@@ -304,6 +304,7 @@ plugins {
 ```kotlin
 import com.doopush.sdk.DooPushManager
 import com.doopush.sdk.DooPushCallback
+import com.doopush.sdk.DooPushRegisterResult
 import com.doopush.sdk.models.DooPushError
 import com.doopush.sdk.models.PushMessage
 
@@ -349,11 +350,17 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         dooPushManager.registerForPushNotifications()
     }
     
-    // 注册成功回调
-    override fun onRegisterSuccess(token: String) {
-        Log.d("DooPush", "推送注册成功，Token: ${token.substring(0, 12)}...")
+    // 注册成功回调（v1.2+ 推荐使用 result 重载，可拿到服务端 deviceId 与通道）
+    override fun onRegisterSuccess(result: DooPushRegisterResult) {
+        Log.d(
+            "DooPush",
+            "推送注册成功，token=${result.token.take(12)}…, deviceId=${result.deviceId}, vendor=${result.vendor}"
+        )
         // 处理注册成功逻辑，如更新UI状态
     }
+
+    // 旧版 onRegisterSuccess(token) 仍然兼容；如果同时实现了 result 重载，
+    // 默认情况下只会进入 result 重载，不会再额外回调 token 重载。
     
     // 注册失败回调
     override fun onRegisterError(error: DooPushError) {
@@ -441,6 +448,34 @@ dooPushManager.getBestPushToken(object : DooPushTokenCallback {
 })
 ```
 
+### 注册信息读取（v1.2.0+）
+
+注册结果会写入 SharedPreferences 持久化，下次冷启 SDK 后这些 getter 仍能拿到上次的值：
+
+```kotlin
+val token   = dooPushManager.getDeviceToken()    // 推送 token（FCM/HMS/OEM）
+val devId   = dooPushManager.getDeviceId()       // 服务端分配的 DooPush 设备 ID
+val vendor  = dooPushManager.getCurrentVendor()  // 注册通道：fcm/hms/honor/xiaomi/oppo/vivo/meizu
+
+if (token.isNullOrEmpty()) {
+    // 还没注册过，调用 registerForPushNotifications(...)
+}
+```
+
+### 主动更新设备信息
+
+```kotlin
+dooPushManager.updateDeviceInfo { success, error ->
+    if (success) {
+        Log.d("DooPush", "设备信息已上报到服务端")
+    } else {
+        Log.w("DooPush", "设备信息更新失败: ${error?.message}")
+    }
+}
+```
+
+> 内部复用注册接口，后端按 token 识别并刷新现有设备记录。需要先完成过一次注册（缓存里有 token）才能使用。
+
 ### 角标管理
 
 ```kotlin
@@ -455,6 +490,9 @@ if (success) {
 // 清除角标
 val cleared = dooPushManager.clearBadge()
 Log.d("DooPush", "角标清除${if (cleared) "成功" else "失败"}")
+
+// 读取最近一次设置成功的角标值（v1.2.0+，从 SharedPreferences 读取）
+val current = dooPushManager.getBadgeCount()
 ```
 
 #### 厂商支持
@@ -500,6 +538,68 @@ Log.d("DooPush", "支持的推送服务: $supportedServices")
 dooPushManager.testNetworkConnection { isConnected ->
     Log.d("DooPush", "网络连接${if (isConnected) "正常" else "异常"}")
 }
+```
+
+### 第三方推送 SDK 共存（v1.1.0+）
+
+如果项目已经在用 `expo-notifications`、`react-native-firebase` 或自管 FCM 流程，可以让 DooPush 让位：跳过 token 获取，由调用方拿到 token 后通过 `registerDevice(token, vendor, callback)` 完成 DooPush 服务端注册。
+
+```kotlin
+// 1) 标记 PASSIVE 模式（marker，不直接改变 SDK 行为，配合下面其它开关使用）
+DooPushManager.getInstance().setNotificationManagementMode(
+    DooPushManager.NotificationManagementMode.PASSIVE
+)
+
+// 2) 让位：FCM 通知不再由 DooPush 自管展示（默认 true）
+DooPushManager.getInstance().setFCMNotificationDisplayEnabled(false)
+
+// 3) 启用 relay 广播：让上层 SDK（expo-notifications 等）也能收到原始 FCM 消息
+DooPushManager.getInstance().setExpoNotificationRelayEnabled(true)
+
+// 4) 拿调用方已有的 token 完成 DooPush 服务端注册
+DooPushManager.getInstance().registerDevice(
+    token = tokenFromHostSDK,
+    vendor = "fcm", // 可选值: "apns"/"fcm"/"hms"/"honor"/"xiaomi"/"oppo"/"vivo"/"meizu"
+    callback = object : DooPushRegisterCallback {
+        override fun onSuccess(result: DooPushRegisterResult) {
+            Log.d("DooPush", "外部 token 注册成功，deviceId=${result.deviceId}")
+        }
+        override fun onSuccess(token: String) { /* 兼容旧签名 */ }
+        override fun onError(error: DooPushError) {
+            Log.e("DooPush", "外部 token 注册失败: ${error.message}")
+        }
+    }
+)
+```
+
+#### Relay 广播协议
+
+启用 `setExpoNotificationRelayEnabled(true)` 后，DooPush 收到 FCM 消息时会发送一条**同包**广播（`intent.setPackage(packageName)`），上层 SDK / 自定义 BroadcastReceiver 可直接拦截：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| Action | `String` | `DooPushFirebaseMessagingService.ACTION_RELAY_NOTIFICATION_RECEIVED`（即 `com.doopush.relay.NOTIFICATION_RECEIVED`） |
+| `EXTRA_DATA` | `Bundle` | FCM data payload，键值对全为 `String` |
+| `EXTRA_NOTIFICATION_TITLE` / `EXTRA_NOTIFICATION_BODY` | `String?` | FCM notification 标题 / 正文 |
+| `EXTRA_FROM` / `EXTRA_MESSAGE_ID` | `String?` | FCM `from` / `messageId` |
+| `EXTRA_SENT_TIME` | `Long` | FCM `sentTime` |
+
+```kotlin
+val receiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val data = intent.getBundleExtra(DooPushFirebaseMessagingService.EXTRA_DATA)
+        // ...
+    }
+}
+val filter = IntentFilter(DooPushFirebaseMessagingService.ACTION_RELAY_NOTIFICATION_RECEIVED)
+context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+```
+
+### 主动上报统计
+
+```kotlin
+// 立即把本地排队的推送送达 / 点击 / 打开统计上报到服务端
+DooPushManager.getInstance().reportStatistics()
 ```
 
 ### 应用生命周期处理
@@ -686,19 +786,28 @@ adb logcat -s HMSService       # 华为推送日志
 
 | 方法 | 描述 | 返回值 |
 |------|------|--------|
-| `configure()` | 配置SDK | void |
+| `configure()` | 配置 SDK | void |
 | `setCallback()` | 设置回调监听器 | void |
-| `registerForPushNotifications()` | 注册推送通知 | void |
-| `getBestPushToken()` | 获取最适合的推送Token | void |
+| `registerForPushNotifications(callback?)` | 走 SDK 内部 token 获取流程注册 | void |
+| `registerDevice(token, vendor, callback)` | 用调用方已有 token 直接注册（共存模式） | void |
+| `getBestPushToken()` | 获取最适合的推送 Token | void |
+| `getDeviceToken() / getDeviceId() / getCurrentVendor()` | 读取持久化的注册信息（v1.2.0+） | String? |
 | `getDeviceInfo()` | 获取设备信息 | DeviceInfo? |
-| `setBadgeCount()` | 设置角标数量 | Boolean |
-| `clearBadge()` | 清除角标 | Boolean |
+| `updateDeviceInfo(callback?)` | 主动把设备信息上报到服务端（v1.2.0+） | void |
+| `setBadgeCount(count) / clearBadge() / getBadgeCount()` | 角标设置 / 清除 / 读取（v1.2.0+） | Boolean / Boolean / Int |
+| `reportStatistics()` | 立即上报排队中的统计事件（v1.2.0+） | void |
+| `setNotificationManagementMode(mode)` | ACTIVE / PASSIVE 共存标记（v1.1.0+） | void |
+| `setFCMNotificationDisplayEnabled(enabled)` | 是否由 DooPush 自管展示 FCM 通知（v1.1.0+） | void |
+| `setExpoNotificationRelayEnabled(enabled)` | 启用 FCM 消息 relay 广播（v1.1.0+） | void |
+| `clearCache()` | 清除内存缓存与持久化注册信息（v1.2.0+） | void |
+| `release()` | 释放运行时资源（不清除持久化注册信息） | void |
 
 ### DooPushCallback 接口
 
 | 方法 | 描述 | 参数 |
 |------|------|------|
-| `onRegisterSuccess()` | 注册成功回调 | token: String |
+| `onRegisterSuccess(token)` | 注册成功（旧签名，兼容保留） | token: String |
+| `onRegisterSuccess(result)` | 注册成功（v1.2.0+，包含服务端 deviceId 与通道） | result: DooPushRegisterResult |
 | `onRegisterError()` | 注册失败回调 | error: DooPushError |
 | `onMessageReceived()` | 消息接收回调 | message: PushMessage |
 | `onTokenReceived()` | FCM Token 获取成功 | token: String |
