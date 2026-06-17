@@ -16,13 +16,18 @@ public final class DooPushWebSocketConnection: NSObject {
     public weak var listener: Listener?
 
     private var session: URLSession!
-    private var task: URLSessionWebSocketTask?
     private var pingTimer: DispatchSourceTimer?
     private let stateQueue = DispatchQueue(label: "com.doopush.ws.state")
     private var _active = false
     private var active: Bool {
         get { stateQueue.sync { _active } }
         set { stateQueue.sync { _active = newValue } }
+    }
+    // 当前连接 task。读写均经 stateQueue 串行化，确保终结时的"认领"是原子的。
+    private var _task: URLSessionWebSocketTask?
+    private var task: URLSessionWebSocketTask? {
+        get { stateQueue.sync { _task } }
+        set { stateQueue.sync { _task = newValue } }
     }
     private var reconnectDelay: TimeInterval = 1
     private let maxReconnectDelay: TimeInterval = 15
@@ -48,8 +53,10 @@ public final class DooPushWebSocketConnection: NSObject {
         active = false
         pingTimer?.cancel()
         pingTimer = nil
-        task?.cancel(with: .goingAway, reason: nil)
+        // 先清空当前 task，确保随后到达的关闭/失败回调无法再"认领"（避免自断开触发重连/事件）
+        let t = task
         task = nil
+        t?.cancel(with: .goingAway, reason: nil)
     }
 
     private func startTask() {
@@ -86,7 +93,7 @@ public final class DooPushWebSocketConnection: NSObject {
             guard t === self.task else { return }
             switch result {
             case .failure(let err):
-                self.handleFailure(err)
+                self.handleFailure(err, task: t)
             case .success:
                 // 应用层消息预留，本期忽略
                 self.readLoop(t)
@@ -99,18 +106,40 @@ public final class DooPushWebSocketConnection: NSObject {
         let timer = DispatchSource.makeTimerSource()
         timer.schedule(deadline: .now() + 30, repeating: 30)
         timer.setEventHandler { [weak self] in
-            self?.task?.sendPing { err in
-                if let err = err { self?.handleFailure(err) }
+            guard let self = self else { return }
+            let t = self.task
+            t?.sendPing { [weak self] err in
+                if let err = err { self?.handleFailure(err, task: t) }
             }
         }
         timer.resume()
         pingTimer = timer
     }
 
-    private func handleFailure(_ error: Error) {
+    /// 原子地"认领"某个连接的终结：仅当传入 task 仍是当前 task 时清空并返回 true。
+    /// 同一次断连可能从多条回调路径（receive 失败、didCompleteWithError、didCloseWith）到达，
+    /// 由此保证每个连接只被终结一次，避免重复上报与重复重连。
+    private func claimDeath(of t: URLSessionWebSocketTask?) -> Bool {
+        stateQueue.sync {
+            guard let t = t, t === _task else { return false }
+            _task = nil
+            return true
+        }
+    }
+
+    private func handleFailure(_ error: Error, task t: URLSessionWebSocketTask?) {
+        // 只有成功认领本连接终结的那一次回调才继续处理
+        guard claimDeath(of: t) else { return }
+        pingTimer?.cancel()
+        pingTimer = nil
         guard active else { return }
         DispatchQueue.main.async { [weak self] in
             self?.listener?.wsDidFail(error)
+        }
+        // 鉴权失败 (HTTP 4xx) 不重连，由上层重新 register 拿新 token
+        // （无论 receive 失败还是 didCompleteWithError 先到，都以此为准）
+        if let resp = t?.response as? HTTPURLResponse, (400..<500).contains(resp.statusCode) {
+            return
         }
         scheduleReconnect()
     }
@@ -144,6 +173,10 @@ extension DooPushWebSocketConnection: URLSessionWebSocketDelegate {
     }
 
     public func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith code: URLSessionWebSocketTask.CloseCode, reason: Data?) {
+        // 认领本连接终结；若已被 receive 失败/disconnect 等路径处理则忽略，避免重复
+        guard claimDeath(of: webSocketTask) else { return }
+        pingTimer?.cancel()
+        pingTimer = nil
         let reasonStr = reason.flatMap { String(data: $0, encoding: .utf8) }
         maybeResetBackoff()
         let raw = code.rawValue
@@ -158,18 +191,21 @@ extension DooPushWebSocketConnection: URLSessionWebSocketDelegate {
     }
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        // 只关心当前 task 的失败
-        guard let wt = task as? URLSessionWebSocketTask, wt === self.task else { return }
+        guard let wt = task as? URLSessionWebSocketTask else { return }
         // 鉴权失败 (HTTP 4xx) 不重连，由上层重新 register 拿新 token
         if let resp = wt.response as? HTTPURLResponse, (400..<500).contains(resp.statusCode) {
+            guard claimDeath(of: wt) else { return }
+            pingTimer?.cancel()
+            pingTimer = nil
+            let status = resp.statusCode
             DispatchQueue.main.async { [weak self] in
-                self?.listener?.wsDidFail(error ?? NSError(domain: "DooPushWS", code: resp.statusCode, userInfo: [NSLocalizedDescriptionKey: "auth failed: HTTP \(resp.statusCode)"]))
+                self?.listener?.wsDidFail(error ?? NSError(domain: "DooPushWS", code: status, userInfo: [NSLocalizedDescriptionKey: "auth failed: HTTP \(status)"]))
             }
             return
         }
-        // 其他失败：交给 handleFailure 走重连
+        // 其他失败：交给 handleFailure（内部认领，去重 receive 与本回调的双重触发）
         if let error = error {
-            handleFailure(error)
+            handleFailure(error, task: wt)
         }
     }
 }
