@@ -1,5 +1,5 @@
 ---
-name: releasing-doopush-sdk-version
+name: doopush-sdk-release
 description: Use when bumping a DooPush SDK version (iOS / Android / React Native) and shipping a new release from the doopush monorepo. Triggers include "release SDK", "发版", "ship vX.Y.Z", "bump iOS SDK", "publish RN SDK to npm", "更新 SDK 版本", or any time package.json/podspec/build.gradle SDK_VERSION is being changed.
 ---
 
@@ -20,7 +20,7 @@ DooPush 在 monorepo 里维护三个 SDK，每个自动同步到独立公仓 + �
 ## Step 0：诊断（必须先跑）
 
 ```bash
-bash .claude/skills/releasing-doopush-sdk-version/scripts/diagnose.sh
+bash .claude/skills/doopush-sdk-release/scripts/diagnose.sh
 ```
 
 precheck（任一失败立即 `exit 1`）：
