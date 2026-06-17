@@ -576,10 +576,11 @@ import UserNotifications
             return
         }
 
-        // 前台恢复时，若已有连接对象则重连（WebSocket 后台通常会被系统断开）
-        if let ws = wsConnection {
-            ws.disconnect()
-            wsConnection = nil
+        // 前台守卫：已有活跃连接则交由其自身维护（必要时唤醒重连），
+        // 不再 disconnect→新建，避免与注册后自动连接重叠触发服务端 4001 替换
+        if let ws = wsConnection, ws.isActive {
+            ws.reconnectIfNeeded()
+            return
         }
         if let token = storage.getDeviceToken(), config != nil {
             connectToGateway(token: token)

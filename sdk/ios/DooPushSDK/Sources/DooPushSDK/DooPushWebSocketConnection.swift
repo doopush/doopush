@@ -31,6 +31,7 @@ public final class DooPushWebSocketConnection: NSObject {
     }
     private var reconnectDelay: TimeInterval = 1
     private let maxReconnectDelay: TimeInterval = 15
+    private var _reconnectPending = false  // 单飞：是否已有待执行的重连
     private var openSinceMs: TimeInterval = 0  // 用于稳态退避重置
 
     public init(baseUrl: String, appId: String, appKey: String, token: String) {
@@ -39,7 +40,14 @@ public final class DooPushWebSocketConnection: NSObject {
         self.appKey = appKey
         self.token = token
         super.init()
-        let cfg = URLSessionConfiguration.default
+        // iOS 的 URLSessionWebSocketTask 在 .default 会话/连接复用下，对部分服务端（如 Cloudflare 前置）
+        // 易出现 -1005「network connection was lost」，而同网络下 OkHttp/Node 均稳定。
+        // 用 ephemeral 干净会话 + 等待连通性 + 扩展空闲，贴近其它客户端「每次干净连接」的行为。
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.waitsForConnectivity = true
+        cfg.shouldUseExtendedBackgroundIdleMode = true
+        // 心跳 30s，这里给足余量，避免「无数据超时」在心跳间隙误掐连接（仅靠 30s Ping 保活）
+        cfg.timeoutIntervalForRequest = 300
         self.session = URLSession(configuration: cfg, delegate: self, delegateQueue: nil)
     }
 
@@ -59,10 +67,36 @@ public final class DooPushWebSocketConnection: NSObject {
         t?.cancel(with: .goingAway, reason: nil)
     }
 
+    /// 是否处于活跃状态（已 connect 且未 disconnect）。供上层前台守卫判断是否需要新建连接。
+    public var isActive: Bool { active }
+
+    /// 前台唤醒：仅当活跃、且当前既无连接也无在途重连时，立即拉起一次重连。
+    /// 用于回前台时复用已有连接对象、避免重复新建连接触发服务端 4001 替换。
+    public func reconnectIfNeeded() {
+        guard active else { return }
+        let needsKick: Bool = stateQueue.sync {
+            guard _task == nil, !_reconnectPending else { return false }
+            return true
+        }
+        guard needsKick else { return }
+        reconnectDelay = 1
+        scheduleReconnect()
+    }
+
     private func startTask() {
         guard let url = makeURL() else { return }
-        let t = session.webSocketTask(with: url)
-        task = t
+        var req = URLRequest(url: url)
+        // 标记为「呼叫信令」类长连接：提示系统这是需要长期保活的控制通道，
+        // 降低系统/链路过早回收连接导致 -1005 的概率。
+        req.networkServiceType = .callSignaling
+        let t = session.webSocketTask(with: req)
+        // 单飞：已存在连接则不重复创建，丢弃刚建的 task
+        let installed: Bool = stateQueue.sync {
+            guard _task == nil else { return false }
+            _task = t
+            return true
+        }
+        guard installed else { return }
         t.resume()
         readLoop(t)
         startPing()
@@ -155,10 +189,22 @@ public final class DooPushWebSocketConnection: NSObject {
     }
 
     private func scheduleReconnect() {
+        // 单飞：同一时刻只允许一个待执行的重连，避免竞态下叠加多条连接
+        let shouldSchedule: Bool = stateQueue.sync {
+            guard !_reconnectPending else { return false }
+            _reconnectPending = true
+            return true
+        }
+        guard shouldSchedule else { return }
         let delay = reconnectDelay
         reconnectDelay = min(reconnectDelay * 2, maxReconnectDelay)
         DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self = self, self.active else { return }
+            guard let self = self else { return }
+            let proceed: Bool = self.stateQueue.sync {
+                self._reconnectPending = false
+                return self._active
+            }
+            guard proceed else { return }
             self.startTask()
         }
     }
