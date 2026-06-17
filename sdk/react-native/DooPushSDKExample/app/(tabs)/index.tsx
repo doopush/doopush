@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -74,6 +74,15 @@ export default function HomeScreen() {
   const [gateway, setGateway] = useState<GatewayStatus>('disconnected');
   const [gatewayDetail, setGatewayDetail] = useState<string>('');
   const [gatewayErrCount, setGatewayErrCount] = useState<number>(0);
+  const [gwLog, setGwLog] = useState<string[]>([]);
+  const gwOpenAtRef = useRef<number | null>(null);
+
+  const pushGwLog = useCallback((line: string) => {
+    const t = new Date().toLocaleTimeString();
+    setGwLog((prev) => [`${t}  ${line}`, ...prev].slice(0, 10));
+  }, []);
+  const heldStr = () =>
+    gwOpenAtRef.current ? `（保持 ${((Date.now() - gwOpenAtRef.current) / 1000).toFixed(1)}s）` : '（未曾连上）';
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -124,21 +133,27 @@ export default function HomeScreen() {
         });
       }),
       DooPush.addGatewayOpenListener(() => {
+        gwOpenAtRef.current = Date.now();
         setGateway('connected');
         setGatewayDetail('握手鉴权成功，心跳保持中');
+        pushGwLog('OPEN 已连接');
       }),
       DooPush.addGatewayClosedListener((e) => {
         setGateway('disconnected');
         setGatewayDetail(`已关闭 code=${e.code}${e.reason ? ` ${e.reason}` : ''}`);
+        pushGwLog(`CLOSE code=${e.code}${e.reason ? ` ${e.reason}` : ''} ${heldStr()}`);
+        gwOpenAtRef.current = null;
       }),
       DooPush.addGatewayErrorListener((e) => {
         setGateway('error');
         setGatewayDetail(e.message);
         setGatewayErrCount((c) => c + 1);
+        pushGwLog(`ERROR ${e.message} ${heldStr()}`);
+        gwOpenAtRef.current = null;
       }),
     ];
     return () => subs.forEach((s) => s.remove());
-  }, [loadDeviceState, refreshBadge]);
+  }, [loadDeviceState, refreshBadge, pushGwLog]);
 
   const onRegister = async () => {
     setError(null);
@@ -289,6 +304,13 @@ export default function HomeScreen() {
             <Btn small title="连接" color="#007aff" onPress={connectGw} />
             <Btn small title="断开" color="#8e8e93" onPress={disconnectGw} />
           </View>
+          {gwLog.length > 0 && (
+            <View style={styles.payload}>
+              {gwLog.map((l, i) => (
+                <Text key={i} style={styles.mono}>{l}</Text>
+              ))}
+            </View>
+          )}
         </Section>
 
         {/* 通知历史 */}
