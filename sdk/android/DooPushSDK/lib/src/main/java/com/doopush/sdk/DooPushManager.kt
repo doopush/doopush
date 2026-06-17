@@ -1007,7 +1007,16 @@ class DooPushManager private constructor() {
         if (checkInitialized()) {
             clearBadge()
             val token = cachedToken
-            if (!token.isNullOrEmpty()) connectToGateway(token)
+            if (!token.isNullOrEmpty()) {
+                // 前台守卫：已有活跃连接则复用（断了才补一次），避免重复 onResume 时无脑重建、
+                // 自己挤掉自己触发服务端 4001。无活跃连接才新建。
+                val ws = wsConnection
+                if (ws != null && ws.isActive) {
+                    ws.reconnectIfNeeded()
+                } else {
+                    connectToGateway(token)
+                }
+            }
         }
     }
 

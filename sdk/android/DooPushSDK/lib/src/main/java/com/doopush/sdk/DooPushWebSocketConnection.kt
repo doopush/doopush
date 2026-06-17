@@ -36,6 +36,12 @@ class DooPushWebSocketConnection(
     @Volatile
     private var ws: WebSocket? = null
     private val active = AtomicBoolean(false)
+    // 当前是否已建立连接（onOpen 置 true，终结回调置 false），供前台守卫判断是否需要补连
+    @Volatile
+    private var connected = false
+    // 单飞：是否已有待执行的重连，避免守卫与失败回调叠加多条连接
+    @Volatile
+    private var reconnectScheduled = false
     @Volatile
     private var reconnectDelayMs = 1_000L
     @Volatile
@@ -50,10 +56,27 @@ class DooPushWebSocketConnection(
 
     fun disconnect() {
         active.set(false)
+        connected = false
+        reconnectScheduled = false
         // 取消任何已排队的重连任务，避免闭包持有本对象到下次定时触发（最长 15s）
         handler.removeCallbacksAndMessages(null)
         ws?.close(1000, "client disconnect")
         ws = null
+    }
+
+    /** 是否处于活跃状态（已 connect 且未 disconnect）。供上层前台守卫判断是否需要新建连接。 */
+    val isActive: Boolean
+        get() = active.get()
+
+    /**
+     * 前台唤醒：仅当活跃、且当前既未连上也无在途重连时，立即补一次重连。
+     * 用于回前台/重复 onResume 时复用已有连接对象，避免无谓重建触发服务端 4001 替换。
+     */
+    fun reconnectIfNeeded() {
+        if (!active.get()) return
+        if (connected || reconnectScheduled) return
+        reconnectDelayMs = 1_000L
+        scheduleReconnect()
     }
 
     private fun doConnect() {
@@ -63,7 +86,10 @@ class DooPushWebSocketConnection(
             .build()
         ws = client.newWebSocket(req, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                // 过期回调（已被新连接取代）忽略，避免污染连接状态
+                if (webSocket !== ws) return
                 Log.i(TAG, "ws open")
+                connected = true
                 openSinceMs = System.currentTimeMillis()
                 // 不再无条件重置 reconnectDelayMs，由 onClosed/onFailure 时基于稳定时长决定
                 dispatch { listener.onOpen() }
@@ -77,14 +103,20 @@ class DooPushWebSocketConnection(
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                // 过期回调忽略：只有当前连接的终结才更新状态/触发重连
+                if (webSocket !== ws) return
                 Log.i(TAG, "ws closed code=$code reason=$reason")
+                connected = false
                 maybeResetBackoff()
                 dispatch { listener.onClosed(code, reason) }
                 if (shouldReconnect(code)) scheduleReconnect()
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                // 过期回调忽略：只有当前连接的终结才更新状态/触发重连
+                if (webSocket !== ws) return
                 Log.w(TAG, "ws failure: ${t.message}, http=${response?.code}")
+                connected = false
                 maybeResetBackoff()
                 dispatch { listener.onFailure(t) }
                 if (shouldReconnectOnFailure(response)) scheduleReconnect()
@@ -121,9 +153,15 @@ class DooPushWebSocketConnection(
     }
 
     private fun scheduleReconnect() {
+        // 单飞：同一时刻只允许一个待执行的重连，避免竞态下叠加多条连接
+        if (reconnectScheduled) return
+        reconnectScheduled = true
         val delay = reconnectDelayMs
         reconnectDelayMs = (reconnectDelayMs * 2).coerceAtMost(maxReconnectMs)
-        handler.postDelayed({ if (active.get()) doConnect() }, delay)
+        handler.postDelayed({
+            reconnectScheduled = false
+            if (active.get()) doConnect()
+        }, delay)
     }
 
     companion object {
