@@ -44,10 +44,16 @@
       [
         "doopush-react-native-sdk",
         {
-          "appId": "your_app_id",
-          "apiKey": "your_api_key",
+          "appId": "1",
+          "apiKey": "dp_live_Ud7gxj1dHnbivXMulAShhIjES1py8X1g",
           "baseURL": "https://doopush.com/api/v1",
-          "ios": { "mode": "development" }
+          "ios": { "mode": "development" },
+          "android": {
+            "vendors": {
+              "fcm": { "googleServicesFile": "./google-services.json" },
+              "hms": { "agconnectServicesFile": "./agconnect-services.json" }
+            }
+          }
         }
       ]
     ],
