@@ -56,48 +56,9 @@ allprojects {
 }
 ```
 
-#### 方式一：手动下载发布的 AAR 包
+#### 方式一：JitPack（推荐）
 
-1. 访问 [DooPush Android SDK Releases](https://github.com/doopush/doopush-android-sdk/releases)
-2. 下载最新版本的 `DooPushSDK.aar` 文件
-3. 将AAR文件放置到你的应用模块的 `libs` 目录下（如：`app/libs/`）
-4. 在 app 模块的 `build.gradle` 中添加：
-
-```kotlin
-dependencies {
-    // DooPush SDK - 使用本地AAR文件
-    implementation files('libs/DooPushSDK.aar')
-    
-    // 必需：Firebase Cloud Messaging
-    implementation platform('com.google.firebase:firebase-bom:32.7.0')
-    implementation 'com.google.firebase:firebase-messaging-ktx'
-    
-    // 可选：华为 HMS Push （华为设备）
-    implementation 'com.huawei.hms:push'
-    
-    // 可选：荣耀推送 （荣耀设备）
-    implementation 'com.hihonor.mcs:push'
-    
-    // 可选：小米推送 （小米设备）
-    implementation 'com.umeng.umsdk:xiaomi-push'
-    
-    // 可选：OPPO推送 （OPPO设备）
-    implementation 'com.umeng.umsdk:oppo-push'
-    
-    // 可选：VIVO推送 （VIVO设备）
-    implementation 'com.umeng.umsdk:vivo-push'
-    
-    // 可选：魅族推送 （魅族设备）
-    implementation 'com.umeng.umsdk:meizu-push'
-    
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-}
-```
-
-#### 方式二：JitPack（推荐）
-
-无需手动下载 AAR，Gradle 直接从 JitPack 拉取已发布版本。
+无需手动下载 AAR，Gradle 直接从 JitPack 拉取已发布版本，自动管理版本与更新。
 
 在项目根目录的 `build.gradle` 仓库列表里加 JitPack：
 
@@ -120,14 +81,57 @@ dependencies {
     // DooPush SDK - JitPack
     implementation 'com.github.doopush:doopush-android-sdk:1.2.0'
 
-    // Firebase / 厂商推送依赖同方式一
+    // 必需：Firebase Cloud Messaging
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
     implementation 'com.google.firebase:firebase-messaging-ktx'
-    // …
+
+    // 可选：华为 HMS Push （华为设备）
+    implementation 'com.huawei.hms:push'
+
+    // 可选：荣耀推送 （荣耀设备）
+    implementation 'com.hihonor.mcs:push'
+
+    // 可选：小米推送 （小米设备）
+    implementation 'com.umeng.umsdk:xiaomi-push'
+
+    // 可选：OPPO推送 （OPPO设备）
+    implementation 'com.umeng.umsdk:oppo-push'
+
+    // 可选：VIVO推送 （VIVO设备）
+    implementation 'com.umeng.umsdk:vivo-push'
+
+    // 可选：魅族推送 （魅族设备）
+    implementation 'com.umeng.umsdk:meizu-push'
+
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 }
 ```
 
 > 如果 Gradle 报 `Could not find com.github.doopush:doopush-android-sdk:X.Y.Z`，浏览器访问对应 pom URL 触发一次（JitPack 是 lazy build）。
+
+#### 方式二：手动下载发布的 AAR 包
+
+适合内网/离线等无法访问 JitPack 的环境。
+
+1. 访问 [DooPush Android SDK Releases](https://github.com/doopush/doopush-android-sdk/releases)
+2. 下载最新版本的 `DooPushSDK.aar` 文件
+3. 将AAR文件放置到你的应用模块的 `libs` 目录下（如：`app/libs/`）
+4. 在 app 模块的 `build.gradle` 中添加：
+
+```kotlin
+dependencies {
+    // DooPush SDK - 使用本地AAR文件
+    implementation files('libs/DooPushSDK.aar')
+
+    // Firebase / 各厂商推送依赖同方式一（JitPack）
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation 'com.google.firebase:firebase-messaging-ktx'
+    // …其余厂商推送依赖同方式一
+}
+```
+
+> 手动 AAR 方式需自行下载并替换文件来升级，无自动版本管理，仅作兜底。
 
 #### 方式三：源码集成（开发调试）
 
