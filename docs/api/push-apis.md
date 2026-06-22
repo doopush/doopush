@@ -775,13 +775,18 @@ POST /api/v1/apps/callback?vendor={huawei|honor|oppo|vivo|xiaomi|meizu}
 
 ### 响应
 
-无论解析成功或失败，DooPush 一律返回 `"0"`，符合多数厂商对回调端"成功响应即字符串 0"的约定，避免厂商因业务异常重复重试：
+响应行为按入口区分：
 
-```
-HTTP/1.1 200 OK
-Content-Type: text/plain
+- **厂商专用路由** `POST /apps/callback/{vendor}`：无论 body 解析或业务处理成功失败，一律返回 `code` 为 `"0"`，符合多数厂商对回调端"成功响应即 0"的约定，避免厂商因业务异常重复重试。
+- **通用兜底入口** `POST /apps/callback`：当缺少 `vendor`、`vendor` 不支持或 body 解析失败时返回 HTTP 400 错误；仅在校验与解析通过后才返回 `code` 为 `"0"`。
 
-0
+成功响应体（HTTP 200）：
+
+```json
+{
+  "code": "0",
+  "message": "success"
+}
 ```
 
 ### 统计累加

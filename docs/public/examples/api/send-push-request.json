@@ -8,7 +8,7 @@
     "data": "{\"feature_id\":\"new_feature_v2\",\"category\":\"update\"}"
   },
   "target": {
-    "type": "broadcast",
+    "type": "all",
     "platform": "ios"
   }
 }

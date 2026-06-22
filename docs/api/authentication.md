@@ -139,7 +139,9 @@ curl -X POST "https://doopush.com/api/v1/apps/123/devices" \
      -H "Content-Type: application/json" \
      -d '{
        "token": "device_token_here",
+       "bundle_id": "com.example.app",
        "platform": "ios",
+       "channel": "apns",
        "model": "iPhone 14",
        "system_version": "iOS 17.0"
      }'
@@ -152,9 +154,10 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/statistics/report" \
      -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
      -H "Content-Type: application/json" \
      -d '{
-       "push_log_id": 12345,
        "device_token": "abc123def456...",
-       "event_type": "click"
+       "statistics": [
+         { "push_log_id": 12345, "event": "click", "timestamp": 1704110400 }
+       ]
      }'
 ```
 
@@ -284,7 +287,7 @@ class DooPushClient:
 
 ### 验证 API Key
 
-API Key 不能访问 GET 类管理接口，可通过发起一次广播推送来验证（命中 0 设备时返回 400 但 Key 仍判定为有效；Key 无效则返回 401）：
+API Key 不能访问 GET 类管理接口，可通过发起一次广播推送来验证（命中 0 设备时返回 422 但 Key 仍判定为有效；Key 无效则返回 401）：
 
 ```bash
 curl -X POST "https://doopush.com/api/v1/apps/123/push" \
@@ -297,7 +300,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
      }'
 ```
 
-返回 200 / 400 表示 Key 有效，返回 401 表示 Key 无效或与应用不匹配。
+返回 200 / 422 表示 Key 有效，返回 401 表示 Key 无效或与应用不匹配。
 
 ### 常见问题排查
 

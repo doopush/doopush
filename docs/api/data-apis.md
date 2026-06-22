@@ -195,7 +195,7 @@ curl -X GET "https://doopush.com/api/v1/apps/123/push/statistics?days=7" \
 ```json
 {
   "code": 200,
-  "message": "获取成功",
+  "message": "成功",
   "data": {
     "total_pushes": 10000,
     "success_pushes": 9500,
@@ -358,15 +358,15 @@ curl -X GET "https://doopush.com/api/v1/apps/123/audit-logs?action=push&start_ti
 ```json
 {
   "code": 200,
-  "message": "获取成功",
+  "message": "成功",
   "data": {
     "logs": [
       {
         "id": 12345,
         "user_id": 123,
         "user_name": "admin",
-        "action": "create_push",
-        "action_label": "创建推送",
+        "action": "push",
+        "action_label": "推送",
         "resource": "push",
         "resource_label": "推送",
         "resource_id": 67890,
@@ -454,23 +454,23 @@ curl -X GET "https://doopush.com/api/v1/apps/123/audit-logs/operation-statistics
 {
   "id": 12345,
   "app_id": 123,
+  "device_id": 5001,
   "title": "推送标题",
   "content": "推送内容",
   "payload": "{\"action\":\"open_page\"}",
-  "status": "sent",
   "channel": "apns",
-  "platform": "ios",
-  "target_count": 1000,
-  "success_count": 950,
-  "failed_count": 50,
-  "click_count": 200,
-  "open_count": 150,
+  "status": "sent",
+  "dedup_key": "abc123def456",
   "badge": 1,
   "send_at": "2024-01-01T10:00:00Z",
   "created_at": "2024-01-01T09:55:00Z",
   "updated_at": "2024-01-01T10:05:00Z"
 }
 ```
+
+::: tip 字段说明
+`PushLog` 模型本身记录的是“单设备单条推送”，每条推送日志对应一个 `device_id`。`platform`、`target_count`、`success_count`、`failed_count`、`click_count`、`open_count` 等不是 `PushLog` 模型字段，而是推送日志列表 / 统计接口在查询时聚合返回的衍生字段。
+:::
 
 ### AuditLog 对象
 
@@ -479,8 +479,8 @@ curl -X GET "https://doopush.com/api/v1/apps/123/audit-logs/operation-statistics
   "id": 12345,
   "user_id": 123,
   "user_name": "admin",
-  "action": "create_push",
-  "action_label": "创建推送",
+  "action": "push",
+  "action_label": "推送",
   "resource": "push",
   "resource_label": "推送",
   "resource_id": 67890,
