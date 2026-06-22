@@ -15,8 +15,8 @@ Pod::Spec.new do |spec|
                       适用于需要推送通知功能的iOS应用。
                       DESC
 
-  spec.homepage     = "https://github.com/doopush/ios-sdk"
-  spec.license      = { :type => "MIT" }
+  spec.homepage     = "https://github.com/doopush/doopush-ios-sdk"
+  spec.license      = { :type => "MIT", :file => "LICENSE" }
   spec.author       = { "DooPush Team" => "support@doopush.com" }
 
   # 平台和版本要求
@@ -24,8 +24,8 @@ Pod::Spec.new do |spec|
   spec.swift_version = "5.9"
   
   # 源码位置
-  # spec.source = { :git => "https://github.com/doopush/ios-sdk.git", :tag => "#{spec.version}" }
-  # 目前使用本地路径进行开发
+  # 本地开发用本地路径；发布到 CocoaPods Trunk 时由 CI（auto-build-release.yml）临时改写为：
+  #   spec.source = { :git => "https://github.com/doopush/doopush-ios-sdk.git", :tag => "v#{spec.version}" }
   spec.source = { :path => "." }
 
   # 源文件（仅 Swift；@objc public 自动暴露给 Objective-C，无需 umbrella header）

@@ -214,6 +214,35 @@ jobs:
           git push origin "v$VERSION"
           echo "✅ Git 标签创建成功"
 
+      - name: Publish to CocoaPods Trunk
+        env:
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # 未配置 token 则跳过（CocoaPods 发布为可选项，不阻塞 GitHub Release/SwiftPM）
+          if [ -z "$COCOAPODS_TRUNK_TOKEN" ]; then
+            echo "⚠️ 未配置 COCOAPODS_TRUNK_TOKEN，跳过 CocoaPods Trunk 发布"
+            exit 0
+          fi
+
+          # 幂等：trunk 不允许覆盖/重发同一版本，已发布过就跳过（避免 re-run 报红）
+          if curl -fsSL "https://trunk.cocoapods.org/api/v1/pods/DooPushSDK/versions/$VERSION" >/dev/null 2>&1; then
+            echo "✅ DooPushSDK $VERSION 已在 CocoaPods Trunk，跳过发布"
+            exit 0
+          fi
+
+          # 发布时把 source 从本地路径改写为 git tag（committed 文件保持 :path，便于本地开发）
+          sed -i '' 's|spec.source = { :path => "." }|spec.source = { :git => "https://github.com/doopush/doopush-ios-sdk.git", :tag => "v#{spec.version}" }|' DooPushSDK.podspec
+          echo "📋 改写后的 source 行："
+          grep -n "spec.source" DooPushSDK.podspec
+
+          echo "🚀 推送到 CocoaPods Trunk..."
+          # --skip-tests：test_spec 需要 app host，CI 无法构建测试
+          # --allow-warnings：容忍 requires_arc 等历史告警
+          pod trunk push DooPushSDK.podspec --allow-warnings --skip-tests --synchronous
+          echo "✅ 已发布到 CocoaPods Trunk: DooPushSDK $VERSION"
+
       - name: Create GitHub Release
         run: |
           VERSION="${{ steps.version.outputs.version }}"
