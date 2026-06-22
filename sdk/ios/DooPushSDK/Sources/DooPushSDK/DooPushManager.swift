@@ -386,7 +386,7 @@ import UserNotifications
 
     /// 获取当前SDK版本
     @objc public static var sdkVersion: String {
-        return "1.2.0"
+        return "1.2.1"
     }
 
     /// 获取当前设备信息

@@ -208,6 +208,9 @@ pod spec lint DooPushSDK.podspec --verbose
 ```
 ## 更新日志
 
+### v1.2.1
+- **Fix**：加固 Gateway WebSocket 连接生命周期，使连接建立与断开更稳健，并让 teardown 幂等，避免重复拆除时进入异常状态（`harden websocket gateway connection lifecycle` / `make websocket gateway teardown idempotent`）。
+
 ### v1.2.0
 - 新增 5 个 `DooPushDelegate` 可选方法：通知点击 / 打开（`didClickNotification` / `didOpenNotification`），以及 Gateway WebSocket 连接 / 关闭 / 失败（`dooPushGatewayDidOpen` / `gatewayDidCloseWithCode:reason:` / `gatewayDidFailWithError:`）。
 - 与 Android SDK v1.2.0 对齐 `updateDeviceInfo` / 角标 / 权限 API（这些 API 已在更早版本可用，此版本主要是跨端统一）。
