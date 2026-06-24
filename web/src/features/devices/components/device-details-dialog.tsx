@@ -44,6 +44,12 @@ export function DeviceDetailsDialog({ device, open, onOpenChange }: DeviceDetail
       : { label: '禁用', className: 'bg-red-100 text-red-800' }
   }
 
+  const getPushEnvBadge = (pushEnv?: string) => {
+    return pushEnv === 'development'
+      ? { label: '开发', className: 'bg-amber-100 text-amber-800' }
+      : { label: '生产', className: 'bg-slate-100 text-slate-800' }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-auto">
@@ -89,6 +95,14 @@ export function DeviceDetailsDialog({ device, open, onOpenChange }: DeviceDetail
                   <span className="text-sm text-muted-foreground">推送通道:</span>
                   <span className="text-sm font-medium">{device.channel}</span>
                 </div>
+                {device.platform === 'ios' && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">APNs环境:</span>
+                    <Badge className={getPushEnvBadge(device.push_environment).className}>
+                      {getPushEnvBadge(device.push_environment).label}
+                    </Badge>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">状态:</span>
                   <Badge className={getStatusBadge(device.status).className}>

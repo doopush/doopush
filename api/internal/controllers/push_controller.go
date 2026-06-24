@@ -472,8 +472,9 @@ type SendBroadcastRequest struct {
 	Content  string      `json:"content" binding:"required" example:"系统维护通知"`
 	Payload  PushPayload `json:"payload,omitempty"`
 	Badge    *int        `json:"badge,omitempty" example:"1"`
-	Platform string      `json:"platform,omitempty" example:"ios"`  // 可选：指定平台
-	Vendor   string      `json:"vendor,omitempty" example:"huawei"` // 可选：指定厂商
+	Platform string      `json:"platform,omitempty" example:"ios"`                                                                 // 可选：指定平台
+	Vendor   string      `json:"vendor,omitempty" example:"huawei"`                                                                // 可选：指定厂商
+	PushEnv  string      `json:"push_environment,omitempty" binding:"omitempty,oneof=development production" example:"production"` // 可选：APNs环境
 }
 
 // SendSingle 单设备推送
@@ -687,6 +688,8 @@ func (ctrl *PushController) SendBroadcast(ctx *gin.Context) {
 		Target: services.PushTarget{
 			Type:     "all",
 			Platform: req.Platform,
+			Channel:  req.Vendor,
+			PushEnv:  req.PushEnv,
 		},
 	}
 

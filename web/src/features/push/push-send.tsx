@@ -154,6 +154,7 @@ const pushFormSchema = z.object({
   group_ids: z.array(z.number()).optional(),
   platform: z.string().optional(),
   vendor: z.string().optional(),
+  push_environment: z.enum(['development', 'production']).optional(),
   schedule_time: z.string().optional().refine((val) => {
     if (!val) return true; // 可选字段，空值通过验证
     const scheduledTime = new Date(val);
@@ -241,6 +242,7 @@ export default function PushSend() {
       tags: [],
       platform: '',
       vendor: '',
+      push_environment: undefined,
       schedule_time: '',
     },
   })
@@ -347,6 +349,7 @@ export default function PushSend() {
     try {
       setSending(true)
       const payloadToSend = data.payload ? { ...data.payload } : undefined
+      const pushEnvironment = data.platform === 'android' ? undefined : data.push_environment
       if (payloadToSend?.vivo && !payloadToSend.vivo.category) {
         delete payloadToSend.vivo
       }
@@ -400,6 +403,9 @@ export default function PushSend() {
             }
             if (data.vendor) {
               broadcastConfig.vendor = data.vendor
+            }
+            if (pushEnvironment) {
+              broadcastConfig.push_environment = pushEnvironment
             }
             targetConfig = JSON.stringify(broadcastConfig)
             break
@@ -471,6 +477,7 @@ export default function PushSend() {
                 tags: data.tags,
                 platform: data.platform || undefined,
                 channel: data.vendor || undefined,
+                push_environment: pushEnvironment,
               }
             })
             break
@@ -484,6 +491,7 @@ export default function PushSend() {
               payload: payloadToSend,
               platform: data.platform || undefined,
               vendor: data.vendor || undefined,
+              push_environment: pushEnvironment,
             })
             break
             
@@ -501,6 +509,7 @@ export default function PushSend() {
                 group_ids: data.group_ids,
                 platform: data.platform || undefined,
                 channel: data.vendor || undefined,
+                push_environment: pushEnvironment,
               },
               schedule_time: data.schedule_time,
             })
@@ -1332,15 +1341,86 @@ export default function PushSend() {
                           )}
 
                           {activeTab === 'tags' && (
-                            <TagSelector
-                              appId={currentApp.id}
-                              value={form.watch('tags') || []}
-                              onChange={(tags) => form.setValue('tags', tags)}
-                            />
+                            <div className='space-y-4'>
+                              <TagSelector
+                                appId={currentApp.id}
+                                value={form.watch('tags') || []}
+                                onChange={(tags) => form.setValue('tags', tags)}
+                              />
+                              <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                                <FormField
+                                  control={form.control}
+                                  name="platform"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>指定平台 (可选)</FormLabel>
+                                      <Select onValueChange={(value) => field.onChange(value === 'all' ? '' : value)} value={field.value || 'all'}>
+                                        <FormControl>
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="选择平台" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="all">全部平台</SelectItem>
+                                          <SelectItem value="ios">仅 iOS</SelectItem>
+                                          <SelectItem value="android">仅 Android</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name="vendor"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>指定厂商 (可选)</FormLabel>
+                                      <Select onValueChange={(value) => field.onChange(value === 'all' ? '' : value)} value={field.value || 'all'}>
+                                        <FormControl>
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="选择厂商" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          {ANDROID_VENDOR_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                              {option.label}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name="push_environment"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>APNs环境 (可选)</FormLabel>
+                                      <Select onValueChange={(value) => field.onChange(value === 'all' ? undefined : value)} value={field.value || 'all'}>
+                                        <FormControl>
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="选择环境" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="all">全部环境</SelectItem>
+                                          <SelectItem value="development">开发</SelectItem>
+                                          <SelectItem value="production">生产</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
                           )}
 
                           {activeTab === 'broadcast' && (
-                            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                               <FormField
                                 control={form.control}
                                 name="platform"
@@ -1386,6 +1466,28 @@ export default function PushSend() {
                                   </FormItem>
                                 )}
                               />
+
+                              <FormField
+                                control={form.control}
+                                name="push_environment"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>APNs环境 (可选)</FormLabel>
+                                    <Select onValueChange={(value) => field.onChange(value === 'all' ? undefined : value)} value={field.value || 'all'}>
+                                      <FormControl>
+                                        <SelectTrigger className="w-full">
+                                          <SelectValue placeholder="选择环境" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="all">全部环境</SelectItem>
+                                        <SelectItem value="development">开发</SelectItem>
+                                        <SelectItem value="production">生产</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </FormItem>
+                                )}
+                              />
                             </div>
                           )}
 
@@ -1412,7 +1514,7 @@ export default function PushSend() {
                                 )}
                               />
                               
-                              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                              <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                                 <FormField
                                   control={form.control}
                                   name="platform"
@@ -1453,6 +1555,28 @@ export default function PushSend() {
                                               {option.label}
                                             </SelectItem>
                                           ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name="push_environment"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>APNs环境 (可选)</FormLabel>
+                                      <Select onValueChange={(value) => field.onChange(value === 'all' ? undefined : value)} value={field.value || 'all'}>
+                                        <FormControl>
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="选择环境" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="all">全部环境</SelectItem>
+                                          <SelectItem value="development">开发</SelectItem>
+                                          <SelectItem value="production">生产</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </FormItem>

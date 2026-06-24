@@ -12,6 +12,7 @@ public class DooPushDevice {
         return DeviceInfo(
             platform: "ios",
             channel: "apns",
+            pushEnvironment: pushEnvironment(),
             bundleId: bundleIdentifier(),
             brand: "Apple",
             model: deviceModelName(),
@@ -25,6 +26,37 @@ public class DooPushDevice {
     /// - Returns: Bundle Identifier
     private func bundleIdentifier() -> String {
         return Bundle.main.bundleIdentifier ?? ""
+    }
+
+    /// 获取 APNs 推送环境
+    /// - Returns: development 或 production
+    private func pushEnvironment() -> String {
+        if let environment = Bundle.main.object(forInfoDictionaryKey: "aps-environment") as? String,
+           isValidPushEnvironment(environment) {
+            return environment
+        }
+
+        if let path = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision"),
+           let profile = try? String(contentsOfFile: path, encoding: .isoLatin1) {
+            if profile.contains("<key>aps-environment</key>"),
+               profile.contains("<string>development</string>") {
+                return "development"
+            }
+            if profile.contains("<key>aps-environment</key>"),
+               profile.contains("<string>production</string>") {
+                return "production"
+            }
+        }
+
+        #if DEBUG
+        return "development"
+        #else
+        return "production"
+        #endif
+    }
+
+    private func isValidPushEnvironment(_ environment: String) -> Bool {
+        return environment == "development" || environment == "production"
     }
     
     /// 获取设备型号名称
@@ -174,6 +206,9 @@ public struct DeviceInfo: Codable {
     
     /// 推送通道
     public let channel: String
+
+    /// APNs 推送环境
+    public let pushEnvironment: String
     
     /// Bundle ID
     public let bundleId: String
@@ -197,6 +232,7 @@ public struct DeviceInfo: Codable {
     enum CodingKeys: String, CodingKey {
         case platform = "platform"
         case channel = "channel"
+        case pushEnvironment = "push_environment"
         case bundleId = "bundle_id"
         case brand = "brand"
         case model = "model"

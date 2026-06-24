@@ -70,6 +70,7 @@ export interface Device {
   token: string
   platform: 'ios' | 'android'
   channel: string
+  push_environment?: 'development' | 'production'
   brand: string
   model: string
   system_version: string
@@ -371,6 +372,7 @@ export interface PushTarget {
   tags?: TagFilter[]      // 新的设备标签筛选
   platform?: string
   channel?: string
+  push_environment?: 'development' | 'production'
 }
 
 export interface TagFilter {

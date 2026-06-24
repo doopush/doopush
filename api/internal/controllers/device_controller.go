@@ -32,6 +32,7 @@ type RegisterDeviceRequest struct {
 	BundleID   string                   `json:"bundle_id" binding:"required" example:"com.example.app"`
 	Platform   string                   `json:"platform" binding:"required,oneof=ios android" example:"ios"`
 	Channel    string                   `json:"channel" binding:"required" example:"apns"`
+	PushEnv    string                   `json:"push_environment" binding:"omitempty,oneof=development production" example:"development"`
 	Brand      string                   `json:"brand" example:"Apple"`
 	Model      string                   `json:"model" example:"iPhone 14"`
 	SystemVer  string                   `json:"system_version" example:"17.0"`
@@ -81,6 +82,7 @@ func (d *DeviceController) RegisterDevice(c *gin.Context) {
 		req.BundleID,
 		req.Platform,
 		req.Channel,
+		req.PushEnv,
 		req.Brand,
 		req.Model,
 		req.SystemVer,
@@ -136,6 +138,7 @@ func (d *DeviceController) GetDevices(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "20"))
 	platform := c.Query("platform")
 	status := c.Query("status")
+	pushEnv := c.Query("push_environment")
 
 	if page < 1 {
 		page = 1
@@ -145,7 +148,7 @@ func (d *DeviceController) GetDevices(c *gin.Context) {
 	}
 
 	userID := c.GetUint("user_id")
-	devices, total, err := d.deviceService.GetDevices(uint(appID), userID, page, pageSize, platform, status)
+	devices, total, err := d.deviceService.GetDevices(uint(appID), userID, page, pageSize, platform, status, pushEnv)
 	if err != nil {
 		if err.Error() == "无权限访问该应用" {
 			response.Forbidden(c, err.Error())

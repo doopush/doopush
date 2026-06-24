@@ -35,26 +35,41 @@ func (m *PushManager) GetProvider(device *models.Device) (PushProvider, error) {
 		return nil, fmt.Errorf("应用不存在")
 	}
 
-	// 根据平台和通道选择提供者
+	pushEnv := device.PushEnv
+	if pushEnv == "" {
+		pushEnv = "production"
+	}
+
+	// 根据平台、通道和推送环境选择提供者
 	providerKey := fmt.Sprintf("%s_%s", device.Platform, device.Channel)
+	if device.Platform == "ios" {
+		providerKey = fmt.Sprintf("%s_%s_%s", device.Platform, device.Channel, pushEnv)
+	}
 
 	if provider, exists := m.providers[providerKey]; exists {
 		return provider, nil
 	}
 
 	// 动态创建提供者
+	var provider PushProvider
+	var err error
 	switch device.Platform {
 	case "ios":
-		return m.createAPNsProvider(app)
+		provider, err = m.createAPNsProvider(app, pushEnv)
 	case "android":
-		return m.createAndroidProvider(app, device.Channel)
+		provider, err = m.createAndroidProvider(app, device.Channel)
 	default:
 		return nil, fmt.Errorf("不支持的平台: %s", device.Platform)
 	}
+	if err != nil {
+		return nil, err
+	}
+	m.providers[providerKey] = provider
+	return provider, nil
 }
 
 // createAPNsProvider 创建APNs提供者
-func (m *PushManager) createAPNsProvider(app *models.App) (PushProvider, error) {
+func (m *PushManager) createAPNsProvider(app *models.App, environment string) (PushProvider, error) {
 	// 获取APNs配置
 	var config models.AppConfig
 	err := database.DB.Where("app_id = ? AND platform = ? AND channel = ?", app.ID, "ios", "apns").First(&config).Error
@@ -84,6 +99,9 @@ func (m *PushManager) createAPNsProvider(app *models.App) (PushProvider, error) 
 			CertPEM:     oldConfig.CertPEM,
 			KeyPEM:      oldConfig.KeyPEM,
 		}
+	}
+	if environment == "development" || environment == "production" {
+		apnsConfig.Environment = environment
 	}
 
 	// 使用新的配置创建提供者

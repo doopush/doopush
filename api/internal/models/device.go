@@ -14,6 +14,7 @@ type Device struct {
 	TokenHash     string         `gorm:"size:64;index;not null;comment:Token哈希值;uniqueIndex:idx_device_app_token" json:"-"`
 	Platform      string         `gorm:"size:20;not null;comment:设备平台" json:"platform" example:"ios" binding:"required,oneof=ios android"`
 	Channel       string         `gorm:"size:20;not null;comment:推送通道" json:"channel" example:"apns" binding:"required"`
+	PushEnv       string         `gorm:"column:push_environment;size:20;not null;default:production;index;comment:推送环境 development/production" json:"push_environment" example:"production"`
 	Brand         string         `gorm:"size:50;comment:设备品牌" json:"brand" example:"Apple"`
 	Model         string         `gorm:"size:100;comment:设备型号" json:"model" example:"iPhone 14"`
 	SystemVer     string         `gorm:"size:50;comment:系统版本" json:"system_version" example:"17.0"`

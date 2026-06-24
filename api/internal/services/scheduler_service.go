@@ -499,6 +499,12 @@ func (s *SchedulerService) buildPushTarget(push models.ScheduledPush) (PushTarge
 				if channel, ok := filterConfig["channel"].(string); ok && channel != "" {
 					target.Channel = channel
 				}
+				if vendor, ok := filterConfig["vendor"].(string); ok && vendor != "" {
+					target.Channel = vendor
+				}
+				if pushEnv, ok := filterConfig["push_environment"].(string); ok && pushEnv != "" {
+					target.PushEnv = pushEnv
+				}
 			} else {
 				// 如果不是JSON格式，尝试解析简单的字符串格式
 				targetValue := strings.TrimSpace(push.TargetValue)
@@ -511,8 +517,10 @@ func (s *SchedulerService) buildPushTarget(push models.ScheduledPush) (PushTarge
 							value := strings.TrimSpace(parts[1])
 							if key == "platform" && (value == "ios" || value == "android") {
 								target.Platform = value
-							} else if key == "channel" {
+							} else if key == "channel" || key == "vendor" {
 								target.Channel = value
+							} else if key == "push_environment" && (value == "development" || value == "production") {
+								target.PushEnv = value
 							}
 						}
 					} else if targetValue == "ios" || targetValue == "android" {

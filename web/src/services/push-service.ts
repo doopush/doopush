@@ -63,6 +63,7 @@ export class PushService {
     }
     platform?: string
     vendor?: string
+    push_environment?: 'development' | 'production'
   }): Promise<PushLog[]> {
     return apiClient.post(`/apps/${appId}/push/broadcast`, data)
   }
@@ -87,6 +88,7 @@ export class PushService {
       }>
       platform?: string
       channel?: string
+      push_environment?: 'development' | 'production'
     }
   }): Promise<PushLog[]> {
     return apiClient.post(`/apps/${appId}/push`, data)

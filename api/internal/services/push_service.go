@@ -40,7 +40,8 @@ type PushTarget struct {
 	GroupIDs  []uint      `json:"group_ids,omitempty"`
 	Tags      []TagFilter `json:"tags,omitempty"` // 新的设备标签筛选
 	Platform  string      `json:"platform,omitempty" example:"ios"`
-	Channel   string      `json:"channel,omitempty" example:"fcm"` // 推送通道筛选
+	Channel   string      `json:"channel,omitempty" example:"fcm"`                 // 推送通道筛选
+	PushEnv   string      `json:"push_environment,omitempty" example:"production"` // APNs development/production
 }
 
 // TagFilter 标签筛选条件
@@ -144,6 +145,9 @@ func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.
 	if target.Channel != "" {
 		query = query.Where("channel = ?", target.Channel)
 	}
+	if target.PushEnv != "" {
+		query = query.Where("push_environment = ?", target.PushEnv)
+	}
 
 	switch target.Type {
 	case "all":
@@ -192,10 +196,19 @@ func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.
 			}
 		} else {
 			// 兼容旧的TagIDs方式（预加载App关联）
-			err := database.DB.Preload("App").Table("devices").
+			tagQuery := database.DB.Preload("App").Table("devices").
 				Joins("JOIN device_tag_maps ON devices.id = device_tag_maps.device_id").
-				Where("devices.app_id = ? AND devices.status = 1 AND devices.is_online = ? AND device_tag_maps.tag_id IN ?", appID, false, target.TagIDs).
-				Find(&devices).Error
+				Where("devices.app_id = ? AND devices.status = 1 AND devices.is_online = ? AND device_tag_maps.tag_id IN ?", appID, false, target.TagIDs)
+			if target.Platform != "" {
+				tagQuery = tagQuery.Where("devices.platform = ?", target.Platform)
+			}
+			if target.Channel != "" {
+				tagQuery = tagQuery.Where("devices.channel = ?", target.Channel)
+			}
+			if target.PushEnv != "" {
+				tagQuery = tagQuery.Where("devices.push_environment = ?", target.PushEnv)
+			}
+			err := tagQuery.Find(&devices).Error
 			if err != nil {
 				return nil, errors.New("获取标签设备失败")
 			}
@@ -230,6 +243,15 @@ func (s *PushService) getTargetDevices(appID uint, target PushTarget) ([]models.
 
 			// 应用筛选规则查询设备（预加载App关联）
 			groupQuery := database.DB.Preload("App").Where("app_id = ? AND status = 1 AND is_online = ?", appID, false)
+			if target.Platform != "" {
+				groupQuery = groupQuery.Where("platform = ?", target.Platform)
+			}
+			if target.Channel != "" {
+				groupQuery = groupQuery.Where("channel = ?", target.Channel)
+			}
+			if target.PushEnv != "" {
+				groupQuery = groupQuery.Where("push_environment = ?", target.PushEnv)
+			}
 			groupQuery = s.applyFilterRules(groupQuery, filterRules)
 
 			var groupDevices []models.Device

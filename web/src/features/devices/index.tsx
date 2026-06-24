@@ -63,6 +63,7 @@ export function Devices() {
   const [searchTerm, setSearchTerm] = useState('')
   const [platformFilter, setPlatformFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [pushEnvFilter, setPushEnvFilter] = useState<string>('all')
   
   // 对话框状态
   const [deviceDetailsOpen, setDeviceDetailsOpen] = useState(false)
@@ -105,6 +106,7 @@ export function Devices() {
         page_size: pageSize,
         ...(platformFilter !== 'all' && { platform: platformFilter }),
         ...(statusFilter !== 'all' && { status: parseInt(statusFilter) }),
+        ...(pushEnvFilter !== 'all' && { push_environment: pushEnvFilter }),
       }
       const resp = await DeviceService.getDevices(currentApp.id, params)
       setDevices(resp.data.items)
@@ -127,7 +129,7 @@ export function Devices() {
       loadingRef.current = false
       setLoading(false)
     }
-  }, [currentApp, platformFilter, statusFilter, currentPage, pageSize])
+  }, [currentApp, platformFilter, statusFilter, pushEnvFilter, currentPage, pageSize])
 
   useEffect(() => {
     if (currentApp) {
@@ -193,6 +195,12 @@ export function Devices() {
     return status === 1 
       ? { label: '启用', className: 'bg-green-100 text-green-800' }
       : { label: '禁用', className: 'bg-red-100 text-red-800' }
+  }
+
+  const getPushEnvBadge = (pushEnv?: string) => {
+    return pushEnv === 'development'
+      ? { label: '开发', className: 'bg-amber-100 text-amber-800' }
+      : { label: '生产', className: 'bg-slate-100 text-slate-800' }
   }
 
   const getBrandIcon = (platform: string, brand: string) => {
@@ -322,6 +330,17 @@ export function Devices() {
                   <SelectItem value="0">禁用</SelectItem>
                 </SelectContent>
               </Select>
+
+              <Select value={pushEnvFilter} onValueChange={setPushEnvFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部环境</SelectItem>
+                  <SelectItem value="development">开发</SelectItem>
+                  <SelectItem value="production">生产</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* 设备列表表格 */}
@@ -332,6 +351,7 @@ export function Devices() {
                     <TableHead>设备信息</TableHead>
                     <TableHead>用户代理</TableHead>
                     <TableHead>平台</TableHead>
+                    <TableHead>推送环境</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead>最后注册</TableHead>
                     <TableHead className="text-right">操作</TableHead>
@@ -353,6 +373,7 @@ export function Devices() {
                         </TableCell>
                         <TableCell><div className="h-4 w-20 bg-muted rounded animate-pulse" /></TableCell>
                         <TableCell><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
+                        <TableCell><div className="h-4 w-14 bg-muted rounded animate-pulse" /></TableCell>
                         <TableCell><div className="h-4 w-12 bg-muted rounded animate-pulse" /></TableCell>
                         <TableCell><div className="h-4 w-20 bg-muted rounded animate-pulse" /></TableCell>
                         <TableCell><div className="h-4 w-8 bg-muted rounded animate-pulse" /></TableCell>
@@ -360,7 +381,7 @@ export function Devices() {
                     ))
                   ) : filteredDevices.length === 0 ? (
                     <TableRow className="hover:bg-transparent">
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         {searchTerm ? '未找到匹配的设备' : '暂无设备数据'}
                       </TableCell>
                     </TableRow>
@@ -414,6 +435,15 @@ export function Devices() {
                               </Badge>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {device.platform === 'ios' ? (
+                            <Badge className={getPushEnvBadge(device.push_environment).className}>
+                              {getPushEnvBadge(device.push_environment).label}
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusBadge(device.status).className}>

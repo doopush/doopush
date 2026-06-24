@@ -6,7 +6,7 @@ export class DeviceService {
   /**
    * 获取设备列表（统一分页）
    */
-  static async getDevices(appId: number, params?: PaginationRequest<{ platform?: string; status?: number; search?: string }>): Promise<PaginationEnvelope<Device>> {
+  static async getDevices(appId: number, params?: PaginationRequest<{ platform?: string; status?: number; search?: string; push_environment?: string }>): Promise<PaginationEnvelope<Device>> {
     return apiClient.get(`/apps/${appId}/devices`, { params })
   }
 

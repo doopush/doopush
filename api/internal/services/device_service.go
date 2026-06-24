@@ -20,7 +20,7 @@ func NewDeviceService() *DeviceService {
 }
 
 // RegisterDevice 注册设备
-func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, channel, brand, model, systemVer, appVersion, userAgent string) (*models.Device, error) {
+func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, channel, pushEnv, brand, model, systemVer, appVersion, userAgent string) (*models.Device, error) {
 	// 1. 验证应用是否存在并获取应用信息
 	var app models.App
 	if err := database.DB.Where("id = ? AND status = 1", appID).First(&app).Error; err != nil {
@@ -31,6 +31,7 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 	if bundleID != app.PackageName {
 		return nil, errors.New("Bundle ID与应用包名不匹配")
 	}
+	pushEnv = normalizePushEnvironment(platform, pushEnv)
 
 	// 检查设备是否已存在
 	tokenHash := utils.HashString(token)
@@ -39,16 +40,20 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 	if err := database.DB.Where("app_id = ? AND token_hash = ?", appID, tokenHash).First(&existingDevice).Error; err == nil {
 		// 设备已存在，更新信息
 		updates := map[string]interface{}{
-			"brand":       brand,
-			"model":       model,
-			"system_ver":  systemVer,
-			"app_version": appVersion,
-			"user_agent":  userAgent,
-			"status":      1,
-			"last_seen":   utils.TimeNow(),
+			"brand":            brand,
+			"model":            model,
+			"system_ver":       systemVer,
+			"app_version":      appVersion,
+			"user_agent":       userAgent,
+			"push_environment": pushEnv,
+			"status":           1,
+			"last_seen":        utils.TimeNow(),
 		}
 
 		if err := database.DB.Preload("App").Model(&existingDevice).Updates(updates).Error; err != nil {
+			return nil, errors.New("设备信息更新失败")
+		}
+		if err := database.DB.Preload("App").First(&existingDevice, existingDevice.ID).Error; err != nil {
 			return nil, errors.New("设备信息更新失败")
 		}
 
@@ -62,6 +67,7 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 		TokenHash:  tokenHash,
 		Platform:   platform,
 		Channel:    channel,
+		PushEnv:    pushEnv,
 		Brand:      brand,
 		Model:      model,
 		SystemVer:  systemVer,
@@ -76,16 +82,20 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 			// 并发场景下可能同时写入，捕获唯一索引冲突后回退到更新逻辑
 			if err := database.DB.Where("app_id = ? AND token_hash = ?", appID, tokenHash).First(&existingDevice).Error; err == nil {
 				updates := map[string]interface{}{
-					"token":       token,
-					"brand":       brand,
-					"model":       model,
-					"system_ver":  systemVer,
-					"app_version": appVersion,
-					"user_agent":  userAgent,
-					"status":      1,
-					"last_seen":   utils.TimeNow(),
+					"token":            token,
+					"brand":            brand,
+					"model":            model,
+					"system_ver":       systemVer,
+					"app_version":      appVersion,
+					"user_agent":       userAgent,
+					"push_environment": pushEnv,
+					"status":           1,
+					"last_seen":        utils.TimeNow(),
 				}
 				if updErr := database.DB.Model(&existingDevice).Updates(updates).Error; updErr != nil {
+					return nil, errors.New("设备信息更新失败")
+				}
+				if err := database.DB.Preload("App").First(&existingDevice, existingDevice.ID).Error; err != nil {
 					return nil, errors.New("设备信息更新失败")
 				}
 				return &existingDevice, nil
@@ -101,6 +111,15 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 	}
 
 	return device, nil
+}
+
+func normalizePushEnvironment(platform, pushEnv string) string {
+	switch pushEnv {
+	case "development", "production":
+		return pushEnv
+	default:
+		return "production"
+	}
 }
 
 // UpdateDeviceTags 更新设备标签
@@ -138,7 +157,7 @@ type DeviceTagItem struct {
 }
 
 // GetDevices 获取设备列表
-func (s *DeviceService) GetDevices(appID uint, userID uint, page, pageSize int, platform, status string) ([]models.Device, int64, error) {
+func (s *DeviceService) GetDevices(appID uint, userID uint, page, pageSize int, platform, status, pushEnv string) ([]models.Device, int64, error) {
 	// 检查用户权限
 	userService := NewUserService()
 	hasPermission, err := userService.CheckAppPermission(userID, appID, "viewer")
@@ -157,6 +176,9 @@ func (s *DeviceService) GetDevices(appID uint, userID uint, page, pageSize int, 
 	}
 	if status != "" {
 		query = query.Where("status = ?", status)
+	}
+	if pushEnv != "" {
+		query = query.Where("push_environment = ?", pushEnv)
 	}
 
 	// 获取总数

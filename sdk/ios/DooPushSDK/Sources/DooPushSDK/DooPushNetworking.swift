@@ -69,6 +69,7 @@ public class DooPushNetworking {
             bundleId: deviceInfo.bundleId,
             platform: deviceInfo.platform,
             channel: deviceInfo.channel,
+            pushEnvironment: deviceInfo.pushEnvironment,
             brand: deviceInfo.brand,
             model: deviceInfo.model,
             systemVersion: deviceInfo.systemVersion,
@@ -401,6 +402,7 @@ private struct DeviceRegistrationRequest: Codable {
     let bundleId: String
     let platform: String
     let channel: String
+    let pushEnvironment: String
     let brand: String
     let model: String
     let systemVersion: String
@@ -412,6 +414,7 @@ private struct DeviceRegistrationRequest: Codable {
         case bundleId = "bundle_id"
         case platform
         case channel
+        case pushEnvironment = "push_environment"
         case brand
         case model
         case systemVersion = "system_version"
@@ -429,6 +432,7 @@ public struct DeviceResponseInfo: Codable {
     public let token: String
     public let platform: String
     public let channel: String
+    public let pushEnvironment: String?
     public let brand: String?
     public let model: String?
     public let systemVersion: String?
@@ -445,6 +449,7 @@ public struct DeviceResponseInfo: Codable {
         case token
         case platform
         case channel
+        case pushEnvironment = "push_environment"
         case brand
         case model
         case systemVersion = "system_version"
