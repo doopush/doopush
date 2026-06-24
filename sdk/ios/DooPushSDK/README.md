@@ -208,6 +208,9 @@ pod spec lint DooPushSDK.podspec --verbose
 ```
 ## 更新日志
 
+### v1.3.0
+- **Feat**：注册设备时上报 APNs 推送环境（development / production），用于平台展示、筛选和按正确 APNs endpoint 发送，减少开发 token 与生产 token 混用导致的发送失败。
+
 ### v1.2.1
 - **Fix**：加固 Gateway WebSocket 连接生命周期，使连接建立与断开更稳健，并让 teardown 幂等，避免重复拆除时进入异常状态（`harden websocket gateway connection lifecycle` / `make websocket gateway teardown idempotent`）。
 
