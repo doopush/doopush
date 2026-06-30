@@ -266,6 +266,7 @@ const { deviceId } = await DooPush.registerWithToken(token, 'fcm');
 
 - **Android `expo prebuild` 报 `manifestPlaceholders` 找不到字段** —— 检查 `app.json` 里 OEM 凭证是否齐全（schema 校验会要求 servicesFile 或对应内联字段）。
 - **HMS / Honor 真机注册失败** —— 确认 `agconnect-services.json` / `mcs-services.json` 真机可读、`app.json` 的 `bundleIdentifier` 与 services file 中的 `package_name` 一致。
+- **OPPO 真机注册卡住 / 超时拿不到 token** —— 启用 `oppo` vendor 时 plugin 会在 `prebuild` 自动注入 HeyTap MCS 的权限与回调 service（`oppo-push` aar 不自带）。若仍失败，先重新 `expo prebuild` 确认合并后的 `AndroidManifest.xml` 含 `com.heytap.msp.push.service.DataMessageCallbackService`，再核对 OPPO 开放平台登记的包名与该应用一致。
 - **`Unable to resolve "doopush-react-native-sdk"`** —— monorepo 本地开发用 `file:` 依赖时加 `--install-links`，避免 npm 默认软链导致 Metro 解析失败。
 
 ## 📦 版本与发布
