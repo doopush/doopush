@@ -177,6 +177,10 @@ dependencies {
 <uses-permission android:name="com.vivo.notification.permission.BADGE_ICON" />
 <uses-permission android:name="com.meizu.flyme.permission.PUSH" />
 
+<!-- OPPO/HeyTap (ColorOS) 推送：MCS 回传 RegisterId/消息所需，oppo-push 的 aar 不自带 -->
+<uses-permission android:name="com.coloros.mcs.permission.RECIEVE_MCS_MESSAGE" />
+<uses-permission android:name="com.heytap.mcs.permission.RECIEVE_MCS_MESSAGE" />
+
 <!-- 自启动权限（部分厂商需要） -->
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 ```
@@ -263,7 +267,31 @@ plugins {
 }
 ```
 
-**说明**：OPPO推送直接通过 Gradle 依赖集成，无需额外配置。
+4. 在 `AndroidManifest.xml` 的 `<application>` 内声明 HeyTap MCS 回调 service（连同上面权限配置里的两个 `RECIEVE_MCS_MESSAGE` 权限）：
+
+```xml
+<service
+    android:name="com.heytap.msp.push.service.CompatibleDataMessageCallbackService"
+    android:permission="com.coloros.mcs.permission.SEND_MCS_MESSAGE"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="com.coloros.mcs.action.RECEIVE_MCS_MESSAGE" />
+    </intent-filter>
+</service>
+<service
+    android:name="com.heytap.msp.push.service.DataMessageCallbackService"
+    android:permission="com.heytap.mcs.permission.SEND_PUSH_MESSAGE"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="com.heytap.mcs.action.RECEIVE_MCS_MESSAGE" />
+        <action android:name="com.heytap.msp.push.RECEIVE_MCS_MESSAGE" />
+    </intent-filter>
+</service>
+```
+
+> **说明**：OPPO 推送依赖 `com.umeng.umsdk:oppo-push`，但该 aar 自带的 manifest 为空——上面两个 `RECIEVE_MCS_MESSAGE` 权限和两个回调 service **必须手动声明**（其它厂商 aar 已自带，无需手动加）。缺失时系统推送服务无法把 RegisterId 回传给应用，`register()` 会静默超时、拿不到 token。
+>
+> 使用 Expo config plugin（`doopush-react-native-sdk`）的项目无需手动添加：启用 `oppo` vendor 后，这些权限与 service 会在 `prebuild` 时自动注入。
 
 #### VIVO推送配置
 

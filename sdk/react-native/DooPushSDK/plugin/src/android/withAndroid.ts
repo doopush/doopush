@@ -5,6 +5,7 @@ import { withDooPushSettingsGradle } from './withSettingsGradle';
 import { withDooPushAppBuildGradle } from './withAppBuildGradle';
 import { withDooPushGradleProperties } from './withGradleProperties';
 import { withDooPushGoogleServices } from './withGoogleServices';
+import { withDooPushOppoManifest } from './withOppoManifest';
 
 export const withAndroid: ConfigPlugin<PluginConfig> = (config, validated) => {
   config = withDooPushSettingsGradle(config, validated);
@@ -12,5 +13,6 @@ export const withAndroid: ConfigPlugin<PluginConfig> = (config, validated) => {
   config = withDooPushRootBuildGradle(config, validated);
   config = withDooPushAppBuildGradle(config, validated);
   config = withDooPushGoogleServices(config, validated);
+  config = withDooPushOppoManifest(config, validated);
   return config;
 };
