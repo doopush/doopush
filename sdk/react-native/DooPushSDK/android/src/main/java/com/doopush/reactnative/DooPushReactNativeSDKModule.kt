@@ -80,7 +80,7 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
                         ))
                     }
                     override fun onError(error: DooPushError) {
-                        promise.reject("E_REGISTER", error.message ?: "register failed", null)
+                        promise.reject("E_REGISTER", error.getFullDescription(), error)
                     }
                 }
             )
@@ -99,7 +99,7 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
                         promise.resolve(mapOf("deviceId" to result.deviceId))
                     }
                     override fun onError(error: DooPushError) {
-                        promise.reject("E_REGISTER", error.message ?: "register failed", null)
+                        promise.reject("E_REGISTER", error.getFullDescription(), error)
                     }
                 }
             )
@@ -222,7 +222,7 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
     override fun onRegisterError(error: DooPushError) {
         sendEvent("onRegisterError", mapOf(
             "code" to "E_REGISTER",
-            "message" to (error.message ?: "register failed")
+            "message" to error.getFullDescription()
         ))
     }
 

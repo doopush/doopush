@@ -246,24 +246,27 @@ class OppoService(private val context: Context) {
      * @param callback token获取回调
      */
     fun getToken(callback: TokenCallback) {
+        // 必须先设回调：晚于任何可能同步触发 onRegister 的 SDK 调用就会丢掉初始化期间的注册结果。
+        this.tokenCallback = callback
+
+        val cachedToken = getRegId()
+        if (!cachedToken.isNullOrEmpty()) {
+            Log.d(TAG, "使用缓存的OPPO推送token: ${cachedToken.take(12)}...")
+            handleRegisterCallback(0, cachedToken)
+            return
+        }
+
         if (cachedAppKey != null && cachedAppSecret != null) {
-            // 尝试获取已缓存的token
-            val cachedToken = getRegId()
-            if (!cachedToken.isNullOrEmpty()) {
-                Log.d(TAG, "使用缓存的OPPO推送token: ${cachedToken.take(12)}...")
-                callback.onSuccess(cachedToken)
-            } else {
-                // 如果没有缓存token，重新初始化以触发注册回调
-                this.tokenCallback = callback // 缓存回调
-                initialize(cachedAppKey!!, cachedAppSecret!!)
+            // initialize() 失败时不会启动轮询、也不回调，必须主动报错并清空回调，
+            // 否则注册会悬挂到 DooPushManager 的 35s 通用超时，盖住真实失败原因。
+            if (!initialize(cachedAppKey!!, cachedAppSecret!!)) {
+                this.tokenCallback = null
+                callback.onError(DooPushError.oppoInitFailed("OPPO推送初始化失败"))
             }
         } else {
-            // 尝试自动初始化
             val success = autoInitialize()
-            if (success && cachedAppKey != null && cachedAppSecret != null) {
-                // 自动初始化成功后，再次尝试获取token
-                getToken(callback)
-            } else {
+            if (!success) {
+                this.tokenCallback = null
                 callback.onError(DooPushError.oppoConfigInvalid("OPPO推送未正确配置或初始化"))
             }
         }

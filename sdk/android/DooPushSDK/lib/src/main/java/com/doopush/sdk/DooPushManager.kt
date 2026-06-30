@@ -368,7 +368,9 @@ class DooPushManager private constructor() {
         Log.d(TAG, "开始注册推送通知")
         isRegistering.set(true)
         
-        // 超时保护，避免底层SDK无回调导致卡住
+        // 超时保护，避免底层SDK无回调导致卡住。
+        // 必须大于各厂商取 token 的内部超时（OPPO 轮询 30s，见 OppoService.startPollingForRegisterId），
+        // 否则厂商真实的失败原因（如 OPPO 包名/appKey 不匹配）会被这个通用超时覆盖成“网络请求超时”。
         mainHandler.postDelayed({
             if (isRegistering.get()) {
                 isRegistering.set(false)
@@ -376,7 +378,7 @@ class DooPushManager private constructor() {
                 Log.e(TAG, error.getFullDescription())
                 callback?.onError(error) ?: this.callback?.onRegisterError(error)
             }
-        }, 15000L)
+        }, 35000L)
         
         try {
             // 根据设备厂商选择最优推送服务
