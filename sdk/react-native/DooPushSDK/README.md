@@ -181,6 +181,11 @@ MIT
 
 ## CHANGELOG
 
+### v0.5.2
+- **Fix (config plugin)**：OPPO 注册静默超时（拿不到 RegisterId），因为构建产物缺少 HeyTap MCS 所需的 manifest 声明；新增 `withDooPushOppoManifest`，启用 `oppo` 厂商时注入两条 `RECIEVE_MCS_MESSAGE` 权限与 `CompatibleDataMessageCallbackService` / `DataMessageCallbackService` 回调服务。
+- **Fix (Android)**：注册失败事件（`onRegisterError` / `register` reject）透出厂商返回的真实错误信息，替换此前的通用 "register failed"。
+- **Docs**：更正 OPPO 集成说明，此前错误标注"无需额外配置"。
+
 ### v0.5.1
 - **Fix (Android)**：`expo prebuild` 流程缺失 `google-services` Gradle 插件 classpath 注入，原生工程 sync 失败；config plugin 现在补齐 `withRootBuildGradle` / `withSettingsGradle` / `withGradleProperties`，prebuild 全流程跑通。
 - **Fix (config plugin)**：`zod` 等 plugin 运行时依赖错误地放在 `devDependencies` 里，用户 `npx expo prebuild` 时 plugin 解析失败；改为生产依赖。
