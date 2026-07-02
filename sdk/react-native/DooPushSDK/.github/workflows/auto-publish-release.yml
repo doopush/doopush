@@ -114,11 +114,16 @@ jobs:
       - name: Publish to npm
         if: steps.check.outputs.exists == 'false'
         run: |
-          # --no-git-checks: pnpm 默认要求工作树干净 + 在跟随分支
-          # --access public: 默认公开包（doopush-react-native-sdk 不带 scope）
-          pnpm publish --no-git-checks --access public --tag ${{ steps.version.outputs.dist_tag }}
+          # 显式把 token 写入 ~/.npmrc，再用 npm publish（而非 pnpm publish）。
+          # 原因：setup-node 只在 .npmrc 里写 `_authToken=${NODE_AUTH_TOKEN}`，
+          # 依赖运行时展开该环境变量；pnpm publish 在 pnpm/action-setup 某些版本下
+          # 不展开它 → 变成匿名 publish → npm 对已存在的包返回 E404（而非 401），
+          # 极难排查。这里直接落地字面 token，彻底摆脱 env 展开的版本漂移。
+          # --access public: 公开包（doopush-react-native-sdk 不带 scope）
+          npm config set //registry.npmjs.org/:_authToken "${NPM_TOKEN}"
+          npm publish --access public --tag ${{ steps.version.outputs.dist_tag }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Reset latest dist-tag (npm first-publish guard)
         if: steps.check.outputs.exists == 'false' && steps.version.outputs.dist_tag != 'latest'
@@ -126,6 +131,8 @@ jobs:
           # npm 在包首次发布时会强制把 dist-tag latest 指向该版本，即使 publish
           # 显式传了 --tag alpha/beta/rc。这里检查并主动 rm，避免污染默认
           # `npm install doopush-react-native-sdk` 用户的依赖。
+          # 同 publish 步骤：显式落地 token，dist-tag 写操作才有鉴权
+          npm config set //registry.npmjs.org/:_authToken "${NPM_TOKEN}"
           CURRENT_LATEST=$(npm view doopush-react-native-sdk dist-tags.latest 2>/dev/null || echo "")
           PUBLISHED_VERSION="${{ steps.version.outputs.version }}"
           if [ "$CURRENT_LATEST" = "$PUBLISHED_VERSION" ]; then
@@ -135,4 +142,4 @@ jobs:
             echo "✅ latest 当前指向 ${CURRENT_LATEST:-(none)}，无需调整"
           fi
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
