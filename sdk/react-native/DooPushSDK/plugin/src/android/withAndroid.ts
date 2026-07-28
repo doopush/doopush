@@ -6,6 +6,7 @@ import { withDooPushAppBuildGradle } from './withAppBuildGradle';
 import { withDooPushGradleProperties } from './withGradleProperties';
 import { withDooPushGoogleServices } from './withGoogleServices';
 import { withDooPushOppoManifest } from './withOppoManifest';
+import { withDooPushNotificationManifest } from './withNotificationManifest';
 
 export const withAndroid: ConfigPlugin<PluginConfig> = (config, validated) => {
   config = withDooPushSettingsGradle(config, validated);
@@ -14,5 +15,6 @@ export const withAndroid: ConfigPlugin<PluginConfig> = (config, validated) => {
   config = withDooPushAppBuildGradle(config, validated);
   config = withDooPushGoogleServices(config, validated);
   config = withDooPushOppoManifest(config, validated);
+  config = withDooPushNotificationManifest(config, validated);
   return config;
 };
