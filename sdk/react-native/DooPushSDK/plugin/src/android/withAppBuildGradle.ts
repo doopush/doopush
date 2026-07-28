@@ -3,9 +3,30 @@ import {
   withAppBuildGradle,
 } from '@expo/config-plugins';
 import type { PluginConfig } from '../schema';
+import * as fs from 'fs';
+import * as path from 'path';
 
 function q(value: string | undefined): string {
   return `"${(value ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * When the Honor vendor uses file mode (mcsServicesFile) without inline appId/developerId,
+ * read them from the file so the DOOPUSH_HONOR_APP_ID / DOOPUSH_HONOR_DEVELOPER_ID
+ * manifest placeholders are populated. The Honor push SDK requires these meta-data entries
+ * at runtime; empty values → error 3607 "missing AppId".
+ */
+function resolveHonorInline(projectRoot: string, vendor: NonNullable<PluginConfig['android']['vendors']['honor']>): void {
+  if (!vendor.mcsServicesFile || (vendor.appId && vendor.developerId)) return;
+  try {
+    const abs = path.isAbsolute(vendor.mcsServicesFile)
+      ? vendor.mcsServicesFile
+      : path.resolve(projectRoot, vendor.mcsServicesFile);
+    if (!fs.existsSync(abs)) return;
+    const mcs = JSON.parse(fs.readFileSync(abs, 'utf8'));
+    if (!vendor.appId && mcs.app_id) vendor.appId = String(mcs.app_id);
+    if (!vendor.developerId && mcs.developer_id) vendor.developerId = String(mcs.developer_id);
+  } catch { /* file may not exist yet during config evaluation — skip gracefully */ }
 }
 
 function addApplyPlugin(contents: string, pluginId: string): string {
@@ -52,6 +73,13 @@ export const withDooPushAppBuildGradle: ConfigPlugin<PluginConfig> = (config, va
   return withAppBuildGradle(config, (cfg) => {
     let contents = cfg.modResults.contents;
     const v = validated.android.vendors;
+
+    // Honor file mode: if appId/developerId aren't provided inline, resolve them from
+    // mcs-services.json so manifest placeholders are populated at build time.
+    if (v.honor) {
+      const projectRoot = (cfg as any).modRequest?.projectRoot || process.cwd();
+      resolveHonorInline(projectRoot, v.honor);
+    }
 
     // 1. Apply vendor Gradle plugins where required by the upstream SDKs.
     if (v.fcm) contents = addApplyPlugin(contents, 'com.google.gms.google-services');

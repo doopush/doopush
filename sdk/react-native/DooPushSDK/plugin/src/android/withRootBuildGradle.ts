@@ -3,6 +3,34 @@ import {
   withProjectBuildGradle,
 } from '@expo/config-plugins';
 import type { PluginConfig } from '../schema';
+import * as fs from 'fs';
+import * as path from 'path';
+
+/**
+ * Honor's asplugin requires an explicit AGP classpath version in root build.gradle.
+ * Expo SDK ≥54 declares AGP without a version (version catalog manages it), so pin
+ * the same version that the RN version catalog resolves to.
+ */
+function pinAgpClasspathVersion(contents: string, projectRoot: string): string {
+  if (/com\.android\.tools\.build:gradle:(?!['"])/g.test(contents)) {
+    // Already has version — idempotent.
+    return contents;
+  }
+  let agp: string | null = null;
+  try {
+    const rnPkg = require.resolve('react-native/package.json', { paths: [projectRoot] });
+    const toml = fs.readFileSync(
+      path.join(path.dirname(rnPkg), 'gradle', 'libs.versions.toml'),
+      'utf8'
+    );
+    agp = toml.match(/^\s*agp\s*=\s*"([^"]+)"/m)?.[1] ?? null;
+  } catch { /* not found — skip */ }
+  if (!agp) return contents;
+  return contents.replace(
+    /com\.android\.tools\.build:gradle(?!:)/g,
+    `com.android.tools.build:gradle:${agp}`
+  );
+}
 
 /**
  * Adds Maven repositories and vendor Gradle plugin classpaths to root build.gradle.
@@ -78,6 +106,9 @@ export const withDooPushRootBuildGradle: ConfigPlugin<PluginConfig> = (config, v
       addAllProjectsRepo(honorRepo, 'developer.hihonor.com/repo');
       addBuildscriptRepo(honorRepo, 'developer.hihonor.com/repo');
       addClasspath("'com.hihonor.mcs:asplugin:2.0.1.300'");
+      // Honor's asplugin scans root build.gradle text for an explicit AGP version;
+      // Expo SDK ≥54 omits the version (managed by the version catalog). Pin it.
+      contents = pinAgpClasspathVersion(contents, cfg.modRequest.projectRoot);
     }
 
     // mavenLocal for development.
