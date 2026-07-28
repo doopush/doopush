@@ -29,9 +29,47 @@ func NewPushController() *PushController {
 
 // PushPayload 推送负载数据
 type PushPayload struct {
-	Action string `json:"action,omitempty" example:"open_page"`        // 动作类型
-	URL    string `json:"url,omitempty" example:"https://example.com"` // 链接地址
-	Data   string `json:"data,omitempty" example:"extra_data"`         // 额外数据，JSON字符串
+	Action string                 `json:"action,omitempty" example:"open_page"`        // 动作类型
+	URL    string                 `json:"url,omitempty" example:"https://example.com"` // 链接地址
+	Data   string                 `json:"data,omitempty" example:"extra_data"`         // 额外数据，JSON字符串
+	Huawei map[string]interface{} `json:"huawei,omitempty"`                            // 华为厂商参数
+	Honor  map[string]interface{} `json:"honor,omitempty"`                             // 荣耀厂商参数
+	Xiaomi map[string]interface{} `json:"xiaomi,omitempty"`                            // 小米厂商参数
+	Oppo   map[string]interface{} `json:"oppo,omitempty"`                              // OPPO厂商参数
+	Vivo   map[string]interface{} `json:"vivo,omitempty"`                              // vivo厂商参数
+	Meizu  map[string]interface{} `json:"meizu,omitempty"`                             // 魅族厂商参数
+}
+
+func (p PushPayload) toMap() map[string]interface{} {
+	payload := make(map[string]interface{})
+	if p.Action != "" {
+		payload["action"] = p.Action
+	}
+	if p.URL != "" {
+		payload["url"] = p.URL
+	}
+	if p.Data != "" {
+		payload["data"] = p.Data
+	}
+	if p.Huawei != nil {
+		payload["huawei"] = p.Huawei
+	}
+	if p.Honor != nil {
+		payload["honor"] = p.Honor
+	}
+	if p.Xiaomi != nil {
+		payload["xiaomi"] = p.Xiaomi
+	}
+	if p.Oppo != nil {
+		payload["oppo"] = p.Oppo
+	}
+	if p.Vivo != nil {
+		payload["vivo"] = p.Vivo
+	}
+	if p.Meizu != nil {
+		payload["meizu"] = p.Meizu
+	}
+	return payload
 }
 
 // SendPushRequest 发送推送请求
@@ -117,17 +155,7 @@ func (p *PushController) SendPush(c *gin.Context) {
 		return
 	}
 
-	// 将 PushPayload 转换为 map[string]interface{}
-	payload := make(map[string]interface{})
-	if req.Payload.Action != "" {
-		payload["action"] = req.Payload.Action
-	}
-	if req.Payload.URL != "" {
-		payload["url"] = req.Payload.URL
-	}
-	if req.Payload.Data != "" {
-		payload["data"] = req.Payload.Data
-	}
+	payload := req.Payload.toMap()
 
 	// 构建推送请求
 	pushReq := services.PushRequest{
@@ -510,17 +538,7 @@ func (ctrl *PushController) SendSingle(ctx *gin.Context) {
 		return
 	}
 
-	// 将 PushPayload 转换为 map[string]interface{}
-	payload := make(map[string]interface{})
-	if req.Payload.Action != "" {
-		payload["action"] = req.Payload.Action
-	}
-	if req.Payload.URL != "" {
-		payload["url"] = req.Payload.URL
-	}
-	if req.Payload.Data != "" {
-		payload["data"] = req.Payload.Data
-	}
+	payload := req.Payload.toMap()
 
 	// 通过device_id字符串查询实际的设备主键ID
 	var device models.Device
@@ -583,17 +601,7 @@ func (ctrl *PushController) SendBatch(ctx *gin.Context) {
 		return
 	}
 
-	// 将 PushPayload 转换为 map[string]interface{}
-	payload := make(map[string]interface{})
-	if req.Payload.Action != "" {
-		payload["action"] = req.Payload.Action
-	}
-	if req.Payload.URL != "" {
-		payload["url"] = req.Payload.URL
-	}
-	if req.Payload.Data != "" {
-		payload["data"] = req.Payload.Data
-	}
+	payload := req.Payload.toMap()
 
 	// 通过device_id字符串批量查询实际的设备主键ID
 	var devices []models.Device
@@ -667,17 +675,7 @@ func (ctrl *PushController) SendBroadcast(ctx *gin.Context) {
 		return
 	}
 
-	// 将 PushPayload 转换为 map[string]interface{}
-	payload := make(map[string]interface{})
-	if req.Payload.Action != "" {
-		payload["action"] = req.Payload.Action
-	}
-	if req.Payload.URL != "" {
-		payload["url"] = req.Payload.URL
-	}
-	if req.Payload.Data != "" {
-		payload["data"] = req.Payload.Data
-	}
+	payload := req.Payload.toMap()
 
 	// 构建推送目标
 	pushReq := services.PushRequest{
