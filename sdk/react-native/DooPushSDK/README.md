@@ -181,6 +181,11 @@ MIT
 
 ## CHANGELOG
 
+### v0.5.3
+- **Fix (Android / Expo 54)**：Honor 文件配置模式现在会从 `mcs-services.json` 解析 `app_id` / `developer_id`，并为 Honor Gradle 插件补齐显式 AGP 版本，避免注册时报错 3607 或构建失败。
+- **Fix (Android / config plugin)**：宿主应用已配置 FCM 通知图标时，自动用 `tools:replace` 保留宿主图标，避免与原生 SDK 默认图标发生 manifest merger 冲突。
+- **CI (npm)**：发布流程显式写入 npm auth token 并改用 `npm publish`，避免 pnpm 环境变量未展开导致匿名发布 E404。
+
 ### v0.5.2
 - **Fix (config plugin)**：OPPO 注册静默超时（拿不到 RegisterId），因为构建产物缺少 HeyTap MCS 所需的 manifest 声明；新增 `withDooPushOppoManifest`，启用 `oppo` 厂商时注入两条 `RECIEVE_MCS_MESSAGE` 权限与 `CompatibleDataMessageCallbackService` / `DataMessageCallbackService` 回调服务。
 - **Fix (Android)**：注册失败事件（`onRegisterError` / `register` reject）透出厂商返回的真实错误信息，替换此前的通用 "register failed"。
