@@ -181,6 +181,10 @@ MIT
 
 ## CHANGELOG
 
+### v0.5.3
+- **Fix (Android/FCM)**：依赖 Android SDK v1.2.3，FCM token 刷新后会立即同步到 DooPush 服务端，避免服务端继续使用旧 token。
+- **Fix (Android dependency)**：React Native bridge 的原生依赖由遗留的 `1.2.0` 对齐到 `1.2.3`，确保 v1.2.1-v1.2.3 的原生修复实际进入应用构建。
+
 ### v0.5.2
 - **Fix (config plugin)**：OPPO 注册静默超时（拿不到 RegisterId），因为构建产物缺少 HeyTap MCS 所需的 manifest 声明；新增 `withDooPushOppoManifest`，启用 `oppo` 厂商时注入两条 `RECIEVE_MCS_MESSAGE` 权限与 `CompatibleDataMessageCallbackService` / `DataMessageCallbackService` 回调服务。
 - **Fix (Android)**：注册失败事件（`onRegisterError` / `register` reject）透出厂商返回的真实错误信息，替换此前的通用 "register failed"。
