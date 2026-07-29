@@ -1296,10 +1296,18 @@ class DooPushManager private constructor() {
             persistRegistration(newToken, deviceId, vendor)
         }
         
-        // 如果已配置且有旧token，更新服务器
+        // FCM refreshes its token independently of app activation. Persisting
+        // only the local value leaves the DooPush server pointing at the stale
+        // token, so immediately re-register the current device information.
         if (isConfigured.get() && !oldToken.isNullOrEmpty() && oldToken != newToken) {
             Log.d(TAG, "Token已变化，更新服务器")
-            // 这里可以实现token更新逻辑，暂时省略
+            updateDeviceInfo { success, error ->
+                if (success) {
+                    Log.i(TAG, "Token刷新后服务端同步成功")
+                } else {
+                    Log.e(TAG, "Token刷新后服务端同步失败: ${error?.message ?: "unknown error"}")
+                }
+            }
         }
     }
 

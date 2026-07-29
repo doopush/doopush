@@ -308,6 +308,10 @@ A: SDK 提供了详细的日志输出，使用 `adb logcat -s DooPushManager` �
 
 ## 更新日志
 
+### v1.2.3
+- **Fix (FCM)**：FCM token 刷新后立即重新上报当前设备，避免本地已切换到新 token、服务端仍持有旧 token 而永久断推。
+- `BuildConfig.SDK_VERSION` / `DooPushDevice.SDK_VERSION` → `1.2.3`。
+
 ### v1.2.2
 - **Fix (OPPO)**：OPPO/HeyTap 厂商注册失败时只抛通用超时错误，无法定位根因；`onError` 改为透出 MCS 返回的真实错误信息（`getFullDescription()`），便于排查静默失败。
 - `BuildConfig.SDK_VERSION` / `DooPushDevice.SDK_VERSION` → `1.2.2`。

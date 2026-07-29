@@ -58,7 +58,7 @@ class DooPushNetworking(private val config: DooPushConfig) {
             val authenticatedRequest = originalRequest.newBuilder()
                 .header("X-API-Key", config.apiKey)
                 .header("Content-Type", "application/json")
-                .header("User-Agent", "DooPush-Android-SDK/1.2.2")
+                .header("User-Agent", "DooPush-Android-SDK/1.2.3")
                 .build()
             chain.proceed(authenticatedRequest)
         }
