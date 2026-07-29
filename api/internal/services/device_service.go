@@ -14,6 +14,11 @@ import (
 // DeviceService 设备服务
 type DeviceService struct{}
 
+var (
+	ErrDeviceNotFound      = errors.New("设备不存在")
+	ErrDeviceTokenConflict = errors.New("新Token已绑定到其他设备")
+)
+
 // NewDeviceService 创建设备服务
 func NewDeviceService() *DeviceService {
 	return &DeviceService{}
@@ -111,6 +116,41 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 	}
 
 	return device, nil
+}
+
+// UpdateDeviceToken 按设备主键更新推送 Token，保留设备的标签、分组和推送历史关联。
+func (s *DeviceService) UpdateDeviceToken(appID, deviceID uint, token string) error {
+	var device models.Device
+	if err := database.DB.Where("id = ? AND app_id = ?", deviceID, appID).First(&device).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrDeviceNotFound
+		}
+		return errors.New("查询设备失败")
+	}
+
+	tokenHash := utils.HashString(token)
+	var existing models.Device
+	if err := database.DB.Where(
+		"app_id = ? AND token_hash = ? AND id <> ?",
+		appID,
+		tokenHash,
+		deviceID,
+	).First(&existing).Error; err == nil {
+		return ErrDeviceTokenConflict
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.New("检查设备Token失败")
+	}
+
+	updates := map[string]interface{}{
+		"token":      token,
+		"token_hash": tokenHash,
+		"last_seen":  utils.TimeNow(),
+	}
+	if err := database.DB.Model(&device).Updates(updates).Error; err != nil {
+		return errors.New("设备Token更新失败")
+	}
+
+	return nil
 }
 
 func normalizePushEnvironment(platform, pushEnv string) string {

@@ -1298,14 +1298,31 @@ class DooPushManager private constructor() {
         
         // FCM refreshes its token independently of app activation. Persisting
         // only the local value leaves the DooPush server pointing at the stale
-        // token, so immediately re-register the current device information.
+        // token, so update the existing server-side device by its stable ID.
         if (isConfigured.get() && !oldToken.isNullOrEmpty() && oldToken != newToken) {
             Log.d(TAG, "Token已变化，更新服务器")
-            updateDeviceInfo { success, error ->
-                if (success) {
-                    Log.i(TAG, "Token刷新后服务端同步成功")
-                } else {
-                    Log.e(TAG, "Token刷新后服务端同步失败: ${error?.message ?: "unknown error"}")
+            if (!deviceId.isNullOrEmpty()) {
+                networking?.updateDeviceToken(
+                    deviceId,
+                    newToken,
+                    object : DooPushNetworking.UpdateTokenCallback {
+                        override fun onSuccess() {
+                            Log.i(TAG, "Token刷新后服务端同步成功")
+                        }
+
+                        override fun onError(error: DooPushError) {
+                            Log.e(TAG, "Token刷新后服务端同步失败: ${error.message}")
+                        }
+                    }
+                )
+            } else {
+                // 旧版缓存可能只保存了 token；没有服务端设备 ID 时才回退到注册。
+                updateDeviceInfo { success, error ->
+                    if (success) {
+                        Log.i(TAG, "Token刷新后服务端注册成功")
+                    } else {
+                        Log.e(TAG, "Token刷新后服务端注册失败: ${error?.message ?: "unknown error"}")
+                    }
                 }
             }
         }

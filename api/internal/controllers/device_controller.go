@@ -41,6 +41,11 @@ type RegisterDeviceRequest struct {
 	Tags       []services.DeviceTagItem `json:"tags" example:"[{\"tag_name\":\"user_type\",\"tag_value\":\"vip\"},{\"tag_name\":\"version\",\"tag_value\":\"1.0\"}]"`
 }
 
+// UpdateDeviceTokenRequest 更新设备 Token 请求
+type UpdateDeviceTokenRequest struct {
+	Token string `json:"token" binding:"required" example:"new_device_token_here"`
+}
+
 // DeviceListResponse 设备列表响应
 type DeviceListResponse struct {
 	Devices []interface{} `json:"devices"`
@@ -108,6 +113,56 @@ func (d *DeviceController) RegisterDevice(c *gin.Context) {
 		Message: "设备注册成功",
 		Data:    device,
 	})
+}
+
+// UpdateDeviceToken 更新设备推送 Token
+// @Summary 更新设备推送 Token
+// @Description FCM/APNs 等推送服务轮换 Token 后，按设备 ID 更新原设备记录并保留标签、分组等关联
+// @Tags 设备管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param appId path int true "应用ID"
+// @Param deviceId path int true "设备ID"
+// @Param request body UpdateDeviceTokenRequest true "新Token"
+// @Success 200 {object} response.APIResponse
+// @Failure 400 {object} response.APIResponse
+// @Failure 401 {object} response.APIResponse
+// @Failure 404 {object} response.APIResponse
+// @Failure 422 {object} response.APIResponse
+// @Router /apps/{appId}/devices/{deviceId}/token [put]
+func (d *DeviceController) UpdateDeviceToken(c *gin.Context) {
+	appID, err := strconv.ParseUint(c.Param("appId"), 10, 32)
+	if err != nil {
+		response.BadRequest(c, "无效的应用ID")
+		return
+	}
+
+	deviceID, err := strconv.ParseUint(c.Param("deviceId"), 10, 32)
+	if err != nil {
+		response.BadRequest(c, "无效的设备ID")
+		return
+	}
+
+	var req UpdateDeviceTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if err := d.deviceService.UpdateDeviceToken(uint(appID), uint(deviceID), req.Token); err != nil {
+		switch err {
+		case services.ErrDeviceNotFound:
+			response.NotFound(c, err.Error())
+		case services.ErrDeviceTokenConflict:
+			response.Error(c, http.StatusUnprocessableEntity, err.Error())
+		default:
+			response.InternalServerError(c, err.Error())
+		}
+		return
+	}
+
+	response.Success(c, nil)
 }
 
 // GetDevices 获取设备列表

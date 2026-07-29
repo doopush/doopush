@@ -219,6 +219,7 @@ func startServer() {
 		apiKeyRoutes.Use(middleware.APIKeyAuth())
 		{
 			apiKeyRoutes.POST("/apps/:appId/devices", deviceCtrl.RegisterDevice)
+			apiKeyRoutes.PUT("/apps/:appId/devices/:deviceId/token", deviceCtrl.UpdateDeviceToken)
 			apiKeyRoutes.POST("/apps/:appId/push/statistics/report", pushCtrl.ReportPushStatistics)
 		}
 

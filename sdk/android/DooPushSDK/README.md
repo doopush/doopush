@@ -309,7 +309,7 @@ A: SDK 提供了详细的日志输出，使用 `adb logcat -s DooPushManager` �
 ## 更新日志
 
 ### v1.2.3
-- **Fix (FCM)**：FCM token 刷新后立即重新上报当前设备，避免本地已切换到新 token、服务端仍持有旧 token 而永久断推。
+- **Fix (FCM)**：FCM token 刷新后按服务端 device ID 更新原设备记录，避免创建重复设备，并保留已有标签、分组和推送历史关联。
 - `BuildConfig.SDK_VERSION` / `DooPushDevice.SDK_VERSION` → `1.2.3`。
 
 ### v1.2.2

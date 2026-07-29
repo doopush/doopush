@@ -182,7 +182,7 @@ MIT
 ## CHANGELOG
 
 ### v0.5.3
-- **Fix (Android/FCM)**：依赖 Android SDK v1.2.3，FCM token 刷新后会立即同步到 DooPush 服务端，避免服务端继续使用旧 token。
+- **Fix (Android/FCM)**：依赖 Android SDK v1.2.3，FCM token 刷新后会按 device ID 更新服务端原设备记录，避免旧 token 断推或产生重复设备。
 - **Fix (Android dependency)**：React Native bridge 的原生依赖由遗留的 `1.2.0` 对齐到 `1.2.3`，确保 v1.2.1-v1.2.3 的原生修复实际进入应用构建。
 
 ### v0.5.2
