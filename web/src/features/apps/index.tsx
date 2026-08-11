@@ -82,7 +82,6 @@ export function Apps() {
     setDeleteDialogOpen(true)
   }
 
-
   const handleManageMembers = (app: App) => {
     setSelectedApp(app)
     setMembersDialogOpen(true)
@@ -180,7 +179,7 @@ export function Apps() {
           <div className='flex flex-col gap-1'>
             <h1 className='text-2xl font-bold tracking-tight'>应用管理</h1>
             <p className='text-muted-foreground'>
-              管理您的推送应用和推送服务配置
+              管理您的推送应用、客户端 App Key 和服务端 App Secret
             </p>
           </div>
           <Button onClick={() => setCreateDialogOpen(true)}>
@@ -344,7 +343,6 @@ export function Apps() {
               onSuccess={handleAppDeleted}
             />
             
-
             <AppMembersDialog
               app={selectedApp}
               open={membersDialogOpen}

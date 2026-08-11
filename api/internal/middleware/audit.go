@@ -38,10 +38,8 @@ func AuditLogger() gin.HandlerFunc {
 		// 执行后续中间件和处理函数
 		c.Next()
 
-		// 异步记录审计日志，避免影响响应性能
-		go func() {
-			logAuditAction(auditService, c, requestBody, start)
-		}()
+		// Gin Context 会在请求结束后复用，审计必须在当前请求上下文仍有效时完成。
+		logAuditAction(auditService, c, requestBody, start)
 	}
 }
 
@@ -83,10 +81,23 @@ func shouldAudit(c *gin.Context) bool {
 
 // logAuditAction 记录审计操作
 func logAuditAction(auditService *services.AuditService, c *gin.Context, requestBody []byte, startTime time.Time) {
-	// 获取用户信息
+	// 获取操作主体。App Secret 是独立的机器身份，不映射到任何用户。
 	userID := c.GetUint("user_id")
-	if userID == 0 {
-		return // 没有用户信息，跳过记录
+	principalType := c.GetString("auth_type")
+	principalID := userID
+	var appSecretID *uint
+	if principalType == "app_secret" {
+		secretID := c.GetUint("app_secret_id")
+		if secretID == 0 {
+			return
+		}
+		principalID = secretID
+		appSecretID = &secretID
+	} else {
+		principalType = "user"
+		if userID == 0 {
+			return
+		}
 	}
 
 	// 获取应用ID：路径参数 > 表单 > 查询参数
@@ -97,6 +108,7 @@ func logAuditAction(auditService *services.AuditService, c *gin.Context, request
 	if action == "" {
 		return // 无法解析操作类型，跳过记录
 	}
+	resourceID = resolveAuditResourceID(c, resourceID)
 
 	// 获取客户端IP地址
 	ipAddress := getClientIP(c)
@@ -107,17 +119,26 @@ func logAuditAction(auditService *services.AuditService, c *gin.Context, request
 	// 构建操作详情
 	details := buildRequestDetails(c, requestBody)
 
+	beforeData, _ := c.Get("audit_before_data")
+	var afterData interface{} = details
+	if value, exists := c.Get("audit_after_data"); exists {
+		afterData = value
+	}
+
 	// 记录审计日志
 	err := auditService.LogActionWithContext(
 		userID,
+		principalType,
+		principalID,
+		appSecretID,
 		appID,
 		action,
 		resource,
 		resourceID,
 		ipAddress,
 		userAgent,
-		nil, // 目前不记录变更前数据，可以后续扩展
-		details,
+		beforeData,
+		afterData,
 	)
 
 	if err != nil {
@@ -159,6 +180,12 @@ func parseActionFromRequest(c *gin.Context) (action, resource, resourceID string
 					if len(pathParts) > i+2 {
 						resourceID = pathParts[i+1]
 					}
+				}
+			case "app-secrets":
+				resource = "app_secret"
+				resourceID = ""
+				if len(pathParts) > i+1 && isNumeric(pathParts[i+1]) {
+					resourceID = pathParts[i+1]
 				}
 			case "devices":
 				resource = "device"
@@ -214,6 +241,20 @@ func parseActionFromRequest(c *gin.Context) (action, resource, resourceID string
 	}
 
 	return action, resource, resourceID
+}
+
+func resolveAuditResourceID(c *gin.Context, parsedResourceID string) string {
+	if resourceID, exists := c.Get("audit_resource_id"); exists {
+		switch value := resourceID.(type) {
+		case uint:
+			return strconv.FormatUint(uint64(value), 10)
+		case string:
+			if isNumeric(value) {
+				return value
+			}
+		}
+	}
+	return parsedResourceID
 }
 
 // getClientIP 获取客户端真实IP地址

@@ -98,7 +98,7 @@ class SettingsActivity : AppCompatActivity() {
      */
     private fun loadCurrentConfig() {
         binding.etAppId.setText(MainActivity.appId)
-        binding.etApiKey.setText(MainActivity.apiKey)
+        binding.etApiKey.setText(MainActivity.appKey)
         binding.etBaseUrl.setText(MainActivity.baseUrl)
         binding.switchDebug.isChecked = MainActivity.debugEnabled
     }
@@ -108,19 +108,19 @@ class SettingsActivity : AppCompatActivity() {
      */
     private fun saveConfig() {
         val appId = binding.etAppId.text.toString().trim()
-        val apiKey = binding.etApiKey.text.toString().trim()
+        val appKey = binding.etApiKey.text.toString().trim()
         val baseUrl = binding.etBaseUrl.text.toString().trim()
         val debugEnabled = binding.switchDebug.isChecked
         
         // 简单验证
-        if (appId.isBlank() || apiKey.isBlank() || baseUrl.isBlank()) {
+        if (appId.isBlank() || appKey.isBlank() || baseUrl.isBlank()) {
             showToast("配置不能为空")
             return
         }
         
         // 修改全局变量
         MainActivity.appId = appId
-        MainActivity.apiKey = apiKey
+        MainActivity.appKey = appKey
         MainActivity.baseUrl = baseUrl
         MainActivity.debugEnabled = debugEnabled
         
@@ -129,7 +129,7 @@ class SettingsActivity : AppCompatActivity() {
             dooPushManager.configure(
                 context = this,
                 appId = appId,
-                apiKey = apiKey,
+                appKey = appKey,
                 baseURL = baseUrl
             )
             
@@ -329,7 +329,7 @@ class SettingsActivity : AppCompatActivity() {
      */
     private fun resetConfig() {
         MainActivity.appId = ""
-        MainActivity.apiKey = ""
+        MainActivity.appKey = ""
         MainActivity.baseUrl = ""
         MainActivity.debugEnabled = true
         

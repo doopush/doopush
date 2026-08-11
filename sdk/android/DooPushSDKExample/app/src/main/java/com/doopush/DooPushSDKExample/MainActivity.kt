@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         
         // 全局配置变量（空值，使用SDK默认配置）
         var appId: String = ""
-        var apiKey: String = ""
+        var appKey: String = ""
         var baseUrl: String = ""
         var debugEnabled: Boolean = true
         const val REQUEST_CODE_NOTIFICATION = 1001
@@ -201,7 +201,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
             val jsonObject = JSONObject(jsonString)
             
             appId = jsonObject.optString("app_id", "")
-            apiKey = jsonObject.optString("api_key", "")
+            appKey = jsonObject.optString("app_key", "")
             baseUrl = jsonObject.optString("base_url", "")
             debugEnabled = jsonObject.optBoolean("debug_enabled", true)
             
@@ -225,7 +225,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
             dooPushManager.configure(
                 context = this,
                 appId = appId,
-                apiKey = apiKey,
+                appKey = appKey,
                 baseURL = baseUrl
             )
             

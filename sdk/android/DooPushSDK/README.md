@@ -95,15 +95,15 @@ import com.doopush.sdk.DooPushManager
 import com.doopush.sdk.models.DooPushCallback
 
 class MyApplication : Application() {
-    
+
     override fun onCreate() {
         super.onCreate()
-        
+
         // 配置 DooPush SDK
         DooPushManager.getInstance().configure(
             context = this,
             appId = "your_app_id",
-            apiKey = "your_api_key", 
+            appKey = "your_app_key",
             baseUrl = "https://your-server.com/api/v1" // 可选
         )
     }
@@ -114,36 +114,36 @@ class MyApplication : Application() {
 
 ```kotlin
 class MainActivity : AppCompatActivity(), DooPushCallback {
-    
+
     private val dooPushManager = DooPushManager.getInstance()
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // 设置回调监听器
         dooPushManager.setCallback(this)
-        
+
         // 注册推送通知
         dooPushManager.registerForPushNotifications()
     }
-    
+
     // 注册成功回调
     override fun onRegisterSuccess(token: String) {
         Log.d("DooPush", "推送注册成功: $token")
         // 处理注册成功逻辑
     }
-    
+
     // 注册失败回调
     override fun onRegisterError(error: DooPushError) {
         Log.e("DooPush", "推送注册失败: ${error.message}")
     }
-    
+
     // 接收推送消息
     override fun onMessageReceived(message: PushMessage) {
         Log.d("DooPush", "收到推送消息: ${message.title}")
         // 处理推送消息
     }
-    
+
     // 通知点击回调
     override fun onNotificationClick(notificationData: DooPushNotificationHandler.NotificationData) {
         Log.d("DooPush", "用户点击了通知")
@@ -230,7 +230,7 @@ plugins {
 ### DooPushManager
 
 #### 核心方法
-- `configure(context, appId, apiKey, baseUrl?)` - 配置 SDK
+- `configure(context, appId, appKey, baseUrl?)` - 配置 SDK
 - `setCallback(callback)` - 设置回调监听器
 - `registerForPushNotifications(callback?)` - 走 SDK 内部 token 获取流程注册
 - `registerDevice(token, vendor, callback)` - 用调用方已有 token 直接注册（共存模式，v1.1.0+）

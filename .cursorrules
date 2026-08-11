@@ -108,7 +108,7 @@ doopush/
 - 遵循 RESTful API 设计原则
 - URL路径体现层次关系: /api/v1/apps/:appId/devices
 - 统一的响应格式和错误处理
-- 支持JWT和API Key双重认证机制
+- 支持 JWT、App Key 和 App Secret 分层认证机制
 - 必须编写完整的 Swagger 注释，包含参数、响应、错误码说明
 
 **错误处理：**
@@ -154,7 +154,7 @@ doopush/
 - 用户权限：owner, developer, viewer
 
 ### 应用层级 (App Level)  
-- 每个应用拥有独立的API密钥
+- 每个应用拥有独立的 App Key 和按需创建的 App Secret
 - 应用间数据完全隔离
 - 应用配置独立管理 (iOS证书、Android厂商密钥等)
 

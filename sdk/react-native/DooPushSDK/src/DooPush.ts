@@ -33,12 +33,12 @@ export function configure(config: DooPushConfig): void {
   DooPushModule.configure(config);
 }
 
-/** Configure native token acquisition without DooPush credentials or network access. */
+/** Initialize native token providers when the SDK has no DooPush credentials. */
 export function configureLocal(): void {
   DooPushModule.configureLocal();
 }
 
-/** Acquire the best available APNs/FCM/OEM token without registering it with DooPush. */
+/** Acquire the best available APNs/FCM/OEM token without registering the device with DooPush. */
 export function acquireToken(): Promise<DooPushTokenResult> {
   return DooPushModule.acquireToken();
 }

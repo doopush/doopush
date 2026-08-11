@@ -42,20 +42,20 @@ pod 'DooPushSDK', :path => 'path/to/DooPushSDK'
 import DooPushSDK
 
 func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-    
+
     // 配置 DooPushSDK
     DooPushManager.shared.configure(
         appId: "your_app_id",
-        apiKey: "your_api_key",
+        appKey: "your_app_key",
         baseURL: "http://localhost:5001/api/v1" // 可选，用于本地开发
     )
-    
+
     // 设置代理
     DooPushManager.shared.delegate = self
-    
+
     // 启用开发模式日志（可选）
     DooPushLogger.enableDevelopmentMode()
-    
+
     return true
 }
 ```
@@ -94,11 +94,11 @@ extension AppDelegate: DooPushDelegate {
     func dooPush(_ manager: DooPushManager, didRegisterWithToken token: String) {
         print("✅ 设备注册成功: \(token)")
     }
-    
+
     func dooPush(_ manager: DooPushManager, didReceiveNotification userInfo: [AnyHashable: Any]) {
         print("🔔 收到推送通知: \(userInfo)")
     }
-    
+
     func dooPush(_ manager: DooPushManager, didFailWithError error: Error) {
         print("❌ DooPush 错误: \(error.localizedDescription)")
     }
@@ -157,7 +157,7 @@ let currentBadge = DooPushManager.shared.getCurrentBadgeNumber()
 ### DooPushManager
 
 #### 核心方法
-- `configure(appId:apiKey:baseURL:)` - 配置 SDK
+- `configure(appId:appKey:baseURL:)` - 配置 SDK
 - `registerForPushNotifications(completion:)` - 注册推送通知
 - `handleNotification(_:) -> Bool` - 处理推送通知，返回是否处理成功
 - `updateDeviceInfo()` - 更新设备信息

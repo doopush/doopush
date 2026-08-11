@@ -25,7 +25,7 @@ final class DooPushManagementModeTests: XCTestCase {
     }
 
     func testRegisterWithTokenInvokesNetworking() {
-        DooPushManager.shared.configure(appId: "test_app_id", apiKey: "test_api_key")
+        DooPushManager.shared.configure(appId: "test_app_id", appKey: "test_app_key")
 
         let exp = expectation(description: "completion called")
         DooPushManager.shared.registerDevice(withToken: "deadbeef", vendor: "apns") { deviceId, error in
@@ -35,5 +35,54 @@ final class DooPushManagementModeTests: XCTestCase {
             exp.fulfill()
         }
         wait(for: [exp], timeout: 5.0)
+    }
+
+    func testConfigureForTokenAcquisitionPreservesFullConfigurationAndDeviceId() {
+        let storage = DooPushStorage()
+        DooPushManager.shared.configure(
+            appId: "existing_app_id",
+            appKey: "existing_app_key",
+            baseURL: "https://example.com/api/v1"
+        )
+        storage.saveDeviceId("existing_device_id")
+
+        DooPushManager.shared.configureForTokenAcquisition()
+
+        XCTAssertEqual(storage.getConfig()?.appId, "existing_app_id")
+        XCTAssertEqual(storage.getConfig()?.appKey, "existing_app_key")
+        XCTAssertEqual(storage.getConfig()?.baseURL, "https://example.com/api/v1")
+        XCTAssertEqual(storage.getDeviceId(), "existing_device_id")
+    }
+
+    func testConfigureForTokenAcquisitionDoesNotInstallDelegateInPassiveMode() {
+        let manager = DooPushManager.shared
+        manager.setNotificationManagementMode(.passive)
+
+        manager.configureForTokenAcquisition()
+        manager.enableAutomaticNotificationTracking()
+
+        XCTAssertEqual(manager.notificationManagementMode, .passive)
+    }
+
+    func testAcquirePushTokenRejectsOverlappingRegistration() {
+        let manager = DooPushManager.shared
+
+        var firstError: Error?
+        XCTAssertTrue(manager.beginTokenRequest(registerWithServer: true) { _, error in
+            firstError = error
+        })
+
+        var overlappingError: Error?
+        XCTAssertFalse(manager.beginTokenRequest(registerWithServer: false) { _, error in
+            overlappingError = error
+        })
+
+        XCTAssertEqual(overlappingError as? DooPushError, .registrationInProgress)
+        XCTAssertNil(firstError, "重叠请求不得替换或完成首个请求的回调")
+
+        let apnsError = NSError(domain: "DooPushSDKTests", code: 1)
+        manager.didFailToRegisterForRemoteNotifications(with: apnsError)
+        XCTAssertEqual((firstError as NSError?)?.domain, apnsError.domain)
+        XCTAssertEqual((firstError as NSError?)?.code, apnsError.code)
     }
 }

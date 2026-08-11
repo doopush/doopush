@@ -1092,13 +1092,21 @@ func (s *ExportService) createAuditLogExcel(logs []models.AuditLog, filename, sh
 			afterData = truncateText(*log.AfterData, 500)
 		}
 		userAgent := truncateText(log.UserAgent, 200)
+		var userID interface{} = ""
+		if log.UserID != nil {
+			userID = *log.UserID
+		}
+		actorName := log.UserName
+		if log.PrincipalType == "app_secret" {
+			actorName = fmt.Sprintf("App Secret #%d", log.PrincipalID)
+		}
 
 		// 写入行数据
 		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), log.ID)
 		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), log.AppID)
 		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), appName)
-		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), log.UserID)
-		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), log.UserName)
+		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), userID)
+		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), actorName)
 		f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), log.Action)
 		f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), log.Resource)
 		f.SetCellValue(sheetName, fmt.Sprintf("H%d", row), log.ResourceID)

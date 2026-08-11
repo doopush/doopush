@@ -59,20 +59,23 @@ type PushStatistics struct {
 
 // AuditLog 审计日志模型
 type AuditLog struct {
-	ID         uint           `gorm:"primarykey" json:"id"`
-	AppID      uint           `gorm:"not null;index;comment:应用ID" json:"app_id"`
-	UserID     uint           `gorm:"not null;index;comment:用户ID" json:"user_id"`
-	UserName   string         `gorm:"size:100;comment:用户名冗余字段" json:"user_name,omitempty"`
-	Action     string         `gorm:"size:50;not null;comment:操作类型" json:"action" example:"create_push"`
-	Resource   string         `gorm:"size:100;not null;comment:操作资源" json:"resource" example:"push"`
-	ResourceID uint           `gorm:"comment:资源ID" json:"resource_id" example:"123"`
-	Details    string         `gorm:"type:json;comment:操作详情" json:"details" example:"{\"title\":\"新消息\"}"`
-	BeforeData *string        `gorm:"type:json;comment:变更前数据" json:"before_data,omitempty"`
-	AfterData  *string        `gorm:"type:json;comment:变更后数据" json:"after_data,omitempty"`
-	IPAddress  string         `gorm:"size:45;comment:IP地址" json:"ip_address" example:"192.168.1.1"`
-	UserAgent  string         `gorm:"size:500;comment:用户代理" json:"user_agent"`
-	CreatedAt  time.Time      `json:"created_at"`
-	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
+	ID            uint           `gorm:"primarykey" json:"id"`
+	AppID         uint           `gorm:"not null;index;comment:应用ID" json:"app_id"`
+	UserID        *uint          `gorm:"index;comment:用户ID，机器主体为空" json:"user_id,omitempty"`
+	UserName      string         `gorm:"size:100;comment:用户名冗余字段" json:"user_name,omitempty"`
+	PrincipalType string         `gorm:"size:20;not null;default:user;index;comment:操作主体类型" json:"principal_type"`
+	PrincipalID   uint           `gorm:"not null;default:0;index;comment:操作主体ID" json:"principal_id"`
+	AppSecretID   *uint          `gorm:"index;comment:App Secret ID" json:"app_secret_id,omitempty"`
+	Action        string         `gorm:"size:50;not null;comment:操作类型" json:"action" example:"create_push"`
+	Resource      string         `gorm:"size:100;not null;comment:操作资源" json:"resource" example:"push"`
+	ResourceID    uint           `gorm:"comment:资源ID" json:"resource_id" example:"123"`
+	Details       string         `gorm:"type:json;comment:操作详情" json:"details" example:"{\"title\":\"新消息\"}"`
+	BeforeData    *string        `gorm:"type:json;comment:变更前数据" json:"before_data,omitempty"`
+	AfterData     *string        `gorm:"type:json;comment:变更后数据" json:"after_data,omitempty"`
+	IPAddress     string         `gorm:"size:45;comment:IP地址" json:"ip_address" example:"192.168.1.1"`
+	UserAgent     string         `gorm:"size:500;comment:用户代理" json:"user_agent"`
+	CreatedAt     time.Time      `json:"created_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 
 	// 关联关系
 	App  App  `gorm:"foreignKey:AppID" json:"app,omitempty"`

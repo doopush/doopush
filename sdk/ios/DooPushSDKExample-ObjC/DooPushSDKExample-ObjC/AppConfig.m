@@ -58,8 +58,8 @@
     return [self valueForKey:@"APP_ID" default:@"1"];
 }
 
-+ (NSString *)apiKey {
-    return [self valueForKey:@"API_KEY" default:@"dp_live_XXpwyhNOxpsXWh3sRxxhZ0KK9Wo8ArwB"];
++ (NSString *)appKey {
+    return [self valueForKey:@"APP_KEY" default:@"dp_ak_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"];
 }
 
 + (NSString *)baseURL {
@@ -73,7 +73,7 @@
 + (void)printConfiguration {
     [Logger info:@"🔧 配置参数:"];
     [Logger info:[NSString stringWithFormat:@"   App ID: %@", self.appId]];
-    [Logger info:[NSString stringWithFormat:@"   API Key: %@", self.apiKey]];
+    [Logger info:[NSString stringWithFormat:@"   App Key: %@", self.appKey]];
     [Logger info:[NSString stringWithFormat:@"   Base URL: %@", self.displayBaseURL]];
 }
 

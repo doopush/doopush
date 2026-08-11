@@ -46,7 +46,7 @@
     <string name="settings_title">设置</string>
     <string name="settings_sdk_config">SDK 配置</string>
     <string name="settings_app_id">应用 ID</string>
-    <string name="settings_api_key">API 密钥</string>
+    <string name="settings_api_key">App Key</string>
     <string name="settings_base_url">服务器地址</string>
     <string name="settings_debug_info">调试信息</string>
     <string name="settings_device_info">设备信息</string>

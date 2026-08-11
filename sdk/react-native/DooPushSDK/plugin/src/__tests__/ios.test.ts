@@ -10,7 +10,7 @@ const baseConfig: ExpoConfig = {
 };
 
 const baseValidated = {
-  appId: 'a', apiKey: 'k',
+  appId: 'a', appKey: 'dp_ak_test',
   ios: { mode: 'development' as const },
   android: { vendors: {} },
 };

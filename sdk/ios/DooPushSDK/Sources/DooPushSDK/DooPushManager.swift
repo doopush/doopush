@@ -62,13 +62,13 @@ import UserNotifications
     /// 配置 DooPush SDK
     /// - Parameters:
     ///   - appId: 应用ID
-    ///   - apiKey: API密钥
+    ///   - appKey: App Key
     ///   - baseURL: 服务器基础URL，默认为 https://doopush.com/api/v1
     ///
     /// 注意：当 `baseURL` 为空字符串时，将自动回退到默认值，便于 Objective‑C 侧传入空字符串。
     @objc public func configure(
         appId: String,
-        apiKey: String,
+        appKey: String,
         baseURL: String = "https://doopush.com/api/v1"
     ) {
         tokenAcquisitionOnly = false
@@ -77,7 +77,7 @@ import UserNotifications
 
         self.config = DooPushConfig(
             appId: appId,
-            apiKey: apiKey,
+            appKey: appKey,
             baseURL: resolvedBaseURL
         )
 
@@ -90,8 +90,9 @@ import UserNotifications
         // 配置统计管理器
         statisticsManager.configure(config: config!, networking: networking)
 
-        // 默认启用自动通知事件采集
-        enableAutomaticNotificationTracking()
+        if notificationManagementMode == .active {
+            enableAutomaticNotificationTracking()
+        }
 
         // 检查是否需要更新设备信息
         checkAndUpdateDeviceInfoIfNeeded()
@@ -101,6 +102,11 @@ import UserNotifications
 
     /// 配置为本地 token 获取模式。该模式不需要 DooPush App ID 或 API Key。
     @objc public func configureForTokenAcquisition() {
+        guard config == nil else {
+            DooPushLogger.info("DooPush SDK 已完整配置，保留现有配置用于本地 token 获取")
+            return
+        }
+
         tokenAcquisitionOnly = true
         config = nil
         pendingDeviceToken = nil
@@ -108,16 +114,18 @@ import UserNotifications
         wsConnection = nil
         storage.clearConfig()
         storage.clearDeviceId()
-        enableAutomaticNotificationTracking()
+        if notificationManagementMode == .active {
+            enableAutomaticNotificationTracking()
+        }
         DooPushLogger.info("DooPush SDK 已配置为本地 token 获取模式")
     }
 
     /// Objective‑C 便捷配置方法：允许省略 `baseURL` 参数（使用默认 https://doopush.com/api/v1）
     /// - Parameters:
     ///   - appId: 应用ID
-    ///   - apiKey: API密钥
-    @objc public func configure(appId: String, apiKey: String) {
-        self.configure(appId: appId, apiKey: apiKey, baseURL: "https://doopush.com/api/v1")
+    ///   - appKey: App Key
+    @objc public func configure(appId: String, appKey: String) {
+        self.configure(appId: appId, appKey: appKey, baseURL: "https://doopush.com/api/v1")
     }
 
     // MARK: - 推送注册
@@ -125,9 +133,30 @@ import UserNotifications
     /// 注册推送通知
     /// - Parameter completion: 完成回调，返回设备token或错误
     @objc public func registerForPushNotifications(completion: @escaping (String?, Error?) -> Void) {
+        requestPushToken(registerWithServer: !tokenAcquisitionOnly, completion: completion)
+    }
+
+    /// 获取 APNs Token，但不向 DooPush 服务端注册设备。
+    /// - Parameter completion: 完成回调，返回设备 token 或错误
+    @objc public func acquirePushToken(completion: @escaping (String?, Error?) -> Void) {
+        requestPushToken(registerWithServer: false, completion: completion)
+    }
+
+    private func requestPushToken(
+        registerWithServer: Bool,
+        completion: @escaping (String?, Error?) -> Void
+    ) {
         guard config != nil || tokenAcquisitionOnly else {
             let error = DooPushError.notConfigured
             completion(nil, error)
+            return
+        }
+
+        guard beginTokenRequest(
+            registerWithServer: registerWithServer,
+            completion: completion
+        ) else {
+            DooPushLogger.warning("另一个注册流程正在进行，拒绝重复请求")
             return
         }
 
@@ -139,7 +168,7 @@ import UserNotifications
             DispatchQueue.main.async {
                 if let error = error {
                     DooPushLogger.error("推送权限请求失败: \(error)")
-                    completion(nil, error)
+                    self?.finishTokenRequest()?(nil, error)
                     return
                 }
 
@@ -150,18 +179,21 @@ import UserNotifications
                 } else {
                     DooPushLogger.warning("用户拒绝了推送权限")
                     let error = DooPushError.pushPermissionDenied
-                    completion(nil, error)
+                    self?.finishTokenRequest()?(nil, error)
                     self?.storage.setPushPermissionGranted(false)
                 }
             }
         }
-
-        // 保存完成回调
-        self.registrationCompletion = completion
     }
 
     /// 设备token注册完成回调
     private var registrationCompletion: ((String?, Error?) -> Void)?
+
+    /// 保护注册回调与请求模式，使并发调用只能有一个占用 APNs 注册流程。
+    private let tokenRequestLock = NSLock()
+
+    /// 当前 APNs token 请求成功后是否继续向 DooPush 服务端注册。
+    private var currentRegistrationRequiresServer = true
 
     /// 待重试的设备token（用于网络权限申请后的重试）
     private var pendingDeviceToken: String? = nil
@@ -173,11 +205,10 @@ import UserNotifications
 
         DooPushLogger.info("获取到设备token: \(tokenString)")
 
-        if tokenAcquisitionOnly {
+        if !tokenRequestRequiresServer() {
             storage.saveDeviceToken(tokenString)
-            registrationCompletion?(tokenString, nil)
-            registrationCompletion = nil
-            delegate?.dooPush(self, didRegisterWithToken: tokenString)
+            let completion = finishTokenRequest()
+            completion?(tokenString, nil)
             return
         }
 
@@ -190,10 +221,46 @@ import UserNotifications
     @objc public func didFailToRegisterForRemoteNotifications(with error: Error) {
         DooPushLogger.error("设备token注册失败: \(error)")
 
-        registrationCompletion?(nil, error)
-        registrationCompletion = nil
+        let completion = finishTokenRequest()
+        completion?(nil, error)
 
         delegate?.dooPush(self, didFailWithError: error)
+    }
+
+    func beginTokenRequest(
+        registerWithServer: Bool,
+        completion: @escaping (String?, Error?) -> Void
+    ) -> Bool {
+        tokenRequestLock.lock()
+        guard registrationCompletion == nil else {
+            tokenRequestLock.unlock()
+            completion(nil, DooPushError.registrationInProgress)
+            return false
+        }
+
+        // Save state before asking the OS because its delegate callback may arrive
+        // immediately when notification permission was already granted.
+        registrationCompletion = completion
+        currentRegistrationRequiresServer = registerWithServer
+        tokenRequestLock.unlock()
+        return true
+    }
+
+    private func tokenRequestRequiresServer() -> Bool {
+        tokenRequestLock.lock()
+        defer { tokenRequestLock.unlock() }
+        return currentRegistrationRequiresServer
+    }
+
+    @discardableResult
+    func finishTokenRequest() -> ((String?, Error?) -> Void)? {
+        tokenRequestLock.lock()
+        defer { tokenRequestLock.unlock() }
+
+        let completion = registrationCompletion
+        registrationCompletion = nil
+        currentRegistrationRequiresServer = !tokenAcquisitionOnly
+        return completion
     }
 
     // MARK: - 设备管理
@@ -247,7 +314,7 @@ import UserNotifications
     private func registerDeviceToServer(token: String) {
         guard let config = config else {
             let error = DooPushError.notConfigured
-            registrationCompletion?(nil, error)
+            finishTokenRequest()?(nil, error)
             return
         }
 
@@ -272,8 +339,7 @@ import UserNotifications
                 self.connectToGateway(token: token)
 
                 // 调用回调
-                self.registrationCompletion?(token, nil)
-                self.registrationCompletion = nil
+                self.finishTokenRequest()?(token, nil)
 
                 // 通知代理
                 self.delegate?.dooPush(self, didRegisterWithToken: token)
@@ -282,8 +348,7 @@ import UserNotifications
                 DooPushLogger.error("设备注册失败: \(error)")
 
                 // 调用回调
-                self.registrationCompletion?(nil, error)
-                self.registrationCompletion = nil
+                self.finishTokenRequest()?(nil, error)
 
                 // 如果是网络错误，保存token用于重试
                 if error.isNetworkError {
@@ -572,7 +637,7 @@ import UserNotifications
         let ws = DooPushWebSocketConnection(
             baseUrl: config.baseURL,
             appId: config.appId,
-            appKey: config.apiKey,
+            appKey: config.appKey,
             token: token
         )
         ws.listener = self
@@ -600,8 +665,10 @@ import UserNotifications
     @objc private func applicationDidBecomeActive() {
         DooPushLogger.info("应用变为活跃状态")
 
-        // 确保自动采集处于启用状态（若外部更改了 delegate，这里会重新包裹并转发）
-        enableAutomaticNotificationTracking()
+        // 确保 active 模式的自动采集处于启用状态（若外部更改了 delegate，这里会重新包裹并转发）
+        if notificationManagementMode == .active {
+            enableAutomaticNotificationTracking()
+        }
 
         // 检查是否需要重试设备注册（网络权限申请后）
         if let pendingToken = pendingDeviceToken {

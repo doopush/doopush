@@ -8,6 +8,7 @@ import (
 
 	"github.com/doopush/doopush/api/internal/config"
 	"github.com/doopush/doopush/api/internal/models"
+	"github.com/doopush/doopush/api/pkg/utils"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -60,11 +61,8 @@ func Connect() {
 
 // AutoMigrate 自动迁移数据表
 func AutoMigrate() {
-	// API Key 管理功能已移除，清理升级前遗留的数据表。
-	if DB.Migrator().HasTable("app_api_keys") {
-		if err := DB.Migrator().DropTable("app_api_keys"); err != nil {
-			log.Fatal("清理旧 API Key 数据表失败:", err)
-		}
+	if err := prepareAppKeyMigration(DB); err != nil {
+		log.Fatal("App Key迁移失败:", err)
 	}
 
 	// 执行自动迁移
@@ -77,4 +75,60 @@ func AutoMigrate() {
 	_ = DB.Migrator().DropColumn(&models.Device{}, "connection_id")
 
 	log.Println("数据库迁移完成")
+}
+
+// appKeyMigrationColumn deliberately omits NOT NULL and unique constraints.
+// Existing rows must be populated before the App model applies those constraints.
+type appKeyMigrationColumn struct {
+	AppKey *string `gorm:"size:80;comment:客户端公开接入Key"`
+}
+
+func (appKeyMigrationColumn) TableName() string { return "apps" }
+
+func prepareAppKeyMigration(db *gorm.DB) error {
+	migrator := db.Migrator()
+	if !migrator.HasTable(&models.App{}) {
+		return nil
+	}
+
+	column := &appKeyMigrationColumn{}
+	if !migrator.HasColumn(column, "AppKey") {
+		if err := migrator.AddColumn(column, "AppKey"); err != nil {
+			return fmt.Errorf("add nullable app_key column: %w", err)
+		}
+	}
+
+	var appIDs []uint
+	if err := db.Table("apps").
+		Where("app_key IS NULL OR app_key = ?", "").
+		Pluck("id", &appIDs).Error; err != nil {
+		return fmt.Errorf("find applications missing app keys: %w", err)
+	}
+
+	for _, appID := range appIDs {
+		appKey, err := generateUnusedAppKey(db)
+		if err != nil {
+			return fmt.Errorf("generate App Key for application %d: %w", appID, err)
+		}
+		if err := db.Table("apps").Where("id = ?", appID).Update("app_key", appKey).Error; err != nil {
+			return fmt.Errorf("backfill App Key for application %d: %w", appID, err)
+		}
+	}
+
+	return nil
+}
+
+func generateUnusedAppKey(db *gorm.DB) (string, error) {
+	const maxAttempts = 10
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		appKey := utils.GenerateSecureToken(models.AppKeyPrefix)
+		var count int64
+		if err := db.Table("apps").Where("app_key = ?", appKey).Count(&count).Error; err != nil {
+			return "", err
+		}
+		if count == 0 {
+			return appKey, nil
+		}
+	}
+	return "", fmt.Errorf("could not generate a unique App Key after %d attempts", maxAttempts)
 }

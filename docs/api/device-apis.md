@@ -6,7 +6,7 @@
 
 | 接口 | 描述 | 认证 |
 |------|------|------|
-| `POST /apps/{appId}/devices` | 注册或更新设备 | API Key |
+| `POST /apps/{appId}/devices` | 注册或更新设备 | App Key |
 
 ## Base URL
 
@@ -23,11 +23,11 @@ https://doopush.com/api/v1
 **请求头**：
 
 ```http
-X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+X-App-Key: dp_ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 Content-Type: application/json
 ```
 
-API Key 必须属于路径中的应用，且 `bundle_id` 必须与应用包名一致。
+App Key 必须属于路径中的应用，且 `bundle_id` 必须与应用包名一致。
 
 ### 请求体
 
@@ -80,7 +80,7 @@ API Key 必须属于路径中的应用，且 `bundle_id` 必须与应用包名�
 
 ```bash
 curl -X POST "https://doopush.com/api/v1/apps/123/devices" \
-     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+     -H "X-App-Key: dp_ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
      -H "Content-Type: application/json" \
      -d '{
        "token": "abc123def456ghi789...",
@@ -126,7 +126,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/devices" \
 | HTTP 状态码 | 场景 |
 |-------------|------|
 | 400 | 请求字段缺失、平台或推送环境取值无效 |
-| 401 | API Key 缺失、无效或不属于路径中的应用 |
+| 401 | App Key 缺失、无效或不属于路径中的应用 |
 | 422 | 应用不存在、已禁用、Bundle ID 不匹配或设备保存失败 |
 
 ```json
@@ -140,6 +140,6 @@ curl -X POST "https://doopush.com/api/v1/apps/123/devices" \
 ## 最佳实践
 
 - 在应用启动、Token 变化或应用版本变化时重新注册。
-- 不要在日志中记录完整 Token。移动 SDK 使用独立 API Key，并将其视为可被提取的凭证定期轮换。
+- 不要在日志中记录完整 Token。App Key 可以包含在客户端中，但不能用于发送推送或访问管理数据。
 - iOS 应用使用官方 SDK 自动上报 APNs 环境，避免开发 Token 和生产 Token 混用。
 - 标签较多或需要复杂更新时，应由受信任的服务端统一管理。

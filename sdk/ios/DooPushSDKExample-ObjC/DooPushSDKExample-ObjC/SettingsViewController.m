@@ -408,7 +408,7 @@ typedef NS_ENUM(NSInteger, SettingsSection) {
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     switch (section) {
         case SettingsSectionConfiguration:
-            return 4; // App ID, API Key, Server URL, SDK Version
+            return 4; // App ID, App Key, Server URL, SDK Version
         case SettingsSectionDeviceInfo:
             return 7; // Token, Device ID, Model, System Name, System Version, Bundle ID, App Version
         case SettingsSectionDebugInfo:
@@ -492,8 +492,8 @@ typedef NS_ENUM(NSInteger, SettingsSection) {
             cell.detailTextLabel.text = AppConfig.appId;
             break;
         case 1:
-            cell.textLabel.text = @"API 密钥";
-            cell.detailTextLabel.text = AppConfig.apiKey;
+            cell.textLabel.text = @"App Key";
+            cell.detailTextLabel.text = AppConfig.appKey;
             break;
         case 2:
             cell.textLabel.text = @"服务器地址";
@@ -699,8 +699,8 @@ typedef NS_ENUM(NSInteger, SettingsSection) {
             message = @"应用 ID 已复制到剪贴板";
             break;
         case 1:
-            value = AppConfig.apiKey;
-            message = @"API 密钥已复制到剪贴板";
+            value = AppConfig.appKey;
+            message = @"App Key已复制到剪贴板";
             break;
         case 2:
             value = AppConfig.displayBaseURL;
