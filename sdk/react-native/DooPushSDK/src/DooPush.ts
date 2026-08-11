@@ -9,6 +9,7 @@ import type {
   DooPushGatewayClosedEvent,
   DooPushGatewayErrorEvent,
   DooPushRegisterResult,
+  DooPushTokenResult,
   DooPushDeviceInfo,
   DooPushPermissionStatus,
 } from './types';
@@ -20,7 +21,7 @@ import type {
 /**
  * DooPush React Native SDK — imperative API
  *
- * v0.5.0 — registration, OEM channels, token/device getters, hooks,
+ * v0.6.0 — registration, local token acquisition, OEM channels, token/device getters, hooks,
  * notification events, WebSocket gateway, badge, statistics, and coexistence controls.
  */
 
@@ -30,6 +31,16 @@ import type {
  */
 export function configure(config: DooPushConfig): void {
   DooPushModule.configure(config);
+}
+
+/** Configure native token acquisition without DooPush credentials or network access. */
+export function configureLocal(): void {
+  DooPushModule.configureLocal();
+}
+
+/** Acquire the best available APNs/FCM/OEM token without registering it with DooPush. */
+export function acquireToken(): Promise<DooPushTokenResult> {
+  return DooPushModule.acquireToken();
 }
 
 /**

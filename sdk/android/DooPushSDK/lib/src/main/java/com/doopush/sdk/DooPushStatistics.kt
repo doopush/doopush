@@ -31,15 +31,30 @@ object DooPushStatistics {
     // 上报中标记，避免并发上报
     @Volatile
     private var isReporting = false
+
+    @Volatile
+    private var reportingEnabled = true
     
     /**
      * 配置统计管理器
      */
     fun configure(networking: DooPushNetworking, deviceTokenProvider: () -> String?) {
+        reportingEnabled = true
         this.networking = networking
         this.deviceTokenProvider = deviceTokenProvider
         Log.d(TAG, "统计管理器已配置")
     }
+
+    /** 禁用并清空统计，供仅获取本地 token 的模式使用。 */
+    fun disableReporting() {
+        reportingEnabled = false
+        statisticsQueue.clear()
+        networking = null
+        deviceTokenProvider = null
+        Log.d(TAG, "统计上报已禁用")
+    }
+
+    fun isReportingEnabled(): Boolean = reportingEnabled
     
     /**
      * 统计事件类型
@@ -81,6 +96,7 @@ object DooPushStatistics {
      * 记录推送接收事件
      */
     fun recordNotificationReceived(notificationData: DooPushNotificationHandler.NotificationData) {
+        if (!reportingEnabled) return
         try {
             val event = StatisticsEvent(
                 eventType = EventType.RECEIVED,
@@ -104,6 +120,7 @@ object DooPushStatistics {
      * 记录推送点击事件
      */
     fun recordNotificationClick(notificationData: DooPushNotificationHandler.NotificationData) {
+        if (!reportingEnabled) return
         try {
             val event = StatisticsEvent(
                 eventType = EventType.CLICKED,
@@ -127,6 +144,7 @@ object DooPushStatistics {
      * 记录推送打开应用事件
      */
     fun recordNotificationOpen(notificationData: DooPushNotificationHandler.NotificationData) {
+        if (!reportingEnabled) return
         try {
             val event = StatisticsEvent(
                 eventType = EventType.OPENED,
@@ -185,6 +203,7 @@ object DooPushStatistics {
      * 立即上报统计数据
      */
     fun reportStatistics() {
+        if (!reportingEnabled) return
         // 并发保护：避免重复上报
         if (isReporting) {
             Log.d(TAG, "统计数据正在上报中，跳过")
@@ -224,7 +243,7 @@ object DooPushStatistics {
             
             reportEventsToServer(networking, events, deviceToken) { success ->
                 isReporting = false
-                if (!success) {
+                if (!success && reportingEnabled) {
                     // 上报失败时，将事件重新添加到队列
                     for (event in events) {
                         statisticsQueue.offer(event)

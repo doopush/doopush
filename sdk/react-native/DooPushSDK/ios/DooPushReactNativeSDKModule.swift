@@ -4,7 +4,7 @@ import UserNotifications
 
 /**
  * DooPush React Native SDK — iOS bridge
- * v0.5.0
+ * v0.6.0
  *
  * Mode: ACTIVE (default) — DooPush owns UNUserNotificationCenterDelegate via the
  * delegate-forwarding mechanism in DooPushSDK. Coexists with
@@ -48,6 +48,10 @@ public class DooPushReactNativeSDKModule: Module, DooPushDelegate {
             DooPushManager.shared.enableAutomaticNotificationTracking()
         }
 
+        Function("configureLocal") {
+            DooPushManager.shared.configureForTokenAcquisition()
+        }
+
         // ── register ────────────────────────────────────────────────────
         AsyncFunction("register") { (promise: Promise) in
             DooPushManager.shared.registerForPushNotifications { token, error in
@@ -63,6 +67,23 @@ public class DooPushReactNativeSDKModule: Module, DooPushDelegate {
                 promise.resolve([
                     "token": token,
                     "deviceId": deviceId,
+                    "vendor": "apns"
+                ])
+            }
+        }
+
+        AsyncFunction("acquireToken") { (promise: Promise) in
+            DooPushManager.shared.registerForPushNotifications { token, error in
+                if let error = error {
+                    promise.reject("E_ACQUIRE_TOKEN", error.localizedDescription)
+                    return
+                }
+                guard let token = token else {
+                    promise.reject("E_ACQUIRE_TOKEN", "Unknown failure: no token returned")
+                    return
+                }
+                promise.resolve([
+                    "token": token,
                     "vendor": "apns"
                 ])
             }
@@ -240,6 +261,7 @@ public class DooPushReactNativeSDKModule: Module, DooPushDelegate {
         return [
             "platform": deviceInfo.platform,
             "channel": deviceInfo.channel,
+            "pushEnvironment": deviceInfo.pushEnvironment,
             "bundleId": deviceInfo.bundleId,
             "brand": deviceInfo.brand,
             "model": deviceInfo.model,
