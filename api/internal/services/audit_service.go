@@ -9,6 +9,7 @@ import (
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
 	"github.com/doopush/doopush/api/pkg/utils"
+	"gorm.io/gorm"
 )
 
 // AuditService 审计日志服务
@@ -30,12 +31,14 @@ func (s *AuditService) LogAction(userID uint, appID *uint, action, resource, res
 	}
 
 	auditLog := &models.AuditLog{
-		UserID:    userID,
-		Action:    action,
-		Resource:  resource,
-		Details:   newDataJSON, // 使用Details字段存储操作详情
-		IPAddress: ipAddress,
-		UserAgent: userAgent,
+		UserID:        uintPointer(userID),
+		PrincipalType: "user",
+		PrincipalID:   userID,
+		Action:        action,
+		Resource:      resource,
+		Details:       newDataJSON, // 使用Details字段存储操作详情
+		IPAddress:     ipAddress,
+		UserAgent:     userAgent,
 	}
 
 	// 如果有appID，则设置
@@ -44,8 +47,10 @@ func (s *AuditService) LogAction(userID uint, appID *uint, action, resource, res
 	}
 
 	// 获取用户名并设置到冗余字段
-	if userName := s.getUserName(userID); userName != "" {
-		auditLog.UserName = userName
+	if userID > 0 {
+		if userName := s.getUserName(userID); userName != "" {
+			auditLog.UserName = userName
+		}
 	}
 
 	if err := database.DB.Create(auditLog).Error; err != nil {
@@ -78,14 +83,16 @@ func (s *AuditService) LogActionWithBeforeAfter(userID uint, appID *uint, action
 	}
 
 	auditLog := &models.AuditLog{
-		UserID:     userID,
-		Action:     action,
-		Resource:   resource,
-		Details:    detailsJSON,
-		BeforeData: beforeDataJSON,
-		AfterData:  afterDataJSON,
-		IPAddress:  ipAddress,
-		UserAgent:  userAgent,
+		UserID:        uintPointer(userID),
+		PrincipalType: "user",
+		PrincipalID:   userID,
+		Action:        action,
+		Resource:      resource,
+		Details:       detailsJSON,
+		BeforeData:    beforeDataJSON,
+		AfterData:     afterDataJSON,
+		IPAddress:     ipAddress,
+		UserAgent:     userAgent,
 	}
 
 	// 如果有appID，则设置
@@ -101,8 +108,10 @@ func (s *AuditService) LogActionWithBeforeAfter(userID uint, appID *uint, action
 	}
 
 	// 获取用户名并设置到冗余字段
-	if userName := s.getUserName(userID); userName != "" {
-		auditLog.UserName = userName
+	if userID > 0 {
+		if userName := s.getUserName(userID); userName != "" {
+			auditLog.UserName = userName
+		}
 	}
 
 	if err := database.DB.Create(auditLog).Error; err != nil {
@@ -113,7 +122,7 @@ func (s *AuditService) LogActionWithBeforeAfter(userID uint, appID *uint, action
 }
 
 // LogActionWithContext 记录操作日志 (用于中间件)
-func (s *AuditService) LogActionWithContext(userID uint, appID *uint, action, resource, resourceID, ipAddress, userAgent string, beforeData, afterData interface{}) error {
+func (s *AuditService) LogActionWithContext(userID uint, principalType string, principalID uint, appSecretID *uint, appID *uint, action, resource, resourceID, ipAddress, userAgent string, beforeData, afterData interface{}) error {
 	var beforeDataJSON, afterDataJSON *string
 	var detailsJSON string
 
@@ -135,14 +144,17 @@ func (s *AuditService) LogActionWithContext(userID uint, appID *uint, action, re
 	}
 
 	auditLog := &models.AuditLog{
-		UserID:     userID,
-		Action:     action,
-		Resource:   resource,
-		Details:    detailsJSON,
-		BeforeData: beforeDataJSON,
-		AfterData:  afterDataJSON,
-		IPAddress:  ipAddress,
-		UserAgent:  userAgent,
+		UserID:        uintPointer(userID),
+		PrincipalType: principalType,
+		PrincipalID:   principalID,
+		AppSecretID:   appSecretID,
+		Action:        action,
+		Resource:      resource,
+		Details:       detailsJSON,
+		BeforeData:    beforeDataJSON,
+		AfterData:     afterDataJSON,
+		IPAddress:     ipAddress,
+		UserAgent:     userAgent,
 	}
 
 	// 如果有resourceID，则转换并设置
@@ -158,8 +170,10 @@ func (s *AuditService) LogActionWithContext(userID uint, appID *uint, action, re
 	}
 
 	// 获取用户名并设置到冗余字段
-	if userName := s.getUserName(userID); userName != "" {
-		auditLog.UserName = userName
+	if userID > 0 {
+		if userName := s.getUserName(userID); userName != "" {
+			auditLog.UserName = userName
+		}
 	}
 
 	if err := database.DB.Create(auditLog).Error; err != nil {
@@ -167,6 +181,13 @@ func (s *AuditService) LogActionWithContext(userID uint, appID *uint, action, re
 	}
 
 	return nil
+}
+
+func uintPointer(value uint) *uint {
+	if value == 0 {
+		return nil
+	}
+	return &value
 }
 
 // getUserName 获取用户名 (辅助方法)
@@ -297,19 +318,25 @@ type OperationStat struct {
 func (s *AuditService) GetUserActivityStats(appID *uint, days int, limit int) ([]UserActivityStat, error) {
 	var stats []UserActivityStat
 
-	query := database.DB.Table("audit_logs").
-		Select("user_id, user_name, COUNT(*) as activity_count, MAX(created_at) as last_activity").
-		Where("created_at >= ?", utils.TimeNow().AddDate(0, 0, -days))
-
-	if appID != nil {
-		query = query.Where("app_id = ?", *appID)
-	}
+	query := userActivityQuery(appID, days).
+		Select("user_id, user_name, COUNT(*) as activity_count, MAX(created_at) as last_activity")
 
 	err := query.Group("user_id, user_name").
 		Order("activity_count DESC").
 		Limit(limit).Scan(&stats).Error
 
 	return stats, err
+}
+
+func userActivityQuery(appID *uint, days int) *gorm.DB {
+	query := database.DB.Table("audit_logs").
+		Where("created_at >= ?", utils.TimeNow().AddDate(0, 0, -days)).
+		Where("principal_type = ? AND user_id IS NOT NULL", "user")
+
+	if appID != nil {
+		query = query.Where("app_id = ?", *appID)
+	}
+	return query
 }
 
 // UserActivityStat 用户活动统计

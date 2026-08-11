@@ -16,13 +16,13 @@ struct AppConfig {
     
     private enum Keys {
         static let appId = "APP_ID"
-        static let apiKey = "API_KEY"
+        static let appKey = "APP_KEY"
         static let baseURL = "BASE_URL"
     }
     
     private static let defaults: [String: String] = [
         Keys.appId: "1",
-        Keys.apiKey: "dp_live_XXpwyhNOxpsXWh3sRxxhZ0KK9Wo8ArwB",
+        Keys.appKey: "dp_ak_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         Keys.baseURL: "https://doopush.com/api/v1",
     ]
     
@@ -60,8 +60,8 @@ struct AppConfig {
     /// 应用ID
     static var appId: String { value(for: Keys.appId) }
     
-    /// API密钥
-    static var apiKey: String { value(for: Keys.apiKey) }
+    /// App Key
+    static var appKey: String { value(for: Keys.appKey) }
     
     /// 服务器基础URL
     static var baseURL: String { value(for: Keys.baseURL) }
@@ -75,7 +75,7 @@ struct AppConfig {
     static func printConfiguration() {
         Logger.info("🔧 配置参数:")
         Logger.info("   App ID: \(appId)")
-        Logger.info("   API Key: \(apiKey)")
+        Logger.info("   App Key: \(appKey)")
         Logger.info("   Base URL: \(displayBaseURL)")
     }
 }

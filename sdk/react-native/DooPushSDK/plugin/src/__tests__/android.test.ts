@@ -13,7 +13,7 @@ const baseConfig: ExpoConfig = {
 describe('withAndroid', () => {
   test('registers project + app + dangerous mods when fcm enabled', () => {
     const result: any = withAndroid(structuredClone(baseConfig), {
-      appId: 'a', apiKey: 'k',
+      appId: 'a', appKey: 'dp_ak_test',
       ios: { mode: 'production' },
       android: {
         vendors: { fcm: { googleServicesFile: './google-services.json' } },
@@ -31,7 +31,7 @@ describe('withAndroid', () => {
 
   test('does NOT register dangerous mod (file copy) when fcm omitted', () => {
     const result: any = withAndroid(structuredClone(baseConfig), {
-      appId: 'a', apiKey: 'k',
+      appId: 'a', appKey: 'dp_ak_test',
       ios: { mode: 'production' },
       android: { vendors: {} },
     });

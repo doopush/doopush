@@ -5,61 +5,61 @@ import java.util.regex.Pattern
 
 /**
  * DooPush SDK 配置类
- * 
- * 管理SDK的配置参数，包括应用ID、API密钥和服务器地址
+ *
+ * 管理SDK的配置参数，包括应用ID、App Key和服务器地址
  */
 data class DooPushConfig(
-    
+
     /**
      * 应用ID
      * DooPush平台分配的唯一应用标识符
      */
     val appId: String,
-    
+
     /**
-     * API密钥
-     * 用于API请求认证的密钥
+     * App Key
+     * 仅用于向 DooPush 注册当前安装实例
      */
-    val apiKey: String,
-    
+    val appKey: String,
+
     /**
      * 服务器基础URL
      * DooPush API服务器地址，默认为生产环境
      */
     val baseURL: String = DEFAULT_BASE_URL,
-    
+
     /**
      * HMS推送配置 (可选)
      */
     val hmsConfig: HMSConfig? = null,
-    
+
     /**
      * 小米推送配置 (可选)
      */
     val xiaomiConfig: XiaomiConfig? = null,
-    
+
     /**
      * OPPO推送配置 (可选)
      */
     val oppoConfig: OppoConfig? = null,
-    
+
     /**
      * VIVO推送配置 (可选)
      */
     val vivoConfig: VivoConfig? = null,
-    
+
     /**
      * 魅族推送配置 (可选)
      */
     val meizuConfig: MeizuConfig? = null,
-    
+
     /**
      * 荣耀推送配置 (可选)
      */
     val honorConfig: HonorConfig? = null
-    
+
 ) {
-    
+
     /**
      * HMS推送配置类
      * @param appId HMS应用ID，如果为空则会从 agconnect-services.json 自动读取
@@ -71,7 +71,7 @@ data class DooPushConfig(
             // 客户端SDK总是有效的，因为可以从 agconnect-services.json 读取配置
             return true
         }
-        
+
         fun getSummary(): String {
             val appIdInfo = if (appId.isNotEmpty()) {
                 "AppID=$appId"
@@ -81,7 +81,7 @@ data class DooPushConfig(
             return "HMS配置: $appIdInfo"
         }
     }
-    
+
     /**
      * 小米推送配置类
      * @param appId 小米应用ID
@@ -94,7 +94,7 @@ data class DooPushConfig(
         fun isValid(): Boolean {
             return true
         }
-        
+
         fun getSummary(): String {
             val appIdInfo = if (appId.isNotEmpty()) {
                 "AppID=$appId"
@@ -109,7 +109,7 @@ data class DooPushConfig(
             return "小米推送配置: $appIdInfo, $appKeyInfo"
         }
     }
-    
+
     /**
      * OPPO推送配置类（客户端仅需 appKey，可从 oppo-services.json 自动读取）
      * @param appKey OPPO应用Key，如果为空则会从 oppo-services.json 自动读取
@@ -120,7 +120,7 @@ data class DooPushConfig(
         fun isValid(): Boolean {
             return true
         }
-        
+
         fun getSummary(): String {
             val appKeyInfo = if (appKey.isNotEmpty()) {
                 "AppKey=${appKey.take(8)}..."
@@ -130,7 +130,7 @@ data class DooPushConfig(
             return "OPPO推送配置: $appKeyInfo"
         }
     }
-    
+
     /**
      * VIVO推送配置类（客户端需要 appId 和 apiKey，可从 vivo-services.json 自动读取）
      * @param appId VIVO应用ID，如果为空则会从 vivo-services.json 自动读取
@@ -143,7 +143,7 @@ data class DooPushConfig(
         fun isValid(): Boolean {
             return true
         }
-        
+
         fun getSummary(): String {
             val appIdInfo = if (appId.isNotEmpty()) {
                 "AppId=$appId"
@@ -158,7 +158,7 @@ data class DooPushConfig(
             return "VIVO推送配置: $appIdInfo, $apiKeyInfo"
         }
     }
-    
+
     /**
      * 魅族推送配置类（客户端需要 appId 和 appKey，可从 meizu-services.json 自动读取）
      * @param appId 魅族应用ID，如果为空则会从 meizu-services.json 自动读取
@@ -171,7 +171,7 @@ data class DooPushConfig(
         fun isValid(): Boolean {
             return true
         }
-        
+
         fun getSummary(): String {
             val appIdInfo = if (appId.isNotEmpty()) {
                 "AppId=$appId"
@@ -186,7 +186,7 @@ data class DooPushConfig(
             return "魅族推送配置: $appIdInfo, $appKeyInfo"
         }
     }
-    
+
     /**
      * 荣耀推送配置
      * @param clientId 旧版SDK需要的客户端ID，可从 mcs-services.json 自动读取
@@ -203,7 +203,7 @@ data class DooPushConfig(
         fun isValid(): Boolean {
             return clientId.isNotBlank() || clientSecret.isNotBlank() || appId.isNotBlank() || developerId.isNotBlank()
         }
-        
+
         fun getSummary(): String {
             val clientIdInfo = if (clientId.isNotEmpty()) {
                 "ClientId=${clientId.take(8)}..."
@@ -228,21 +228,20 @@ data class DooPushConfig(
             return "荣耀推送配置: $clientIdInfo, $clientSecretInfo, $appIdInfo, $developerIdInfo"
         }
     }
-    
+
     companion object {
-        
+
         /**
          * 默认生产环境服务器地址
          */
         const val DEFAULT_BASE_URL = "https://doopush.com/api/v1"
-        
-        
+
+
         /**
-         * API密钥的正则表达式模式
-         * 格式: 数字、字母和特殊字符组成，长度为16-64位
+         * DooPush App Key 格式。
          */
-        private val API_KEY_PATTERN = Pattern.compile("^[a-zA-Z0-9_\\-\\.]{16,64}$")
-        
+        private val APP_KEY_PATTERN = Pattern.compile("^dp_ak_[A-Za-z0-9]{32}$")
+
         /**
          * URL的正则表达式模式
          * 基本的HTTP/HTTPS URL格式检查
@@ -251,12 +250,12 @@ data class DooPushConfig(
             "^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?" +
             "(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]{1,5})?(/.*)?$"
         )
-        
+
         /**
          * 创建配置实例并验证参数
-         * 
+         *
          * @param appId 应用ID
-         * @param apiKey API密钥
+         * @param appKey App Key
          * @param baseURL 服务器基础URL (可选)
          * @param hmsConfig HMS推送配置 (可选)
          * @param xiaomiConfig 小米推送配置 (可选)
@@ -270,7 +269,7 @@ data class DooPushConfig(
         @Throws(DooPushConfigException::class)
         fun create(
             appId: String,
-            apiKey: String,
+            appKey: String,
             baseURL: String = DEFAULT_BASE_URL,
             hmsConfig: HMSConfig? = null,
             xiaomiConfig: XiaomiConfig? = null,
@@ -281,7 +280,7 @@ data class DooPushConfig(
         ): DooPushConfig {
             val config = DooPushConfig(
                 appId = appId.trim(),
-                apiKey = apiKey.trim(),
+                appKey = appKey.trim(),
                 baseURL = baseURL.trim().trimEnd('/'),
                 hmsConfig = hmsConfig,
                 xiaomiConfig = xiaomiConfig,
@@ -290,12 +289,12 @@ data class DooPushConfig(
                 meizuConfig = meizuConfig,
                 honorConfig = honorConfig
             )
-            
+
             config.validate()
             return config
         }
     }
-    
+
     /**
      * 环境类型枚举
      */
@@ -304,7 +303,7 @@ data class DooPushConfig(
         DEVELOPMENT,   // 开发环境
         CUSTOM         // 自定义环境
     }
-    
+
     /**
      * 获取环境类型
      */
@@ -314,10 +313,10 @@ data class DooPushConfig(
             baseURL == DEFAULT_BASE_URL -> Environment.PRODUCTION
             else -> Environment.CUSTOM
         }
-    
+
     /**
      * 验证配置参数的有效性
-     * 
+     *
      * @throws DooPushConfigException 参数无效时抛出异常
      */
     @Throws(DooPushConfigException::class)
@@ -331,28 +330,28 @@ data class DooPushConfig(
                 )
             )
         }
-        
-        
-        // 验证API密钥
-        if (apiKey.isEmpty()) {
+
+
+        // 验证 App Key
+        if (appKey.isEmpty()) {
             throw DooPushConfigException(
                 DooPushError(
-                    code = DooPushError.CONFIG_INVALID_API_KEY,
-                    message = "API密钥不能为空"
+                    code = DooPushError.CONFIG_INVALID_APP_KEY,
+                    message = "App Key不能为空"
                 )
             )
         }
-        
-        if (!API_KEY_PATTERN.matcher(apiKey).matches()) {
+
+        if (!APP_KEY_PATTERN.matcher(appKey).matches()) {
             throw DooPushConfigException(
                 DooPushError(
-                    code = DooPushError.CONFIG_INVALID_API_KEY,
-                    message = "API密钥格式无效，应为16-64位字符组成",
-                    details = "支持字母、数字、下划线、连字符和点号"
+                    code = DooPushError.CONFIG_INVALID_APP_KEY,
+                    message = "App Key格式无效",
+                    details = "应为 dp_ak_ 加 32 位字母或数字"
                 )
             )
         }
-        
+
         // 验证服务器地址
         if (baseURL.isEmpty()) {
             throw DooPushConfigException(
@@ -362,7 +361,7 @@ data class DooPushConfig(
                 )
             )
         }
-        
+
         if (!URL_PATTERN.matcher(baseURL).matches()) {
             throw DooPushConfigException(
                 DooPushError(
@@ -373,10 +372,10 @@ data class DooPushConfig(
             )
         }
     }
-    
+
     /**
      * 获取API请求的完整URL
-     * 
+     *
      * @param endpoint API端点路径
      * @return 完整的API URL
      */
@@ -384,59 +383,59 @@ data class DooPushConfig(
         val cleanEndpoint = endpoint.trimStart('/')
         return "$baseURL/$cleanEndpoint"
     }
-    
+
     /**
      * 获取设备注册API的URL
      */
     fun getDeviceRegisterUrl(): String {
         return getApiUrl("apps/$appId/devices")
     }
-    
+
     /**
      * 获取设备token更新API的URL
-     * 
+     *
      * @param deviceId 设备ID
      */
     fun getDeviceTokenUpdateUrl(deviceId: String): String {
         return getApiUrl("apps/$appId/devices/$deviceId/token")
     }
-    
+
     /**
      * 是否为开发环境
      */
     fun isDevelopment(): Boolean {
         return environment == Environment.DEVELOPMENT
     }
-    
+
     /**
      * 是否为生产环境
      */
     fun isProduction(): Boolean {
         return environment == Environment.PRODUCTION
     }
-    
+
     /**
      * 获取配置的摘要信息（用于调试）
-     * API密钥会被部分隐藏
+     * App Key会被部分隐藏
      */
     fun getSummary(): String {
-        val maskedApiKey = if (apiKey.length > 8) {
-            "${apiKey.substring(0, 4)}****${apiKey.substring(apiKey.length - 4)}"
+        val maskedAppKey = if (appKey.length > 8) {
+            "${appKey.substring(0, 6)}****${appKey.substring(appKey.length - 4)}"
         } else {
             "****"
         }
-        
+
         val hmsInfo = hmsConfig?.getSummary() ?: "HMS配置: 未配置"
         val xiaomiInfo = xiaomiConfig?.getSummary() ?: "小米推送配置: 未配置"
         val oppoInfo = oppoConfig?.getSummary() ?: "OPPO推送配置: 未配置"
         val vivoInfo = vivoConfig?.getSummary() ?: "VIVO推送配置: 未配置"
         val meizuInfo = meizuConfig?.getSummary() ?: "魅族推送配置: 未配置"
         val honorInfo = honorConfig?.getSummary() ?: "荣耀推送配置: 未配置"
-        
+
         return """
             |DooPush配置:
             |  应用ID: $appId
-            |  API密钥: $maskedApiKey
+            |  App Key: $maskedAppKey
             |  服务器: $baseURL
             |  环境: ${environment.name}
             |  $hmsInfo
@@ -447,49 +446,49 @@ data class DooPushConfig(
             |  $honorInfo
         """.trimMargin()
     }
-    
+
     /**
      * 检查是否配置了HMS推送
      */
     fun hasHMSConfig(): Boolean {
         return hmsConfig != null && hmsConfig.isValid()
     }
-    
+
     /**
      * 检查是否配置了小米推送
      */
     fun hasXiaomiConfig(): Boolean {
         return xiaomiConfig != null && xiaomiConfig.isValid()
     }
-    
+
     /**
      * 检查是否配置了OPPO推送
      */
     fun hasOppoConfig(): Boolean {
         return oppoConfig != null && oppoConfig.isValid()
     }
-    
+
     /**
      * 检查是否配置了VIVO推送
      */
     fun hasVivoConfig(): Boolean {
         return vivoConfig != null && vivoConfig.isValid()
     }
-    
+
     /**
      * 检查是否配置了魅族推送
      */
     fun hasMeizuConfig(): Boolean {
         return meizuConfig != null && meizuConfig.isValid()
     }
-    
+
     /**
      * 检查是否配置了荣耀推送
      */
     fun hasHonorConfig(): Boolean {
         return honorConfig != null
     }
-    
+
     override fun toString(): String {
         return getSummary()
     }

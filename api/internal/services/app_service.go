@@ -8,6 +8,7 @@ import (
 
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
+	"github.com/doopush/doopush/api/pkg/utils"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -35,6 +36,8 @@ func (s *AppService) CreateApp(userID uint, name, packageName, description, plat
 		return nil, errors.New("包名已存在")
 	}
 
+	appKey := utils.GenerateSecureToken(models.AppKeyPrefix)
+
 	// 创建应用
 	app := &models.App{
 		Name:        name,
@@ -43,6 +46,7 @@ func (s *AppService) CreateApp(userID uint, name, packageName, description, plat
 		Platform:    platform,
 		AppIcon:     appIcon,
 		Status:      1,
+		AppKey:      appKey,
 		Role:        "owner",
 	}
 

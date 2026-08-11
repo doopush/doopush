@@ -34,35 +34,6 @@ export class DeviceService {
     return apiClient.delete(`/apps/${appId}/devices/${encoded}`)
   }
 
-  /**
-   * 注册设备 (API Key 认证)
-   */
-  static async registerDevice(appId: number, data: {
-    device_id: string
-    user_id: string
-    platform: 'ios' | 'android'
-    vendor: string
-    device_token: string
-    app_version?: string
-    system_version?: string
-    device_model?: string
-    language?: string
-    timezone?: string
-  }, apiKey: string): Promise<{
-    device: Device
-    gateway: {
-      host: string
-      port: number
-      ssl: boolean
-    }
-  }> {
-    return apiClient.post(`/apps/${appId}/devices`, data, {
-      headers: {
-        'X-API-Key': apiKey
-      }
-    })
-  }
-
   // ===== 设备分组管理 =====
 
   /**

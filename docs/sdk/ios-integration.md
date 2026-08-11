@@ -94,7 +94,7 @@ struct YourApp: App {
         // 配置 DooPush SDK
         DooPushManager.shared.configure(
             appId: "your_app_id_here",
-            apiKey: "your_api_key_here"
+            appKey: "dp_ak_xxx"
         )
         
         // 设置代理
@@ -518,7 +518,7 @@ DooPush 服务端会保存该值，并在发送时为每台设备选择对应的
 ```swift
 DooPushManager.shared.configure(
     appId: "your_app_id",
-    apiKey: "your_api_key",
+    appKey: "dp_ak_xxx",
     baseURL: "https://your-custom-server.com/api/v1"
 )
 ```
@@ -545,10 +545,10 @@ DooPushLogger.logCallback = { level, tag, message in
 
 ```swift
 // 完整配置（baseURL 默认 https://doopush.com/api/v1）
-func configure(appId: String, apiKey: String, baseURL: String = "https://doopush.com/api/v1")
+func configure(appId: String, appKey: String, baseURL: String = "https://doopush.com/api/v1")
 
 // Objective-C 友好的便捷重载
-func configure(appId: String, apiKey: String)
+func configure(appId: String, appKey: String)
 ```
 
 #### 推送注册
@@ -702,7 +702,7 @@ print("SDK 版本: \(DooPushManager.sdkVersion)")
 **推送注册失败**：
 - 检查应用是否配置了推送证书
 - 确认设备网络连接正常
-- 验证 API Key 和 App ID 是否正确
+- 验证 App Key 和 App ID 是否正确
 
 **收不到推送**：
 - 确认用户已授权推送权限

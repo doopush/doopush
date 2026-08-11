@@ -34,15 +34,15 @@ public class DooPushReactNativeSDKModule: Module, DooPushDelegate {
         // ── configure ───────────────────────────────────────────────────
         Function("configure") { (config: [String: Any]) in
             guard let appId = config["appId"] as? String,
-                  let apiKey = config["apiKey"] as? String else {
+                  let appKey = config["appKey"] as? String else {
                 throw NSError(
                     domain: "DooPushReactNativeSDK",
                     code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "configure requires appId + apiKey"]
+                    userInfo: [NSLocalizedDescriptionKey: "configure requires appId + appKey"]
                 )
             }
             let baseURL = (config["baseURL"] as? String) ?? ""
-            DooPushManager.shared.configure(appId: appId, apiKey: apiKey, baseURL: baseURL)
+            DooPushManager.shared.configure(appId: appId, appKey: appKey, baseURL: baseURL)
 
             // Always enable automatic notification tracking for active mode (default).
             DooPushManager.shared.enableAutomaticNotificationTracking()
@@ -73,7 +73,7 @@ public class DooPushReactNativeSDKModule: Module, DooPushDelegate {
         }
 
         AsyncFunction("acquireToken") { (promise: Promise) in
-            DooPushManager.shared.registerForPushNotifications { token, error in
+            DooPushManager.shared.acquirePushToken { token, error in
                 if let error = error {
                     promise.reject("E_ACQUIRE_TOKEN", error.localizedDescription)
                     return

@@ -52,14 +52,16 @@ type TagFilter struct {
 
 // SendPush 发送推送
 func (s *PushService) SendPush(appID uint, userID uint, req PushRequest) ([]models.PushLog, error) {
-	// 检查用户权限
-	userService := NewUserService()
-	hasPermission, err := userService.CheckAppPermission(userID, appID, "developer")
-	if err != nil {
-		return nil, errors.New("权限检查失败")
-	}
-	if !hasPermission {
-		return nil, errors.New("无权限发送推送")
+	// userID=0 表示请求已由 App Secret 中间件完成应用与 Scope 校验。
+	if userID != 0 {
+		userService := NewUserService()
+		hasPermission, err := userService.CheckAppPermission(userID, appID, "developer")
+		if err != nil {
+			return nil, errors.New("权限检查失败")
+		}
+		if !hasPermission {
+			return nil, errors.New("无权限发送推送")
+		}
 	}
 
 	// 获取目标设备

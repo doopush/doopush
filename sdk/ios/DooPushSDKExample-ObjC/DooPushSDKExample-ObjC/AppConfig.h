@@ -18,7 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly, class) NSString *appId;
 
 /// API密钥
-@property (nonatomic, readonly, class) NSString *apiKey;
+@property (nonatomic, readonly, class) NSString *appKey;
 
 /// 服务器基础URL
 @property (nonatomic, readonly, class) NSString *baseURL;

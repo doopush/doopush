@@ -2,10 +2,10 @@ import Foundation
 
 /// 网络请求管理类
 public class DooPushNetworking {
-    
+
     /// 配置信息
     private var config: DooPushConfig?
-    
+
     /// URL Session
     private lazy var session: URLSession = {
         let configuration = URLSessionConfiguration.default
@@ -13,15 +13,15 @@ public class DooPushNetworking {
         configuration.timeoutIntervalForResource = 60
         return URLSession(configuration: configuration)
     }()
-    
+
     /// 配置网络管理器
     /// - Parameter config: 配置信息
     public func configure(with config: DooPushConfig) {
         self.config = config
     }
-    
+
     // MARK: - 设备注册相关
-    
+
     /// 注册设备到服务器
     /// - Parameters:
     ///   - appId: 应用ID
@@ -42,7 +42,7 @@ public class DooPushNetworking {
             completion: completion
         )
     }
-    
+
     /// 带重试机制的设备注册
     /// - Parameters:
     ///   - appId: 应用ID
@@ -61,9 +61,9 @@ public class DooPushNetworking {
             completion(.failure(.notConfigured))
             return
         }
-        
+
         let url = config.deviceRegistrationURL()
-        
+
         let requestBody = DeviceRegistrationRequest(
             token: token,
             bundleId: deviceInfo.bundleId,
@@ -76,7 +76,7 @@ public class DooPushNetworking {
             appVersion: deviceInfo.appVersion,
             userAgent: deviceInfo.userAgent
         )
-        
+
         performRequest(
             url: url,
             method: .POST,
@@ -91,7 +91,7 @@ public class DooPushNetworking {
                 if retryCount > 0 && self.shouldRetry(error: error) {
                     let delay = self.calculateRetryDelay(retryAttempt: 4 - retryCount)
                     DooPushLogger.warning("设备注册失败，\(delay)秒后重试: \(error)")
-                    
+
                     DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                         self.registerDeviceWithRetry(
                             appId: appId,
@@ -107,7 +107,7 @@ public class DooPushNetworking {
             }
         }
     }
-    
+
     /// 更新设备信息
     /// - Parameters:
     ///   - appId: 应用ID
@@ -131,9 +131,9 @@ public class DooPushNetworking {
             }
         }
     }
-    
+
     // MARK: - 统计数据上报
-    
+
     /// 上报推送统计数据
     /// - Parameters:
     ///   - appId: 应用ID
@@ -150,9 +150,9 @@ public class DooPushNetworking {
             completion(.failure(.notConfigured))
             return
         }
-        
+
         let url = config.statisticsReportURL()
-        
+
         let requestBody = StatisticsReportRequest(
             deviceToken: deviceToken,
             statistics: events.map { event in
@@ -164,7 +164,7 @@ public class DooPushNetworking {
                 )
             }
         )
-        
+
         performVoidRequest(
             url: url,
             method: .POST,
@@ -172,9 +172,9 @@ public class DooPushNetworking {
             completion: completion
         )
     }
-    
+
     // MARK: - 通用请求方法
-    
+
     /// HTTP 方法枚举
     private enum HTTPMethod: String {
         case GET = "GET"
@@ -182,7 +182,7 @@ public class DooPushNetworking {
         case PUT = "PUT"
         case DELETE = "DELETE"
     }
-    
+
     /// 执行网络请求（有返回数据）
     /// - Parameters:
     ///   - url: 请求URL
@@ -201,24 +201,24 @@ public class DooPushNetworking {
             completion(.failure(.notConfigured))
             return
         }
-        
+
         guard let requestURL = URL(string: url) else {
             completion(.failure(.invalidURL))
             return
         }
-        
+
         var request = URLRequest(url: requestURL)
         request.httpMethod = method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("DooPushSDK/\(DooPushManager.sdkVersion)", forHTTPHeaderField: "User-Agent")
-        request.setValue(config.apiKey, forHTTPHeaderField: "X-API-Key")
-        
+        request.setValue(config.appKey, forHTTPHeaderField: "X-App-Key")
+
         // 设置请求体
         if let body = body {
             do {
                 let jsonData = try JSONEncoder().encode(body)
                 request.httpBody = jsonData
-                
+
                 DooPushLogger.debug("API请求: \(method.rawValue) \(url)")
                 DooPushLogger.debug("请求体: \(String(data: jsonData, encoding: .utf8) ?? "")")
             } catch {
@@ -226,7 +226,7 @@ public class DooPushNetworking {
                 return
             }
         }
-        
+
         // 执行请求
         session.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
@@ -240,7 +240,7 @@ public class DooPushNetworking {
             }
         }.resume()
     }
-    
+
     /// 执行网络请求（无返回数据）
     /// - Parameters:
     ///   - url: 请求URL
@@ -267,7 +267,7 @@ public class DooPushNetworking {
             }
         }
     }
-    
+
     /// 处理网络响应
     /// - Parameters:
     ///   - data: 响应数据
@@ -288,20 +288,20 @@ public class DooPushNetworking {
             completion(.failure(.networkError(error)))
             return
         }
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             completion(.failure(.invalidResponse))
             return
         }
-        
+
         guard let data = data else {
             completion(.failure(.noData))
             return
         }
-        
+
         DooPushLogger.debug("API响应: HTTP \(httpResponse.statusCode)")
         DooPushLogger.debug("响应体: \(String(data: data, encoding: .utf8) ?? "")")
-        
+
         // 处理HTTP状态码
         switch httpResponse.statusCode {
         case 200...299:
@@ -313,7 +313,7 @@ public class DooPushNetworking {
                     let decoder = JSONDecoder()
                     // 不使用自动转换，而是通过CodingKeys手动控制
                     // decoder.keyDecodingStrategy = .convertFromSnakeCase
-                    
+
                     // 尝试解析标准API响应格式
                     do {
                         let apiResponse = try decoder.decode(APIResponse<R>.self, from: data)
@@ -335,7 +335,7 @@ public class DooPushNetworking {
                 DooPushLogger.error("JSON解析失败: \(error)")
                 completion(.failure(.decodingError(error)))
             }
-            
+
         case 400:
             completion(.failure(.badRequest))
         case 401:
@@ -364,9 +364,9 @@ public class DooPushNetworking {
             completion(.failure(.httpError))
         }
     }
-    
+
     // MARK: - 重试机制
-    
+
     /// 判断错误是否可以重试
     /// - Parameter error: 错误对象
     /// - Returns: 是否可以重试
@@ -384,7 +384,7 @@ public class DooPushNetworking {
             return false
         }
     }
-    
+
     /// 计算重试延时
     /// - Parameter retryAttempt: 重试次数（从1开始）
     /// - Returns: 延时时间（秒）
@@ -408,7 +408,7 @@ private struct DeviceRegistrationRequest: Codable {
     let systemVersion: String
     let appVersion: String
     let userAgent: String
-    
+
     enum CodingKeys: String, CodingKey {
         case token
         case bundleId = "bundle_id"
@@ -442,7 +442,7 @@ public struct DeviceResponseInfo: Codable {
     public let lastSeen: String?
     public let createdAt: String
     public let updatedAt: String
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case appId = "app_id"
@@ -460,7 +460,7 @@ public struct DeviceResponseInfo: Codable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
-    
+
     /// 获取设备ID字符串形式（兼容旧版本）
     public var deviceId: String {
         return String(id)
@@ -492,7 +492,7 @@ private struct Empty: Codable {}
 private struct StatisticsReportRequest: Codable {
     let deviceToken: String
     let statistics: [StatisticsEventReport]
-    
+
     enum CodingKeys: String, CodingKey {
         case deviceToken = "device_token"
         case statistics
@@ -505,7 +505,7 @@ private struct StatisticsEventReport: Codable {
     let dedupKey: String?
     let event: String
     let timestamp: Int64
-    
+
     enum CodingKeys: String, CodingKey {
         case pushLogId = "push_log_id"
         case dedupKey = "dedup_key"

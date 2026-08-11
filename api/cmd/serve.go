@@ -8,6 +8,7 @@ import (
 	"github.com/doopush/doopush/api/internal/controllers"
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/middleware"
+	"github.com/doopush/doopush/api/internal/models"
 	"github.com/doopush/doopush/api/internal/redisclient"
 	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/utils"
@@ -61,6 +62,9 @@ func startServer() {
 	r := gin.Default()
 	r.UseRawPath = true
 	r.UnescapePathValues = true
+	if err := r.SetTrustedProxies([]string{"127.0.0.1", "::1"}); err != nil {
+		log.Fatalf("Failed to configure trusted proxies: %v", err)
+	}
 
 	// 全局中间件
 	r.Use(middleware.CORS())
@@ -143,6 +147,12 @@ func startServer() {
 			authenticated.POST("/apps/:appId/invitations", middleware.RequireAppRole("owner"), invitationCtrl.CreateInvitation)
 			authenticated.DELETE("/apps/:appId/invitations/:invitationId", middleware.RequireAppRole("owner"), invitationCtrl.CancelInvitation)
 
+			// App Secret 管理（客户端 App Key 随应用自动创建，不在此处管理）
+			authenticated.GET("/apps/:appId/app-secrets", middleware.RequireAppRole("owner"), appCtrl.GetAppSecrets)
+			authenticated.POST("/apps/:appId/app-secrets", middleware.RequireAppRole("owner"), appCtrl.CreateAppSecret)
+			authenticated.PATCH("/apps/:appId/app-secrets/:secretId", middleware.RequireAppRole("owner"), appCtrl.UpdateAppSecretScopes)
+			authenticated.DELETE("/apps/:appId/app-secrets/:secretId", middleware.RequireAppRole("owner"), appCtrl.RevokeAppSecret)
+
 			// 设备管理
 			authenticated.GET("/apps/:appId/devices", middleware.RequireAppRole("viewer"), deviceCtrl.GetDevices)
 			authenticated.GET("/apps/:appId/devices/:deviceId", middleware.RequireAppRole("viewer"), deviceCtrl.GetDevice)
@@ -223,6 +233,25 @@ func startServer() {
 			receipt.POST("", callbackCtrl.ReceiveGenericCallback) // 通用回执接口
 		}
 
+		// App Key 供客户端 SDK 注册设备和上报推送统计。
+		appKeyRoutes := api.Group("")
+		appKeyRoutes.Use(middleware.AppKeyAuth())
+		{
+			appKeyRoutes.POST("/apps/:appId/devices", deviceCtrl.RegisterDevice)
+			appKeyRoutes.POST("/apps/:appId/push/statistics/report", pushCtrl.ReportPushStatistics)
+		}
+
+		// 服务端业务接口支持控制台 JWT 或带 Scope 的 App Secret。
+		serverRoutes := api.Group("")
+		serverRoutes.Use(middleware.JWTOrAppSecretAuth())
+		serverRoutes.Use(middleware.AuditLogger())
+		serverRoutes.Use(middleware.RequireAppSecretScopes(models.ScopePushSend))
+		{
+			serverRoutes.POST("/apps/:appId/push", pushCtrl.SendPush)
+			serverRoutes.POST("/apps/:appId/push/single", pushCtrl.SendSingle)
+			serverRoutes.POST("/apps/:appId/push/batch", pushCtrl.SendBatch)
+			serverRoutes.POST("/apps/:appId/push/broadcast", middleware.RequireAppSecretScopes(models.ScopePushBroadcast), pushCtrl.SendBroadcast)
+		}
 	}
 
 	// Swagger文档

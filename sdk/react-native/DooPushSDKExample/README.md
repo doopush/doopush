@@ -19,7 +19,7 @@
 - Node 18+
 - Xcode 15+（iOS 真机/模拟器）+ Apple Developer Team（真机签名要）
 - Android Studio + Android SDK（Android 端）+ 一台带 Google Play Services 的设备/模拟器（FCM 要 GMS）
-- 一组真实的 DooPush `appId` / `apiKey` + 服务端 baseURL
+- 一组真实的 DooPush `appId` / `appKey` + 服务端 baseURL
 
 ## 1）装依赖
 
@@ -57,7 +57,7 @@ cp -R "$SRC/build" "$SRC/ios" "$SRC/android" "$SRC/plugin" \
   ...,
   ["doopush-react-native-sdk", {
     "appId": "your_app_id",                  // ← 替换
-    "apiKey": "your_api_key",                // ← 替换
+    "appKey": "dp_ak_xxx",                  // ← 替换
     "baseURL": "https://doopush.com/api/v1", // ← 替换
     "ios": { "mode": "development" }         // 或 "production"
   }]
@@ -69,7 +69,7 @@ cp -R "$SRC/build" "$SRC/ios" "$SRC/android" "$SRC/plugin" \
 ```ts
 DooPush.configure({
   appId: 'your_app_id',
-  apiKey: 'your_api_key',
+  appKey: 'dp_ak_xxx',
   baseURL: 'https://doopush.com/api/v1',
 });
 ```

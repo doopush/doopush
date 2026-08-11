@@ -17,7 +17,7 @@ export interface User {
 
 export interface UserAppPermission {
   id: number
-  user_id: number
+	user_id?: number
   app_id: number
   role: AppRole
   created_at: string
@@ -74,7 +74,30 @@ export interface App {
   status: number  // 1=启用, 0=禁用
   app_icon?: string
   role?: AppRole
+	app_key: string
   created_by?: number
+  created_at: string
+  updated_at: string
+}
+
+export type AppSecretScope =
+  | 'push:send'
+  | 'push:broadcast'
+  | 'push:schedule'
+
+export interface AppSecret {
+  id: number
+  app_id: number
+  name: string
+  prefix: string
+  suffix: string
+  scopes: AppSecretScope[]
+  status: number
+  expires_at: string | null
+  revoked_at: string | null
+  last_used_at: string | null
+  last_used_ip?: string
+  created_by: number
   created_at: string
   updated_at: string
 }
@@ -294,6 +317,9 @@ export interface AuditFilters {
   end_time?: string
   ip_address?: string
   user_name?: string
+	principal_type?: 'user' | 'app_secret'
+	principal_id?: number
+	app_secret_id?: number
   app_id?: number
 }
 
@@ -513,14 +539,14 @@ export interface HonorPushConfig extends AndroidPushBaseConfig {
 }
 
 // 推送配置联合类型
-export type PushConfig = 
-  | IOSPushConfig 
-  | FCMPushConfig 
-  | HuaweiPushConfig 
-  | XiaomiPushConfig 
-  | OppoPushConfig 
-  | VivoPushConfig 
-  | MeizuPushConfig 
+export type PushConfig =
+  | IOSPushConfig
+  | FCMPushConfig
+  | HuaweiPushConfig
+  | XiaomiPushConfig
+  | OppoPushConfig
+  | VivoPushConfig
+  | MeizuPushConfig
   | HonorPushConfig
 
 // 推送厂商特有参数
@@ -551,23 +577,23 @@ export interface MeizuPushParams {
   // 通知栏信息
   notice_msg_type?: 0 | 1                    // 消息分类：0=公信消息, 1=私信消息
   notice_bar_type?: 0 | 2                    // 通知栏样式：0=标准, 2=原生
-  
+
   // 展开信息
   notice_expand_type?: 0 | 1 | 2             // 展开方式：0=标准, 1=文本, 2=大图
   notice_expand_content?: string             // 展开内容
   notice_expand_img_url?: string             // 展开大图URL
-  
+
   // 点击行为
   click_type?: 0 | 1 | 2                     // 点击动作：0=打开应用, 1=打开页面, 2=打开URI
   activity?: string                          // 目标Activity
   url?: string                               // 目标URL
   parameters?: Record<string, unknown>       // 额外参数
   custom_attribute?: string                  // 自定义属性
-  
+
   // 推送时间信息
   off_line?: 0 | 1                           // 离线消息：0=否, 1=是
   valid_time?: number                        // 有效时长(小时)：1-72
-  
+
   // 高级信息
   suspend?: 0 | 1                            // 悬浮窗：0=不显示, 1=显示
   clear_notice_bar?: 0 | 1                   // 可清除：0=不可以, 1=可以
@@ -575,7 +601,7 @@ export interface MeizuPushParams {
   vibrate?: 0 | 1                           // 震动：0=关闭, 1=开启
   lights?: 0 | 1                            // 闪光：0=关闭, 1=开启
   sound?: 0 | 1                             // 声音：0=关闭, 1=开启
-  
+
   // VIP功能
   subtitle?: string                          // 子标题
   pull_down_top?: 0 | 1                     // 即时置顶：0=否, 1=是
@@ -585,7 +611,7 @@ export interface MeizuPushParams {
   background_img_url?: string                // 背景图URL
   small_icon_url?: string                    // 小图标URL
   big_icon_url?: string                      // 大图标URL
-  
+
   // 回执信息
   callback?: string                          // 回执地址
   callback_param?: string                    // 回执参数

@@ -1,5 +1,5 @@
 import apiClient from './api-client'
-import type { App, AppConfig, AppInvitation, AppInviteCandidate, AppMember, AppRole, PaginationRequest } from '@/types/api'
+import type { App, AppConfig, AppInvitation, AppInviteCandidate, AppMember, AppRole, AppSecret, AppSecretScope, PaginationRequest } from '@/types/api'
 
 export class AppService {
   /**
@@ -76,6 +76,26 @@ export class AppService {
 
   static async removeAppMember(appId: number, userId: number): Promise<void> {
     return apiClient.delete(`/apps/${appId}/members/${userId}`)
+  }
+
+  static async getAppSecrets(appId: number): Promise<AppSecret[]> {
+    return apiClient.get(`/apps/${appId}/app-secrets`)
+  }
+
+  static async createAppSecret(appId: number, data: {
+    name: string
+    scopes: AppSecretScope[]
+    expires_at?: string | null
+  }): Promise<{ app_secret: string; secret_info: AppSecret; warning: string }> {
+    return apiClient.post(`/apps/${appId}/app-secrets`, data)
+  }
+
+  static async updateAppSecretScopes(appId: number, secretId: number, scopes: AppSecretScope[]): Promise<AppSecret> {
+    return apiClient.patch(`/apps/${appId}/app-secrets/${secretId}`, { scopes })
+  }
+
+  static async revokeAppSecret(appId: number, secretId: number): Promise<void> {
+    return apiClient.delete(`/apps/${appId}/app-secrets/${secretId}`)
   }
 
   /**
