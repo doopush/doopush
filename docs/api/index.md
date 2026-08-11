@@ -1,15 +1,14 @@
 # API 文档
 
-DooPush 提供完整的 REST API 接口，支持通过程序化方式实现推送功能。
+DooPush 公开 REST API 供第三方业务发送推送、注册设备和上报点击 / 打开事件。
 
 ## 🔑 认证方式
 
-DooPush API 提供两种认证方式：
+公开 API 使用 **API Key**（`X-API-Key` 头或 `?api_key=`）认证。API Key 与应用绑定且不再分级，可调用本文档列出的推送、设备注册和统计上报接口。
 
-- **API Key**（`X-API-Key` 头或 `?api_key=`）：面向第三方业务调用，授予的能力包括发送推送（单推 / 批量 / 广播）、设备注册、客户端送达 / 点击事件上报。
-- **JWT Token**（`Authorization: Bearer <token>`）：面向 Web 控制台与管理后台脚本，覆盖应用 / 配置 / 设备 / 推送日志 / 统计 / 审计等管理类查询。
-
-API Key 不再分级，凭一把 Key 即可访问其授权的全部接口；管理类只读接口需登录获取 JWT。
+::: warning 控制台内部接口
+Web 控制台还会调用一组 JWT 管理路由，用于应用、成员、配置、设备查询、模板、分组、定时任务、日志和审计等功能。这些路由属于内部实现，不作为公开 API 契约，也不承诺兼容性；第三方集成不应依赖。
+:::
 
 ## 📚 API 文档目录
 
@@ -19,16 +18,16 @@ API Key 不再分级，凭一把 Key 即可访问其授权的全部接口；管�
 ### 📨 推送相关
 - [**推送接口**](./push-apis.md) - 单推、批量、广播推送 API
 
-### 📱 设备相关  
-- [**设备接口**](./device-apis.md) - 设备注册、查询、分组、标签 API
+### 📱 设备相关
+- [**设备注册**](./device-apis.md) - 注册或更新设备 Token 与环境
 
 ### 📊 数据相关
-- [**数据接口**](./data-apis.md) - 推送统计、日志、审计数据查询 API
+- [**统计上报**](./data-apis.md) - 上报推送点击与打开事件
 
 ## 🌐 API 基础信息
 
 - **Base URL**: `https://doopush.com/api/v1`
-- **认证方式**: API Key（Header 或 Query 参数） / JWT Token（Header）
+- **认证方式**: API Key（Header 或 Query 参数）
 - **数据格式**: JSON
 - **字符编码**: UTF-8
 

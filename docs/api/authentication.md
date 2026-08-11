@@ -18,7 +18,7 @@ dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 **格式说明**：
-- **前缀**：`dp_live_` (生产环境) 或 `dp_test_` (测试环境)
+- **前缀**：当前固定为 `dp_live_`
 - **密钥**：32位随机字符串
 - **总长度**：40个字符
 
@@ -75,7 +75,7 @@ Header 认证更安全，不会在 URL 中暴露 API Key，建议优先使用。
 
 ## 📋 支持的接口
 
-API Key 仅授予「业务调用」权限，可访问的接口如下；管理类接口（设备列表、推送日志、推送统计、审计日志、应用 / 配置 / 模板管理等）需要登录后获得的 **JWT Token**。
+API Key 仅可访问下列公开业务接口。Web 控制台使用的 JWT 管理路由属于内部实现，不是公开 API，第三方集成不应依赖。
 
 ### 推送接口
 
@@ -96,7 +96,7 @@ API Key 仅授予「业务调用」权限，可访问的接口如下；管理类
 
 | 接口 | 描述 |
 |------|------|
-| `POST /api/v1/apps/{appId}/push/statistics/report` | 客户端上报推送送达 / 点击事件 |
+| `POST /api/v1/apps/{appId}/push/statistics/report` | 客户端上报推送点击 / 打开事件 |
 
 ## 🌍 Base URL
 
@@ -112,8 +112,8 @@ https://doopush.com/api/v1
 
 **参数说明**：
 - `{appId}` - 应用 ID（数字）
-- `{resource}` - 资源类型（push、devices、logs 等）
-- `{action}` - 操作类型（send、list、get 等）
+- `{resource}` - 资源类型（如 `push`、`devices`）
+- `{action}` - 可选的业务动作（如 `single`、`batch`、`statistics/report`）
 
 ## 🔍 请求示例
 
@@ -142,12 +142,13 @@ curl -X POST "https://doopush.com/api/v1/apps/123/devices" \
        "bundle_id": "com.example.app",
        "platform": "ios",
        "channel": "apns",
+       "push_environment": "development",
        "model": "iPhone 14",
        "system_version": "iOS 17.0"
      }'
 ```
 
-### 上报送达 / 点击事件
+### 上报点击 / 打开事件
 
 ```bash
 curl -X POST "https://doopush.com/api/v1/apps/123/push/statistics/report" \
@@ -203,7 +204,8 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/statistics/report" \
 
 1. **安全存储**：
    - 将 API Key 存储在服务器环境变量中
-   - 不要在客户端代码中硬编码 API Key
+   - 不要把 API Key 提交到公开仓库或注入浏览器前端
+   - 移动 SDK 必须配置 API Key 时，应使用独立密钥并将其视为可被提取的凭证，定期轮换
    - 使用配置文件时确保文件不被版本控制
 
 2. **环境隔离**：
@@ -287,7 +289,7 @@ class DooPushClient:
 
 ### 验证 API Key
 
-API Key 不能访问 GET 类管理接口，可通过发起一次广播推送来验证（命中 0 设备时返回 422 但 Key 仍判定为有效；Key 无效则返回 401）：
+API Key 没有独立的验证接口，可通过发起一次最小范围的测试推送验证。没有目标设备时会返回业务错误，但 Key 无效时会返回 401：
 
 ```bash
 curl -X POST "https://doopush.com/api/v1/apps/123/push" \
@@ -300,7 +302,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
      }'
 ```
 
-返回 200 / 422 表示 Key 有效，返回 401 表示 Key 无效或与应用不匹配。
+返回 200 或进入业务校验阶段表示 Key 有效；返回 401 表示 Key 无效或与应用不匹配。不要在生产应用上使用广播请求进行例行探测。
 
 ### 常见问题排查
 

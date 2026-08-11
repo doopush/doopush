@@ -49,8 +49,8 @@ export default withMermaid(
             items: [
               { text: 'API 认证', link: '/api/authentication' },
               { text: '推送接口', link: '/api/push-apis' },
-              { text: '设备接口', link: '/api/device-apis' },
-              { text: '数据接口', link: '/api/data-apis' }
+              { text: '设备注册', link: '/api/device-apis' },
+              { text: '统计上报', link: '/api/data-apis' }
             ]
           }
         ],

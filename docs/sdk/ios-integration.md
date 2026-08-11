@@ -502,6 +502,17 @@ struct ContentView: View {
 
 ## 🔧 高级配置
 
+### APNs 推送环境
+
+iOS SDK 注册设备时会自动上报 `push_environment`：
+
+- 优先读取应用签名中的 `aps-environment`
+- 开发签名上报 `development`
+- TestFlight / App Store 等生产签名上报 `production`
+- 无法读取签名信息时，Debug 构建回退为 `development`，Release 构建回退为 `production`
+
+DooPush 服务端会保存该值，并在发送时为每台设备选择对应的 APNs sandbox 或 production endpoint。应用无需手动传入环境；重新注册设备会同步更新环境。
+
 ### 1. 自定义服务器地址
 
 ```swift

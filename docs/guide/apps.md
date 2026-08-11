@@ -213,7 +213,7 @@ API 密钥是应用与 DooPush 服务器通信的凭证，用于 API 调用认�
 - **要求**：1-100 个字符
 
 ::: tip ℹ️ 当前不支持权限分级与有效期
-DooPush 当前的 API Key 不再分级（不存在 `push` / `device` / `statistics` 权限粒度），凭一把 Key 即可访问其授权的全部接口；服务端不主动设置过期时间，需要轮换或下线时直接禁用 / 删除。
+DooPush 当前的 API Key 不再分级（不存在 `push` / `device` / `statistics` 权限粒度），可访问公开文档列出的推送、设备注册和统计上报接口。服务端不主动设置过期时间，需要轮换或下线时删除旧密钥并创建新密钥。
 :::
 
 ### API 密钥信息
@@ -239,25 +239,28 @@ DooPush 当前的 API Key 不再分级（不存在 `push` / `device` / `statisti
 
 ```bash
 # Header 认证（推荐）
-curl -H "X-API-Key: your_api_key" \
+curl -X POST "https://doopush.com/api/v1/apps/123/push" \
+     -H "X-API-Key: your_api_key" \
      -H "Content-Type: application/json" \
-     https://doopush.com/api/v1/apps
+     -d '{"title":"测试","content":"测试消息","target":{"type":"all"}}'
 
 # Query 参数认证
-curl "https://doopush.com/api/v1/apps?api_key=your_api_key"
+curl -X POST "https://doopush.com/api/v1/apps/123/push?api_key=your_api_key" \
+     -H "Content-Type: application/json" \
+     -d '{"title":"测试","content":"测试消息","target":{"type":"all"}}'
 ```
 
 ### 密钥安全管理
 
 **安全建议**：
 1. **妥善保存** - 将 API 密钥存储在安全的位置
-2. **避免泄露** - 不要在代码中硬编码密钥
+2. **避免泄露** - 不要提交到公开仓库或注入浏览器前端；移动 SDK 使用独立密钥并定期轮换
 3. **定期轮换** - 定期更新 API 密钥
-4. **最小权限** - 只授予必要的权限
+4. **隔离用途** - 为不同环境或服务创建独立密钥，便于单独轮换
 5. **监控使用** - 定期检查密钥使用情况
 
 **发现泄露时**：
-1. 立即禁用或删除泄露的密钥
+1. 立即删除泄露的密钥
 2. 创建新的 API 密钥
 3. 更新应用中的密钥配置
 4. 检查是否有异常调用

@@ -115,11 +115,11 @@ X 轴为日期、Y 轴为推送数量；如该应用还未发送过推送，图�
 
 **可导出的内容**：
 
-- 推送日志列表 / 单条推送的设备级明细（`POST /apps/{appId}/export/push-logs`、`POST /apps/{appId}/export/push-logs/{logId}/details`）
-- 推送统计（`POST /apps/{appId}/export/push-statistics`）
-- 应用审计日志（`POST /apps/{appId}/export/audit-logs`）
+- 推送日志列表 / 单条推送的设备级明细
+- 推送统计
+- 应用审计日志
 
-导出接口需要 JWT 认证；下载链接由后端生成的 XLSX 文件直接返回。
+从相应的控制台页面发起导出，生成完成后即可下载 XLSX 文件。
 
 ## 💡 使用建议
 

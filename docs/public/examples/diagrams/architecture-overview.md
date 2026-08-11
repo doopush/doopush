@@ -77,7 +77,7 @@ sequenceDiagram
 
     Provider->>App: 推送通知
     App->>SDK: 接收推送
-    SDK->>API: 上报送达 / 点击统计
+    SDK->>API: 上报点击 / 打开统计
 ```
 
 ## 数据层次结构

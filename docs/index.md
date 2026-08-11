@@ -25,11 +25,11 @@ features:
   - title: 🛠 功能丰富
     details: 支持单推、批量推送、广播推送、定时推送，提供完整的设备管理和推送统计功能
   - title: 🔑 API 接口
-    details: 提供完整的 REST API，支持 API Key 认证，让您轻松实现自动化推送
+    details: 提供聚焦推送、设备注册和统计上报的公开 REST API，支持 API Key 认证
   - title: 📊 数据统计
     details: 详细的推送统计和分析数据，帮助您了解推送效果和用户行为
   - title: 🔒 安全可靠
-    details: 企业级安全保障，完整的权限管理和审计日志，确保数据安全
+    details: 提供应用级角色权限、API Key 管理和操作审计能力
 ---
 
 ## 开始使用
@@ -48,8 +48,8 @@ features:
 
 - [**API 认证**](/api/authentication) - 了解如何使用 API Key
 - [**推送接口**](/api/push-apis) - 完整的推送 API 文档
-- [**设备接口**](/api/device-apis) - 设备管理相关接口
-- [**数据接口**](/api/data-apis) - 统计数据查询接口
+- [**设备注册**](/api/device-apis) - 注册或更新设备 Token
+- [**统计上报**](/api/data-apis) - 上报推送点击与打开事件
 
 ### 📱 平台支持状态
 

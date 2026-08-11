@@ -23,8 +23,7 @@ DooPush Android SDK 为 Android 应用提供统一的推送通知解决方案，
 - ✅ **推送接收** - 统一的推送消息接收和处理
 - ✅ **权限管理** - 智能处理推送权限申请
 - ✅ **角标管理** - 支持应用图标角标设置和清除
-- ✅ **统计事件去重** - SDK 上报点击 / 打开统计时按 `(push_log_id 或 dedup_key, event_type)` 去重，避免同一事件多次入库
-- ✅ **统计上报** - 自动统计推送送达和点击数据
+- ✅ **统计事件收集** - SDK 在本地按推送标识和事件类型排队、去重
 
 ### 📊 高级特性
 - ✅ **WebSocket 长连接** - 基于 OkHttp WebSocket 的 Gateway 长连接，当前用于实时维护设备「在线」状态（server→client 推送暂未实现）
@@ -629,8 +628,12 @@ context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
 
 ### 主动上报统计
 
+::: warning 当前限制
+Android SDK 当前生成的事件名称、时间戳单位和 `push_log_id` 类型与服务端统计接口不一致，调用 `reportStatistics()` 不能可靠完成上报。修复 SDK 前，请勿依赖该方法生成点击 / 打开统计。
+:::
+
 ```kotlin
-// 立即把本地排队的推送送达 / 点击 / 打开统计上报到服务端
+// 尝试立即上报本地排队的统计事件；当前存在上述兼容性限制
 DooPushManager.getInstance().reportStatistics()
 ```
 
