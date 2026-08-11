@@ -2,12 +2,9 @@ import { validatePluginConfig } from '../schema';
 
 describe('validatePluginConfig', () => {
   test('accepts minimum valid config', () => {
-    const result = validatePluginConfig({
-      appId: 'app_123',
-      apiKey: 'key_abc',
-    });
-    expect(result.appId).toBe('app_123');
-    expect(result.apiKey).toBe('key_abc');
+    const result = validatePluginConfig({});
+    expect(result.appId).toBeUndefined();
+    expect(result.apiKey).toBeUndefined();
     expect(result.ios.mode).toBe('production'); // default
     expect(result.android.vendors).toEqual({});
   });
@@ -52,18 +49,6 @@ describe('validatePluginConfig', () => {
     expect(result.android.vendors.honor?.appId).toBe('honor_app');
     expect(result.android.vendors.honor?.clientSecret).toBe('honor_secret');
     expect(result.android.vendors.xiaomi?.appKey).toBe('mi_key');
-  });
-
-  test('rejects missing appId', () => {
-    expect(() => validatePluginConfig({ apiKey: 'k' })).toThrow(
-      /appId is required/
-    );
-  });
-
-  test('rejects missing apiKey', () => {
-    expect(() => validatePluginConfig({ appId: 'a' })).toThrow(
-      /apiKey is required/
-    );
   });
 
   test('rejects fcm vendor without googleServicesFile', () => {

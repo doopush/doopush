@@ -40,9 +40,15 @@ export interface DooPushRegisterResult {
   vendor: DooPushVendor;
 }
 
+export interface DooPushTokenResult {
+  token: string;
+  vendor: DooPushVendor;
+}
+
 export interface DooPushDeviceInfo {
   platform: 'ios' | 'android' | string;
   channel: DooPushVendor | string;
+  pushEnvironment?: 'development' | 'production' | string;
   bundleId: string;
   brand: string;
   model: string;
