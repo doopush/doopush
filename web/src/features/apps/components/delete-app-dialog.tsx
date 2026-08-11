@@ -28,7 +28,7 @@ export function DeleteAppDialog({ app, open, onOpenChange, onSuccess }: DeleteAp
     try {
       setLoading(true)
       await AppService.deleteApp(app.id)
-      toast.success('应用删除成功')
+      toast.success('应用已停用')
       onSuccess()
     } catch (error) {
       toast.error((error as Error).message || '删除应用失败')
@@ -52,7 +52,7 @@ export function DeleteAppDialog({ app, open, onOpenChange, onSuccess }: DeleteAp
             删除应用
           </DialogTitle>
           <DialogDescription>
-            您确定要删除应用 "{app.name}" 吗？此操作无法撤销。
+            您确定要删除应用 "{app.name}" 吗？删除后应用将被停用，控制台目前不提供恢复入口。
           </DialogDescription>
         </DialogHeader>
 
@@ -60,11 +60,10 @@ export function DeleteAppDialog({ app, open, onOpenChange, onSuccess }: DeleteAp
           <AlertDescription className="text-destructive dark:text-destructive">
             <strong>警告：</strong>删除应用将会：
             <ul className="mt-2 ml-4 list-disc space-y-1">
-              <li>永久删除所有设备数据</li>
-              <li>清除所有推送历史记录</li>
-              <li>删除所有消息模板</li>
-              <li>撤销所有API密钥</li>
-              <li>停止所有定时推送任务</li>
+              <li>将应用状态设为禁用</li>
+              <li>从活跃应用列表和应用切换器中移除</li>
+              <li>撤回所有待处理的成员邀请</li>
+              <li>保留设备、推送记录和配置等现有数据</li>
             </ul>
           </AlertDescription>
         </Alert>
