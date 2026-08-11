@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Loader2, Trash2, UserPlus, Users } from 'lucide-react'
+import { Clock3, Loader2, Search, Send, Trash2, Users, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/select'
 import { AppService } from '@/services/app-service'
 import { useAuthStore } from '@/stores/auth-store'
-import type { App, AppMember, AppRole } from '@/types/api'
+import type { App, AppInvitation, AppInviteCandidate, AppMember, AppRole } from '@/types/api'
 
 interface AppMembersDialogProps {
   app: App
@@ -50,13 +50,18 @@ export function AppMembersDialog({ app, open, onOpenChange }: AppMembersDialogPr
   const currentUser = useAuthStore(state => state.user)
   const setUserApps = useAuthStore(state => state.setUserApps)
   const [members, setMembers] = useState<AppMember[]>([])
+  const [invitations, setInvitations] = useState<AppInvitation[]>([])
   const [email, setEmail] = useState('')
+  const [candidate, setCandidate] = useState<AppInviteCandidate | null>(null)
   const [newRole, setNewRole] = useState<AppRole>('developer')
   const [loading, setLoading] = useState(false)
-  const [adding, setAdding] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const [sending, setSending] = useState(false)
   const [updatingUserId, setUpdatingUserId] = useState<number | null>(null)
   const [removeTarget, setRemoveTarget] = useState<AppMember | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<AppInvitation | null>(null)
   const [removing, setRemoving] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   useEffect(() => {
     if (open) void loadMembers()
@@ -66,7 +71,12 @@ export function AppMembersDialog({ app, open, onOpenChange }: AppMembersDialogPr
   const loadMembers = async () => {
     try {
       setLoading(true)
-      setMembers(await AppService.getAppMembers(app.id))
+      const [memberItems, invitationItems] = await Promise.all([
+        AppService.getAppMembers(app.id),
+        AppService.getPendingInvitations(app.id),
+      ])
+      setMembers(memberItems)
+      setInvitations(invitationItems)
     } catch (error) {
       toast.error((error as Error).message || '加载成员失败')
     } finally {
@@ -82,24 +92,53 @@ export function AppMembersDialog({ app, open, onOpenChange }: AppMembersDialogPr
     }
   }
 
-  const handleAdd = async (event: FormEvent) => {
+  const handleSearch = async (event: FormEvent) => {
     event.preventDefault()
     const normalizedEmail = email.trim()
     if (!normalizedEmail) return
 
     try {
-      setAdding(true)
-      const member = await AppService.addAppMember(app.id, {
-        email: normalizedEmail,
+      setSearching(true)
+      setCandidate(await AppService.lookupInviteCandidate(app.id, normalizedEmail))
+    } catch (error) {
+      setCandidate(null)
+      toast.error((error as Error).message || '未找到该用户')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const handleInvite = async () => {
+    if (!candidate || candidate.state !== 'available') return
+    try {
+      setSending(true)
+      const invitation = await AppService.createInvitation(app.id, {
+        invitee_id: candidate.user_id,
         role: newRole,
       })
-      setMembers(current => [...current, member])
+      setInvitations(current => [invitation, ...current])
       setEmail('')
-      toast.success('成员添加成功')
+      setCandidate(null)
+      toast.success('邀请已发送')
     } catch (error) {
-      toast.error((error as Error).message || '添加成员失败')
+      toast.error((error as Error).message || '发送邀请失败')
     } finally {
-      setAdding(false)
+      setSending(false)
+    }
+  }
+
+  const handleCancelInvitation = async () => {
+    if (!cancelTarget) return
+    try {
+      setCancelling(true)
+      await AppService.cancelInvitation(app.id, cancelTarget.id)
+      setInvitations(current => current.filter(item => item.id !== cancelTarget.id))
+      setCancelTarget(null)
+      toast.success('邀请已撤回')
+    } catch (error) {
+      toast.error((error as Error).message || '撤回邀请失败')
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -150,36 +189,63 @@ export function AppMembersDialog({ app, open, onOpenChange }: AppMembersDialogPr
               成员管理
             </DialogTitle>
             <DialogDescription>
-              {app.name} · {members.length} 位成员
+              {app.name} · {members.length} 位成员{invitations.length > 0 ? ` · ${invitations.length} 个待处理邀请` : ''}
             </DialogDescription>
           </DialogHeader>
 
           <DialogScrollBody className='space-y-5'>
-            <form className='flex flex-col gap-2 sm:flex-row' onSubmit={handleAdd}>
+            <form className='flex flex-col gap-2 sm:flex-row' onSubmit={handleSearch}>
               <Input
                 type='email'
                 value={email}
-                onChange={event => setEmail(event.target.value)}
+                onChange={event => {
+                  setEmail(event.target.value)
+                  setCandidate(null)
+                }}
                 placeholder='同事的注册邮箱'
                 aria-label='同事的注册邮箱'
-                disabled={adding}
+                disabled={searching || sending}
                 required
               />
-              <Select value={newRole} onValueChange={value => setNewRole(value as AppRole)} disabled={adding}>
-                <SelectTrigger className='w-full sm:w-32' aria-label='新成员角色'>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='developer'>开发者</SelectItem>
-                  <SelectItem value='viewer'>观察者</SelectItem>
-                  <SelectItem value='owner'>所有者</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button type='submit' disabled={adding || !email.trim()}>
-                {adding ? <Loader2 className='h-4 w-4 animate-spin' /> : <UserPlus className='h-4 w-4' />}
-                添加
+              <Button type='submit' variant='outline' disabled={searching || sending || !email.trim()}>
+                {searching ? <Loader2 className='h-4 w-4 animate-spin' /> : <Search className='h-4 w-4' />}
+                搜索
               </Button>
             </form>
+
+            {candidate && (
+              <div className='flex flex-col gap-3 border-y py-4 sm:flex-row sm:items-center'>
+                <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted font-medium'>
+                  {(candidate.nickname || candidate.username).slice(0, 1).toUpperCase()}
+                </div>
+                <div className='min-w-0 flex-1'>
+                  <div className='truncate text-sm font-medium'>{candidate.nickname || candidate.username}</div>
+                  <div className='truncate text-xs text-muted-foreground'>{candidate.email}</div>
+                </div>
+                {candidate.state === 'available' ? (
+                  <div className='flex items-center gap-2'>
+                    <Select value={newRole} onValueChange={value => setNewRole(value as AppRole)} disabled={sending}>
+                      <SelectTrigger className='w-28' aria-label='邀请角色'>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='developer'>开发者</SelectItem>
+                        <SelectItem value='viewer'>观察者</SelectItem>
+                        <SelectItem value='owner'>所有者</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button type='button' onClick={() => void handleInvite()} disabled={sending}>
+                      {sending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Send className='h-4 w-4' />}
+                      发送邀请
+                    </Button>
+                  </div>
+                ) : (
+                  <Badge variant='secondary'>
+                    {candidate.state === 'member' ? '已经是成员' : '邀请待处理'}
+                  </Badge>
+                )}
+              </div>
+            )}
 
             <div className='overflow-hidden rounded-md border'>
               {loading ? (
@@ -240,6 +306,39 @@ export function AppMembersDialog({ app, open, onOpenChange }: AppMembersDialogPr
                 </div>
               )}
             </div>
+
+            {invitations.length > 0 && (
+              <div className='space-y-2'>
+                <div className='flex items-center gap-2 text-sm font-medium'>
+                  <Clock3 className='h-4 w-4' />
+                  待处理邀请
+                </div>
+                <div className='divide-y rounded-md border'>
+                  {invitations.map(invitation => (
+                    <div key={invitation.id} className='flex min-w-0 items-center gap-3 px-4 py-3'>
+                      <div className='min-w-0 flex-1'>
+                        <div className='truncate text-sm font-medium'>{invitation.invitee_name}</div>
+                        <div className='truncate text-xs text-muted-foreground'>{invitation.invitee_email}</div>
+                      </div>
+                      <Badge variant='outline'>{roleLabels[invitation.role]}</Badge>
+                      <span className='hidden text-xs text-muted-foreground sm:inline'>
+                        {new Date(invitation.created_at).toLocaleString('zh-CN')}
+                      </span>
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='icon'
+                        onClick={() => setCancelTarget(invitation)}
+                        aria-label={`撤回发给${invitation.invitee_name}的邀请`}
+                        title='撤回邀请'
+                      >
+                        <X className='h-4 w-4' />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </DialogScrollBody>
         </DialogContent>
       </Dialog>
@@ -261,6 +360,27 @@ export function AppMembersDialog({ app, open, onOpenChange }: AppMembersDialogPr
             >
               {removing && <Loader2 className='h-4 w-4 animate-spin' />}
               确认移除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={Boolean(cancelTarget)} onOpenChange={open => !open && !cancelling && setCancelTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>撤回邀请</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定撤回发给 {cancelTarget?.invitee_name} 的应用邀请吗？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={event => { event.preventDefault(); void handleCancelInvitation() }}
+              disabled={cancelling}
+            >
+              {cancelling && <Loader2 className='h-4 w-4 animate-spin' />}
+              确认撤回
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -6,6 +6,7 @@ func AllModels() []interface{} {
 		// 用户相关
 		&User{},
 		&UserAppPermission{},
+		&AppInvitation{},
 
 		// 应用相关
 		&App{},

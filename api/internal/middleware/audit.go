@@ -64,6 +64,7 @@ func shouldAudit(c *gin.Context) bool {
 		"/static/",
 		"/assets/",
 		"/api/v1/auth/refresh", // 刷新token不需要记录
+		"/api/v1/inbox",        // 邀请表自身保留完整状态记录
 	}
 
 	for _, excludePath := range excludePaths {
@@ -166,6 +167,11 @@ func parseActionFromRequest(c *gin.Context) (action, resource, resourceID string
 				}
 			case "members":
 				resource = "app_member"
+				if len(pathParts) > i+1 && isNumeric(pathParts[i+1]) {
+					resourceID = pathParts[i+1]
+				}
+			case "invitations":
+				resource = "app_invitation"
 				if len(pathParts) > i+1 && isNumeric(pathParts[i+1]) {
 					resourceID = pathParts[i+1]
 				}

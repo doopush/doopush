@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
@@ -14,11 +15,10 @@ import (
 )
 
 var (
-	ErrAppMemberNotFound   = errors.New("应用成员不存在")
-	ErrEmailUserNotFound   = errors.New("该邮箱对应的用户不存在或已被禁用")
-	ErrMemberAlreadyExists = errors.New("该用户已经是应用成员")
-	ErrInvalidAppRole      = errors.New("无效的应用角色")
-	ErrLastOwner           = errors.New("应用必须至少保留一位所有者")
+	ErrAppMemberNotFound = errors.New("应用成员不存在")
+	ErrEmailUserNotFound = errors.New("该邮箱对应的用户不存在或已被禁用")
+	ErrInvalidAppRole    = errors.New("无效的应用角色")
+	ErrLastOwner         = errors.New("应用必须至少保留一位所有者")
 )
 
 // AppService 应用服务
@@ -149,35 +149,6 @@ func (s *AppService) GetAppMembers(appID, operatorID uint) ([]models.AppMember, 
 		return nil, errors.New("获取应用成员失败")
 	}
 	return members, nil
-}
-
-// AddAppMember 按邮箱添加已注册用户
-func (s *AppService) AddAppMember(appID, operatorID uint, email, role string) (*models.AppMember, error) {
-	email = strings.TrimSpace(strings.ToLower(email))
-	if !isValidAppRole(role) {
-		return nil, ErrInvalidAppRole
-	}
-	if err := s.requireOwner(database.DB, appID, operatorID); err != nil {
-		return nil, err
-	}
-
-	var user models.User
-	if err := database.DB.Where("LOWER(email) = ? AND status = 1", email).First(&user).Error; err != nil {
-		return nil, ErrEmailUserNotFound
-	}
-
-	permission := models.UserAppPermission{UserID: user.ID, AppID: appID, Role: role}
-	if err := database.DB.Create(&permission).Error; err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) || isDuplicateEntryError(err) {
-			return nil, ErrMemberAlreadyExists
-		}
-		return nil, errors.New("添加应用成员失败")
-	}
-
-	return &models.AppMember{
-		UserID: user.ID, Username: user.Username, Email: user.Email,
-		Nickname: user.Nickname, Avatar: user.Avatar, Role: role, CreatedAt: permission.CreatedAt,
-	}, nil
 }
 
 // UpdateAppMemberRole 修改应用成员角色
@@ -369,12 +340,20 @@ func (s *AppService) DeleteApp(appID uint, userID uint) error {
 		return errors.New("无权限删除该应用")
 	}
 
-	// 软删除应用
-	if err := database.DB.Model(&models.App{}).Where("id = ?", appID).Update("status", 0).Error; err != nil {
-		return errors.New("应用删除失败")
-	}
-
-	return nil
+	return database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.App{}).Where("id = ?", appID).Update("status", 0).Error; err != nil {
+			return errors.New("应用删除失败")
+		}
+		now := time.Now()
+		if err := tx.Model(&models.AppInvitation{}).
+			Where("app_id = ? AND status = ?", appID, "pending").
+			Updates(map[string]interface{}{
+				"status": "cancelled", "pending_key": nil, "responded_at": now, "read_at": nil,
+			}).Error; err != nil {
+			return errors.New("撤回应用邀请失败")
+		}
+		return nil
+	})
 }
 
 // GetAppAPIKeys 获取应用API密钥列表

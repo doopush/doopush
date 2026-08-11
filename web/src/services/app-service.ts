@@ -1,5 +1,5 @@
 import apiClient from './api-client'
-import type { App, AppAPIKey, AppConfig, AppMember, AppRole, PaginationRequest } from '@/types/api'
+import type { App, AppAPIKey, AppConfig, AppInvitation, AppInviteCandidate, AppMember, AppRole, PaginationRequest } from '@/types/api'
 
 export class AppService {
   /**
@@ -54,8 +54,20 @@ export class AppService {
     return apiClient.get(`/apps/${appId}/members`)
   }
 
-  static async addAppMember(appId: number, data: { email: string; role: AppRole }): Promise<AppMember> {
-    return apiClient.post(`/apps/${appId}/members`, data)
+  static async lookupInviteCandidate(appId: number, email: string): Promise<AppInviteCandidate> {
+    return apiClient.get(`/apps/${appId}/invite-candidate`, { params: { email } })
+  }
+
+  static async getPendingInvitations(appId: number): Promise<AppInvitation[]> {
+    return apiClient.get(`/apps/${appId}/invitations`)
+  }
+
+  static async createInvitation(appId: number, data: { invitee_id: number; role: AppRole }): Promise<AppInvitation> {
+    return apiClient.post(`/apps/${appId}/invitations`, data)
+  }
+
+  static async cancelInvitation(appId: number, invitationId: number): Promise<void> {
+    return apiClient.delete(`/apps/${appId}/invitations/${invitationId}`)
   }
 
   static async updateAppMember(appId: number, userId: number, role: AppRole): Promise<AppMember> {

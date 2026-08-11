@@ -89,6 +89,7 @@ func startServer() {
 	uploadCtrl := controllers.NewUploadController()
 	exportCtrl := controllers.NewExportController()
 	callbackCtrl := controllers.NewCallbackController()
+	invitationCtrl := controllers.NewInvitationController()
 
 	// 基础路由 (无需认证)
 	r.GET("/health", healthCtrl.Check)
@@ -116,6 +117,12 @@ func startServer() {
 			authenticated.PUT("/auth/profile", authCtrl.UpdateProfile)
 			authenticated.PUT("/auth/password", authCtrl.ChangePassword)
 			authenticated.GET("/auth/apps", authCtrl.UserApps)
+			authenticated.GET("/inbox", invitationCtrl.GetInbox)
+			authenticated.GET("/inbox/unread-count", invitationCtrl.GetUnreadCount)
+			authenticated.POST("/inbox/read-all", invitationCtrl.MarkAllRead)
+			authenticated.PATCH("/inbox/:invitationId/read", invitationCtrl.MarkRead)
+			authenticated.POST("/inbox/:invitationId/accept", invitationCtrl.AcceptInvitation)
+			authenticated.POST("/inbox/:invitationId/reject", invitationCtrl.RejectInvitation)
 
 			// 文件上传
 			authenticated.POST("/upload/image", uploadCtrl.UploadImage)
@@ -129,9 +136,12 @@ func startServer() {
 			authenticated.PUT("/apps/:appId", middleware.RequireAppRole("developer"), appCtrl.UpdateApp)
 			authenticated.DELETE("/apps/:appId", middleware.RequireAppRole("owner"), appCtrl.DeleteApp)
 			authenticated.GET("/apps/:appId/members", middleware.RequireAppRole("owner"), appCtrl.GetAppMembers)
-			authenticated.POST("/apps/:appId/members", middleware.RequireAppRole("owner"), appCtrl.AddAppMember)
 			authenticated.PATCH("/apps/:appId/members/:userId", middleware.RequireAppRole("owner"), appCtrl.UpdateAppMember)
 			authenticated.DELETE("/apps/:appId/members/:userId", middleware.RequireAppRole("owner"), appCtrl.RemoveAppMember)
+			authenticated.GET("/apps/:appId/invite-candidate", middleware.RequireAppRole("owner"), invitationCtrl.LookupCandidate)
+			authenticated.GET("/apps/:appId/invitations", middleware.RequireAppRole("owner"), invitationCtrl.GetPendingInvitations)
+			authenticated.POST("/apps/:appId/invitations", middleware.RequireAppRole("owner"), invitationCtrl.CreateInvitation)
+			authenticated.DELETE("/apps/:appId/invitations/:invitationId", middleware.RequireAppRole("owner"), invitationCtrl.CancelInvitation)
 
 			// API密钥管理
 			authenticated.GET("/apps/:appId/api-keys", middleware.RequireAppRole("developer"), appCtrl.GetAppAPIKeys)

@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuthStore } from '@/stores/auth-store'
 import { getIconURL } from '@/utils/app-utils'
+import { InboxButton } from '@/components/layout/inbox-nav'
 
 export function ProfileDropdown() {
   const { user, isAuthenticated } = useAuthStore()
@@ -35,16 +36,18 @@ export function ProfileDropdown() {
       .slice(0, 2)
   }
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
-          <Avatar className='h-8 w-8'>
-            <AvatarImage src={getIconURL(user.avatar || '')} alt={user.nickname || user.username} />
-            <AvatarFallback>{getUserInitials(user.nickname || user.username)}</AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className='w-56' align='end' forceMount>
+    <>
+      <InboxButton />
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
+            <Avatar className='h-8 w-8'>
+              <AvatarImage src={getIconURL(user.avatar || '')} alt={user.nickname || user.username} />
+              <AvatarFallback>{getUserInitials(user.nickname || user.username)}</AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className='w-56' align='end' forceMount>
         <DropdownMenuLabel className='font-normal'>
           <div className='flex flex-col gap-1.5'>
             <p className='text-sm leading-none font-medium'>{user.nickname || user.username}</p>
@@ -80,7 +83,8 @@ export function ProfileDropdown() {
         <DropdownMenuItem onClick={handleLogout}>
           退出登录
         </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   )
 }

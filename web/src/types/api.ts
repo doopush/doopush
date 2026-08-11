@@ -35,6 +35,35 @@ export interface AppMember {
   created_at: string
 }
 
+export type InvitationStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled'
+
+export interface AppInvitation {
+  id: number
+  app_id: number
+  inviter_id: number
+  invitee_id: number
+  role: AppRole
+  status: InvitationStatus
+  app_name: string
+  app_icon?: string
+  inviter_name: string
+  invitee_name: string
+  invitee_email: string
+  read_at: string | null
+  responded_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AppInviteCandidate {
+  user_id: number
+  username: string
+  email: string
+  nickname?: string
+  avatar?: string
+  state: 'available' | 'member' | 'pending'
+}
+
 // ===== 应用相关 =====
 export interface App {
   id: number

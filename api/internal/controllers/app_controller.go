@@ -43,11 +43,6 @@ type UpdateAppRequest struct {
 	Status      *int   `json:"status" binding:"omitempty,oneof=0 1" example:"1"`
 }
 
-type AddAppMemberRequest struct {
-	Email string `json:"email" binding:"required,email"`
-	Role  string `json:"role" binding:"required,oneof=owner developer viewer"`
-}
-
 type UpdateAppMemberRequest struct {
 	Role string `json:"role" binding:"required,oneof=owner developer viewer"`
 }
@@ -163,25 +158,6 @@ func (a *AppController) GetAppMembers(c *gin.Context) {
 	response.Success(c, members)
 }
 
-// AddAppMember 按邮箱添加应用成员
-func (a *AppController) AddAppMember(c *gin.Context) {
-	appID, ok := parseAppID(c)
-	if !ok {
-		return
-	}
-	var req AddAppMemberRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "请输入有效的邮箱和角色")
-		return
-	}
-	member, err := a.appService.AddAppMember(appID, c.GetUint("user_id"), req.Email, req.Role)
-	if err != nil {
-		handleMemberError(c, err)
-		return
-	}
-	c.JSON(http.StatusCreated, response.APIResponse{Code: http.StatusCreated, Message: "成员添加成功", Data: member})
-}
-
 // UpdateAppMember 更新应用成员角色
 func (a *AppController) UpdateAppMember(c *gin.Context) {
 	appID, ok := parseAppID(c)
@@ -237,8 +213,6 @@ func handleMemberError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, services.ErrEmailUserNotFound), errors.Is(err, services.ErrAppMemberNotFound):
 		response.NotFound(c, err.Error())
-	case errors.Is(err, services.ErrMemberAlreadyExists):
-		response.Error(c, http.StatusConflict, err.Error())
 	case errors.Is(err, services.ErrInvalidAppRole), errors.Is(err, services.ErrLastOwner):
 		response.BadRequest(c, err.Error())
 	case err.Error() == "无权限管理应用成员":
