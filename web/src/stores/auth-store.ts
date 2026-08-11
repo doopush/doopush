@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { getCookie, setCookie, removeCookie } from '@/lib/cookies'
-import type { User, App } from '@/types/api'
+import type { User, App, AppRole } from '@/types/api'
 
 const ACCESS_TOKEN = 'doopush_token'
 const CURRENT_APP = 'doopush_current_app'
@@ -31,7 +31,7 @@ interface AuthState {
   setAppsFetched: (fetched: boolean) => void
   
   // 权限检查
-  hasAppPermission: (appId: number, permission?: 'owner' | 'developer' | 'viewer') => boolean
+  hasAppPermission: (appId: number, permission?: AppRole) => boolean
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => {
@@ -119,10 +119,10 @@ export const useAuthStore = create<AuthState>()((set, get) => {
           try {
             const savedApp = JSON.parse(savedAppData)
             // 检查保存的应用是否在新的应用列表中
-            const appExists = apps.some(app => app.id === savedApp.id)
-            if (appExists) {
-              // 如果存在，设置为当前应用
-              validCurrentApp = savedApp
+            const currentApp = apps.find(app => app.id === savedApp.id)
+            if (currentApp) {
+              // 使用接口返回的最新应用信息和角色，避免沿用过期缓存
+              validCurrentApp = currentApp
             } else {
               // 如果不存在，清除保存的应用
               removeCookie(CURRENT_APP)
@@ -146,14 +146,19 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       set(() => ({ appsFetched: fetched })),
     
     // 权限检查
-    hasAppPermission: (appId: number, _permission = 'viewer') => {
+    hasAppPermission: (appId: number, permission = 'viewer') => {
       const state = get()
-      if (!state.user || !state.currentApp) return false
-      if (state.currentApp.id !== appId) return false
-      
-      // TODO: 实际的权限检查逻辑
-      // 这里需要根据 UserAppPermission 数据进行检查
-      return true
+      if (!state.user) return false
+
+      const app = state.userApps.find(item => item.id === appId)
+      if (!app?.role) return false
+
+      const roleLevel: Record<AppRole, number> = {
+        viewer: 1,
+        developer: 2,
+        owner: 3,
+      }
+      return roleLevel[app.role] >= roleLevel[permission]
     },
   }
 })

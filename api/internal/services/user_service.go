@@ -101,6 +101,7 @@ func (s *UserService) GetUserApps(userID uint) ([]models.App, error) {
 
 	// 通过用户权限表连接查询
 	err := database.DB.Table("apps").
+		Select("apps.*, user_app_permissions.role").
 		Joins("JOIN user_app_permissions ON apps.id = user_app_permissions.app_id").
 		Where("user_app_permissions.user_id = ? AND apps.status = 1", userID).
 		Find(&apps).Error
@@ -110,6 +111,15 @@ func (s *UserService) GetUserApps(userID uint) ([]models.App, error) {
 	}
 
 	return apps, nil
+}
+
+// GetAppRole 获取用户在应用中的角色
+func (s *UserService) GetAppRole(userID, appID uint) (string, error) {
+	var permission models.UserAppPermission
+	if err := database.DB.Where("user_id = ? AND app_id = ?", userID, appID).First(&permission).Error; err != nil {
+		return "", err
+	}
+	return permission.Role, nil
 }
 
 // UpdateProfile 更新用户信息

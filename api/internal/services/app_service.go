@@ -4,10 +4,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
 	"github.com/doopush/doopush/api/pkg/utils"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+var (
+	ErrAppMemberNotFound   = errors.New("应用成员不存在")
+	ErrEmailUserNotFound   = errors.New("该邮箱对应的用户不存在或已被禁用")
+	ErrMemberAlreadyExists = errors.New("该用户已经是应用成员")
+	ErrInvalidAppRole      = errors.New("无效的应用角色")
+	ErrLastOwner           = errors.New("应用必须至少保留一位所有者")
 )
 
 // AppService 应用服务
@@ -34,6 +45,7 @@ func (s *AppService) CreateApp(userID uint, name, packageName, description, plat
 		Platform:    platform,
 		AppIcon:     appIcon,
 		Status:      1,
+		Role:        "owner",
 	}
 
 	// 开启事务
@@ -115,8 +127,157 @@ func (s *AppService) GetAppByID(appID uint, userID uint) (*models.App, error) {
 	if err := database.DB.Where("id = ?", appID).First(&app).Error; err != nil {
 		return nil, errors.New("应用不存在")
 	}
+	app.Role, _ = userService.GetAppRole(userID, appID)
 
 	return &app, nil
+}
+
+// GetAppMembers 获取应用成员列表
+func (s *AppService) GetAppMembers(appID, operatorID uint) ([]models.AppMember, error) {
+	if err := s.requireOwner(database.DB, appID, operatorID); err != nil {
+		return nil, err
+	}
+
+	var members []models.AppMember
+	err := database.DB.Table("user_app_permissions AS permissions").
+		Select("users.id AS user_id, users.username, users.email, users.nickname, users.avatar, permissions.role, permissions.created_at").
+		Joins("JOIN users ON users.id = permissions.user_id AND users.deleted_at IS NULL").
+		Where("permissions.app_id = ? AND permissions.deleted_at IS NULL", appID).
+		Order("CASE permissions.role WHEN 'owner' THEN 1 WHEN 'developer' THEN 2 ELSE 3 END, permissions.created_at ASC").
+		Scan(&members).Error
+	if err != nil {
+		return nil, errors.New("获取应用成员失败")
+	}
+	return members, nil
+}
+
+// AddAppMember 按邮箱添加已注册用户
+func (s *AppService) AddAppMember(appID, operatorID uint, email, role string) (*models.AppMember, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	if !isValidAppRole(role) {
+		return nil, ErrInvalidAppRole
+	}
+	if err := s.requireOwner(database.DB, appID, operatorID); err != nil {
+		return nil, err
+	}
+
+	var user models.User
+	if err := database.DB.Where("LOWER(email) = ? AND status = 1", email).First(&user).Error; err != nil {
+		return nil, ErrEmailUserNotFound
+	}
+
+	permission := models.UserAppPermission{UserID: user.ID, AppID: appID, Role: role}
+	if err := database.DB.Create(&permission).Error; err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) || isDuplicateEntryError(err) {
+			return nil, ErrMemberAlreadyExists
+		}
+		return nil, errors.New("添加应用成员失败")
+	}
+
+	return &models.AppMember{
+		UserID: user.ID, Username: user.Username, Email: user.Email,
+		Nickname: user.Nickname, Avatar: user.Avatar, Role: role, CreatedAt: permission.CreatedAt,
+	}, nil
+}
+
+// UpdateAppMemberRole 修改应用成员角色
+func (s *AppService) UpdateAppMemberRole(appID, operatorID, memberUserID uint, role string) (*models.AppMember, error) {
+	if !isValidAppRole(role) {
+		return nil, ErrInvalidAppRole
+	}
+
+	var member models.AppMember
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := s.requireOwner(tx, appID, operatorID); err != nil {
+			return err
+		}
+
+		var permission models.UserAppPermission
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("app_id = ? AND user_id = ?", appID, memberUserID).First(&permission).Error; err != nil {
+			return ErrAppMemberNotFound
+		}
+		if permission.Role == "owner" && role != "owner" {
+			if err := ensureAnotherOwner(tx, appID, memberUserID); err != nil {
+				return err
+			}
+		}
+		if err := tx.Model(&permission).Update("role", role).Error; err != nil {
+			return errors.New("更新成员角色失败")
+		}
+
+		var user models.User
+		if err := tx.Where("id = ?", memberUserID).First(&user).Error; err != nil {
+			return ErrAppMemberNotFound
+		}
+		member = models.AppMember{
+			UserID: user.ID, Username: user.Username, Email: user.Email,
+			Nickname: user.Nickname, Avatar: user.Avatar, Role: role, CreatedAt: permission.CreatedAt,
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &member, nil
+}
+
+// RemoveAppMember 移除应用成员
+func (s *AppService) RemoveAppMember(appID, operatorID, memberUserID uint) error {
+	return database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := s.requireOwner(tx, appID, operatorID); err != nil {
+			return err
+		}
+
+		var permission models.UserAppPermission
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("app_id = ? AND user_id = ?", appID, memberUserID).First(&permission).Error; err != nil {
+			return ErrAppMemberNotFound
+		}
+		if permission.Role == "owner" {
+			if err := ensureAnotherOwner(tx, appID, memberUserID); err != nil {
+				return err
+			}
+		}
+		if err := tx.Unscoped().Delete(&permission).Error; err != nil {
+			return errors.New("移除应用成员失败")
+		}
+		return nil
+	})
+}
+
+func (s *AppService) requireOwner(db *gorm.DB, appID, userID uint) error {
+	var count int64
+	if err := db.Model(&models.UserAppPermission{}).
+		Where("app_id = ? AND user_id = ? AND role = ?", appID, userID, "owner").Count(&count).Error; err != nil {
+		return errors.New("权限检查失败")
+	}
+	if count == 0 {
+		return errors.New("无权限管理应用成员")
+	}
+	return nil
+}
+
+func ensureAnotherOwner(tx *gorm.DB, appID, excludedUserID uint) error {
+	var owners []models.UserAppPermission
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("app_id = ? AND role = ?", appID, "owner").Find(&owners).Error; err != nil {
+		return errors.New("权限检查失败")
+	}
+	for _, owner := range owners {
+		if owner.UserID != excludedUserID {
+			return nil
+		}
+	}
+	return ErrLastOwner
+}
+
+func isValidAppRole(role string) bool {
+	return role == "owner" || role == "developer" || role == "viewer"
+}
+
+func isDuplicateEntryError(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), "duplicate entry")
 }
 
 // UpdateApp 更新应用

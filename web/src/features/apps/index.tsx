@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Package, Edit, Trash2, Key, MoreHorizontal } from 'lucide-react'
+import { Plus, Package, Edit, Trash2, Key, MoreHorizontal, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -36,6 +36,7 @@ import { CreateAppDialog } from './components/create-app-dialog'
 import { EditAppDialog } from './components/edit-app-dialog'
 import { DeleteAppDialog } from './components/delete-app-dialog'
 import { APIKeysDialog } from './components/api-keys-dialog'
+import { AppMembersDialog } from './components/app-members-dialog'
 import type { App } from '@/types/api'
 
 export function Apps() {
@@ -49,6 +50,7 @@ export function Apps() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [apiKeysDialogOpen, setAPIKeysDialogOpen] = useState(false)
+  const [membersDialogOpen, setMembersDialogOpen] = useState(false)
   const [selectedApp, setSelectedApp] = useState<App | null>(null)
 
   // 初始化：只复用store数据，不主动加载API
@@ -85,6 +87,11 @@ export function Apps() {
   const handleManageAPIKeys = (app: App) => {
     setSelectedApp(app)
     setAPIKeysDialogOpen(true)
+  }
+
+  const handleManageMembers = (app: App) => {
+    setSelectedApp(app)
+    setMembersDialogOpen(true)
   }
 
   const handleAppCreated = async () => {
@@ -251,7 +258,14 @@ export function Apps() {
                           )}
                         </div>
                         <div>
-                          <div className="font-medium">{app.name}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{app.name}</span>
+                            {app.role && (
+                              <Badge variant="secondary">
+                                {app.role === 'owner' ? '所有者' : app.role === 'developer' ? '开发者' : '观察者'}
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-sm text-muted-foreground">
                             {app.package_name}
                           </div>
@@ -276,7 +290,7 @@ export function Apps() {
                       })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
+                      {app.role !== 'viewer' && app.role ? <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
                             <MoreHorizontal className="h-4 w-4" />
@@ -291,16 +305,24 @@ export function Apps() {
                             <Key className="mr-2 h-4 w-4" />
                             API密钥
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteApp(app)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            删除应用
-                          </DropdownMenuItem>
+                          {app.role === 'owner' && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleManageMembers(app)}>
+                                <Users className="mr-2 h-4 w-4" />
+                                成员管理
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteApp(app)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                删除应用
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
-                      </DropdownMenu>
+                      </DropdownMenu> : <span className="text-sm text-muted-foreground">只读</span>}
                     </TableCell>
                   </TableRow>
                 ))
@@ -336,6 +358,12 @@ export function Apps() {
               app={selectedApp}
               open={apiKeysDialogOpen}
               onOpenChange={setAPIKeysDialogOpen}
+            />
+
+            <AppMembersDialog
+              app={selectedApp}
+              open={membersDialogOpen}
+              onOpenChange={setMembersDialogOpen}
             />
           </>
         )}

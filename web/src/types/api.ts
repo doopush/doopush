@@ -19,7 +19,19 @@ export interface UserAppPermission {
   id: number
   user_id: number
   app_id: number
-  permission: 'owner' | 'developer' | 'viewer'
+  role: AppRole
+  created_at: string
+}
+
+export type AppRole = 'owner' | 'developer' | 'viewer'
+
+export interface AppMember {
+  user_id: number
+  username: string
+  email: string
+  nickname?: string
+  avatar?: string
+  role: AppRole
   created_at: string
 }
 
@@ -32,6 +44,7 @@ export interface App {
   platform: 'ios' | 'android' | 'both'
   status: number  // 1=启用, 0=禁用
   app_icon?: string
+  role?: AppRole
   created_by?: number
   created_at: string
   updated_at: string

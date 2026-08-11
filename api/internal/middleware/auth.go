@@ -161,6 +161,41 @@ func RequireAuth() gin.HandlerFunc {
 	}
 }
 
+// RequireAppRole 校验当前 JWT 用户对路径中应用的最低角色权限。
+func RequireAppRole(requiredRole string) gin.HandlerFunc {
+	roleLevel := map[string]int{"viewer": 1, "developer": 2, "owner": 3}
+	requiredLevel, valid := roleLevel[requiredRole]
+
+	return func(c *gin.Context) {
+		if !valid {
+			response.InternalServerError(c, "无效的权限配置")
+			c.Abort()
+			return
+		}
+		appID, err := strconv.ParseUint(c.Param("appId"), 10, 32)
+		if err != nil {
+			response.BadRequest(c, "无效的应用ID")
+			c.Abort()
+			return
+		}
+
+		var permission models.UserAppPermission
+		if err := database.DB.Where("user_id = ? AND app_id = ?", c.GetUint("user_id"), uint(appID)).First(&permission).Error; err != nil {
+			response.Forbidden(c, "无权限访问该应用")
+			c.Abort()
+			return
+		}
+		if roleLevel[permission.Role] < requiredLevel {
+			response.Forbidden(c, "应用权限不足")
+			c.Abort()
+			return
+		}
+		c.Set("app_id", uint(appID))
+		c.Set("app_role", permission.Role)
+		c.Next()
+	}
+}
+
 // DualAuth 双重认证中间件 (支持JWT和API Key认证)
 // 专为推送API设计，确保API Key认证时也能正确验证权限
 func DualAuth() gin.HandlerFunc {
@@ -242,7 +277,7 @@ func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
 		c.Header("Access-Control-Allow-Origin", origin)
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
 		c.Header("Access-Control-Allow-Credentials", "true")
 

@@ -1,5 +1,5 @@
 import apiClient from './api-client'
-import type { App, AppAPIKey, AppConfig, PaginationRequest } from '@/types/api'
+import type { App, AppAPIKey, AppConfig, AppMember, AppRole, PaginationRequest } from '@/types/api'
 
 export class AppService {
   /**
@@ -48,6 +48,22 @@ export class AppService {
    */
   static async deleteApp(appId: number): Promise<void> {
     return apiClient.delete(`/apps/${appId}`)
+  }
+
+  static async getAppMembers(appId: number): Promise<AppMember[]> {
+    return apiClient.get(`/apps/${appId}/members`)
+  }
+
+  static async addAppMember(appId: number, data: { email: string; role: AppRole }): Promise<AppMember> {
+    return apiClient.post(`/apps/${appId}/members`, data)
+  }
+
+  static async updateAppMember(appId: number, userId: number, role: AppRole): Promise<AppMember> {
+    return apiClient.patch(`/apps/${appId}/members/${userId}`, { role })
+  }
+
+  static async removeAppMember(appId: number, userId: number): Promise<void> {
+    return apiClient.delete(`/apps/${appId}/members/${userId}`)
   }
 
   /**

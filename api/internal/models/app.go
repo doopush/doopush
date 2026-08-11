@@ -18,6 +18,7 @@ type App struct {
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+	Role        string         `gorm:"column:role;->;-:migration" json:"role,omitempty"`
 
 	// 关联关系
 	APIKeys         []AppAPIKey         `gorm:"foreignKey:AppID" json:"api_keys,omitempty"`

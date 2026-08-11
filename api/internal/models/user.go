@@ -27,8 +27,8 @@ type User struct {
 // UserAppPermission 用户应用权限模型
 type UserAppPermission struct {
 	ID     uint   `gorm:"primarykey" json:"id"`
-	UserID uint   `gorm:"not null;comment:用户ID" json:"user_id" binding:"required"`
-	AppID  uint   `gorm:"not null;comment:应用ID" json:"app_id" binding:"required"`
+	UserID uint   `gorm:"not null;uniqueIndex:idx_user_app;comment:用户ID" json:"user_id" binding:"required"`
+	AppID  uint   `gorm:"not null;uniqueIndex:idx_user_app;comment:应用ID" json:"app_id" binding:"required"`
 	Role   string `gorm:"size:20;not null;default:viewer;comment:权限角色" json:"role" example:"viewer" binding:"required,oneof=owner developer viewer"`
 
 	CreatedAt time.Time      `json:"created_at"`
@@ -38,6 +38,17 @@ type UserAppPermission struct {
 	// 关联关系
 	User User `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	App  App  `gorm:"foreignKey:AppID" json:"app,omitempty"`
+}
+
+// AppMember 应用成员响应模型
+type AppMember struct {
+	UserID    uint      `json:"user_id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Nickname  string    `json:"nickname"`
+	Avatar    string    `json:"avatar"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // TableName 设置表名
