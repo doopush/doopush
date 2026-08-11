@@ -55,48 +55,6 @@ func JWTAuth() gin.HandlerFunc {
 	}
 }
 
-// OptionalAuth 可选 JWT 认证中间件
-func OptionalAuth() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// 尝试JWT认证
-		authHeader := c.GetHeader("Authorization")
-		if authHeader != "" {
-			tokenParts := strings.SplitN(authHeader, " ", 2)
-			if len(tokenParts) == 2 && tokenParts[0] == "Bearer" {
-				jwtService := auth.NewJWTService(
-					config.GetString("JWT_SECRET"),
-					config.GetString("JWT_ISSUER"),
-				)
-
-				if claims, err := jwtService.ValidateToken(tokenParts[1]); err == nil {
-					c.Set("user_id", claims.UserID)
-					c.Set("username", claims.Username)
-					c.Set("auth_type", "jwt")
-					c.Next()
-					return
-				}
-			}
-		}
-
-		// 无认证信息时继续执行（可选认证）
-		c.Set("auth_type", "none")
-		c.Next()
-	}
-}
-
-// RequireAuth 强制认证中间件
-func RequireAuth() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authType := c.GetString("auth_type")
-		if authType == "none" || authType == "" {
-			response.Unauthorized(c, "需要认证")
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
-}
-
 // RequireAppRole 校验当前 JWT 用户对路径中应用的最低角色权限。
 func RequireAppRole(requiredRole string) gin.HandlerFunc {
 	roleLevel := map[string]int{"viewer": 1, "developer": 2, "owner": 3}
@@ -138,7 +96,7 @@ func CORS() gin.HandlerFunc {
 		origin := c.Request.Header.Get("Origin")
 		c.Header("Access-Control-Allow-Origin", origin)
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-App-Key")
 		c.Header("Access-Control-Allow-Credentials", "true")
 
 		if c.Request.Method == "OPTIONS" {

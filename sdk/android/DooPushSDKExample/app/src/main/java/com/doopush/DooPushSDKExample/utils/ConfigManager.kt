@@ -20,7 +20,7 @@ class ConfigManager private constructor(private val context: Context) {
         
         // 默认配置
         private const val DEFAULT_APP_ID = "your_app_id_here"
-        private const val DEFAULT_API_KEY = "your_api_key_here"
+        private const val DEFAULT_APP_KEY = "dp_ak_xxx"
         private const val DEFAULT_BASE_URL = "https://doopush.com"
         
         @Volatile
@@ -48,7 +48,7 @@ class ConfigManager private constructor(private val context: Context) {
      */
     data class DooPushConfig(
         val appId: String,
-        val apiKey: String,
+        val appKey: String,
         val baseUrl: String,
         val debugEnabled: Boolean = true
     )
@@ -58,13 +58,13 @@ class ConfigManager private constructor(private val context: Context) {
      */
     fun getDooPushConfig(): DooPushConfig {
         val appId = prefs.getString("app_id", getAssetConfig("app_id", DEFAULT_APP_ID)) ?: DEFAULT_APP_ID
-        val apiKey = prefs.getString("api_key", getAssetConfig("api_key", DEFAULT_API_KEY)) ?: DEFAULT_API_KEY
+        val appKey = prefs.getString("app_key", getAssetConfig("app_key", DEFAULT_APP_KEY)) ?: DEFAULT_APP_KEY
         val baseUrl = prefs.getString("base_url", getAssetConfig("base_url", DEFAULT_BASE_URL)) ?: DEFAULT_BASE_URL
         val debugEnabled = prefs.getBoolean("debug_enabled", getAssetConfigBoolean("debug_enabled", true))
         
         return DooPushConfig(
             appId = appId,
-            apiKey = apiKey,
+            appKey = appKey,
             baseUrl = baseUrl,
             debugEnabled = debugEnabled
         )
@@ -76,7 +76,7 @@ class ConfigManager private constructor(private val context: Context) {
     fun saveDooPushConfig(config: DooPushConfig) {
         prefs.edit()
             .putString("app_id", config.appId)
-            .putString("api_key", config.apiKey)
+            .putString("app_key", config.appKey)
             .putString("base_url", config.baseUrl)
             .putBoolean("debug_enabled", config.debugEnabled)
             .apply()
@@ -144,8 +144,8 @@ class ConfigManager private constructor(private val context: Context) {
             errors.add("应用ID无效")
         }
         
-        if (config.apiKey.isBlank() || config.apiKey == DEFAULT_API_KEY) {
-            errors.add("API密钥无效")
+        if (config.appKey.isBlank() || config.appKey == DEFAULT_APP_KEY) {
+            errors.add("App Key无效")
         }
         
         if (config.baseUrl.isBlank()) {

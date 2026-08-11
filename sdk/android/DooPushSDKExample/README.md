@@ -28,7 +28,7 @@ cd sdk/android/DooPushSDKExample
 ```json
 {
   "app_id": "your_app_id_here",
-  "api_key": "your_api_key_here", 
+  "app_key": "dp_ak_xxx",
   "base_url": "https://your-server.com/api/v1",
   "debug_enabled": true
 }
@@ -36,7 +36,7 @@ cd sdk/android/DooPushSDKExample
 
 **配置说明：**
 - `app_id`: DooPush 应用ID
-- `api_key`: DooPush API密钥  
+- `app_key`: DooPush App Key
 - `base_url`: 服务器基础URL（包含API版本路径）
 - `debug_enabled`: 调试模式开关
 
@@ -295,7 +295,7 @@ class MainActivity : AppCompatActivity(), DooPushCallback {
         dooPushManager.configure(
             context = this,
             appId = globalAppId.ifEmpty { "default_app_id" },
-            apiKey = globalApiKey.ifEmpty { "default_api_key" },
+            appKey = globalAppKey.ifEmpty { "dp_ak_xxx" },
             baseUrl = globalBaseUrl.ifEmpty { "http://localhost:5001/api/v1" }
         )
     }
@@ -329,7 +329,7 @@ private fun loadConfigFromAssets() {
         val config = JSONObject(json)
         
         globalAppId = config.optString("app_id", "")
-        globalApiKey = config.optString("api_key", "") 
+        globalAppKey = config.optString("app_key", "")
         globalBaseUrl = config.optString("base_url", "")
     } catch (e: Exception) {
         Log.w(TAG, "配置文件读取失败，使用默认配置: ${e.message}")

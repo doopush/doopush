@@ -17,7 +17,7 @@ import {
 // 与 app.json plugin 配置保持一致（JS 侧 configure 是运行时真源）
 const CONFIG = {
   appId: '1',
-  apiKey: 'dp_live_Ud7gxj1dHnbivXMulAShhIjES1py8X1g',
+  appKey: 'dp_ak_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
   baseURL: 'https://doopush.com/api/v1',
 };
 const SDK_VERSION = '0.5.1';
@@ -349,7 +349,7 @@ export default function HomeScreen() {
         {/* 配置信息 */}
         <Section title="配置信息">
           <KV label="应用 ID" value={CONFIG.appId} selectable />
-          <KV label="API 密钥" value={CONFIG.apiKey} mono selectable />
+          <KV label="App Key" value={CONFIG.appKey} mono selectable />
           <KV label="服务器地址" value={CONFIG.baseURL} selectable />
           <KV label="SDK 版本" value={SDK_VERSION} />
         </Section>

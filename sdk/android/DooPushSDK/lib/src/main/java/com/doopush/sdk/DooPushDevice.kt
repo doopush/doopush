@@ -9,23 +9,25 @@ import java.util.Locale
 
 /**
  * DooPush 设备信息管理类
- * 
+ *
  * 负责收集Android设备的各种信息，用于设备注册和统计
  */
 class DooPushDevice(private val context: Context) {
-    
+
     companion object {
-        
+
         /**
          * SDK版本号
          */
-        const val SDK_VERSION = "1.2.2"
-        
+        const val SDK_VERSION = BuildConfig.SDK_VERSION
+
+        internal const val SDK_USER_AGENT = "DooPush-Android-SDK/$SDK_VERSION"
+
         /**
          * 用户代理格式模板
          */
         private const val USER_AGENT_TEMPLATE = "DooPush-Android-SDK/%s (%s; %s %s; Android %s)"
-        
+
         /**
          * 设备型号映射 - 将一些常见的型号代码映射为可读名称
          */
@@ -37,14 +39,14 @@ class DooPushDevice(private val context: Context) {
             "SM-G991B" to "Galaxy S21",
             "SM-N971N" to "Galaxy Note10",
             "SM-N981B" to "Galaxy Note20",
-            
+
             // Xiaomi
             "M2102J20SG" to "Mi 11",
             "M2007J3SY" to "Mi 10",
             "M1903F2A" to "Mi 9",
             "M2006C3MG" to "Redmi Note 9",
             "M2101K9G" to "Redmi Note 10 Pro",
-            
+
             // Huawei
             "ELS-NX9" to "P40",
             "ANA-NX9" to "P40 Pro",
@@ -53,10 +55,10 @@ class DooPushDevice(private val context: Context) {
             "CLT-L29" to "P20 Pro"
         )
     }
-    
+
     /**
      * 获取当前设备信息
-     * 
+     *
      * @param channel 推送通道（如："fcm"、"hms"）
      * @return DeviceInfo 设备信息对象
      */
@@ -72,10 +74,10 @@ class DooPushDevice(private val context: Context) {
             userAgent = getUserAgent()
         )
     }
-    
+
     /**
      * 获取应用包名（Bundle ID）
-     * 
+     *
      * @return 应用包名
      */
     private fun getBundleId(): String {
@@ -85,43 +87,43 @@ class DooPushDevice(private val context: Context) {
             "unknown"
         }
     }
-    
+
     /**
      * 获取设备品牌
-     * 
+     *
      * @return 设备品牌名称（首字母大写）
      */
     private fun getBrand(): String {
         return try {
             val brand = Build.BRAND ?: "Unknown"
-            brand.replaceFirstChar { 
-                if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
+            brand.replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
             }
         } catch (e: Exception) {
             "Unknown"
         }
     }
-    
+
     /**
      * 获取设备型号
      * 先查找映射表，如果没有则使用原始型号
-     * 
+     *
      * @return 设备型号名称
      */
     private fun getModel(): String {
         return try {
             val originalModel = Build.MODEL ?: "Unknown"
-            
+
             // 先查找映射表中是否有对应的可读名称
             MODEL_MAPPING[originalModel] ?: originalModel
         } catch (e: Exception) {
             "Unknown"
         }
     }
-    
+
     /**
      * 获取Android系统版本
-     * 
+     *
      * @return 系统版本号（如: "11", "12"）
      */
     private fun getSystemVersion(): String {
@@ -131,10 +133,10 @@ class DooPushDevice(private val context: Context) {
             "Unknown"
         }
     }
-    
+
     /**
      * 获取应用版本号
-     * 
+     *
      * @return 应用版本名称（如: "1.0.0"）
      */
     private fun getAppVersion(): String {
@@ -148,11 +150,11 @@ class DooPushDevice(private val context: Context) {
             "1.0.0"
         }
     }
-    
+
     /**
      * 生成用户代理字符串
-     * 格式: DooPush-Android-SDK/1.2.2 (com.example.app; Google Pixel 7; Android 14)
-     * 
+     * 格式: DooPush-Android-SDK/<version> (com.example.app; Google Pixel 7; Android 14)
+     *
      * @return 用户代理字符串
      */
     private fun getUserAgent(): String {
@@ -166,13 +168,13 @@ class DooPushDevice(private val context: Context) {
                 getSystemVersion()
             )
         } catch (e: Exception) {
-            "DooPush-Android-SDK/$SDK_VERSION"
+            SDK_USER_AGENT
         }
     }
-    
+
     /**
      * 获取设备的详细硬件信息（用于调试）
-     * 
+     *
      * @return 设备硬件信息Map
      */
     fun getDetailedDeviceInfo(): Map<String, String> {
@@ -206,10 +208,10 @@ class DooPushDevice(private val context: Context) {
             mapOf("error" to "Failed to get device info: ${e.message}")
         }
     }
-    
+
     /**
      * 获取系统架构信息
-     * 
+     *
      * @return 系统架构字符串数组
      */
     fun getSupportedAbis(): Array<String> {
@@ -224,10 +226,10 @@ class DooPushDevice(private val context: Context) {
             arrayOf("Unknown")
         }
     }
-    
+
     /**
      * 检查设备是否为模拟器
-     * 
+     *
      * @return true if 是模拟器, false otherwise
      */
     fun isEmulator(): Boolean {
@@ -244,22 +246,22 @@ class DooPushDevice(private val context: Context) {
             false
         }
     }
-    
+
     /**
      * 获取设备的显示摘要信息
-     * 
+     *
      * @return 设备摘要字符串
      */
     fun getDeviceSummary(): String {
         val deviceInfo = getCurrentDeviceInfo()
         val isEmulator = if (isEmulator()) " [模拟器]" else ""
-        
+
         return "${deviceInfo.brand} ${deviceInfo.model} (Android ${deviceInfo.systemVersion})$isEmulator"
     }
-    
+
     /**
      * 检查是否为特定品牌的设备
-     * 
+     *
      * @param brandName 品牌名称
      * @return true if 是指定品牌, false otherwise
      */
@@ -270,37 +272,37 @@ class DooPushDevice(private val context: Context) {
             false
         }
     }
-    
+
     /**
      * 检查是否为华为设备（包括华为和荣耀）
-     * 
+     *
      * @return true if 是华为系设备, false otherwise
      */
     fun isHuaweiDevice(): Boolean {
         return isBrand("Huawei") || isBrand("Honor")
     }
-    
+
     /**
      * 检查是否为小米设备（包括小米和红米）
-     * 
+     *
      * @return true if 是小米系设备, false otherwise
      */
     fun isXiaomiDevice(): Boolean {
         return isBrand("Xiaomi") || isBrand("Redmi")
     }
-    
+
     /**
      * 检查是否为OPPO设备（包括OPPO和OnePlus）
-     * 
+     *
      * @return true if 是OPPO系设备, false otherwise
      */
     fun isOppoDevice(): Boolean {
         return isBrand("OPPO") || isBrand("OnePlus")
     }
-    
+
     /**
      * 检查是否为VIVO设备
-     * 
+     *
      * @return true if 是VIVO设备, false otherwise
      */
     fun isVivoDevice(): Boolean {

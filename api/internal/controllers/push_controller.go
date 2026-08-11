@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/doopush/doopush/api/internal/database"
+	"github.com/doopush/doopush/api/internal/middleware"
 	"github.com/doopush/doopush/api/internal/models"
 	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/response"
@@ -129,16 +130,16 @@ type PlatformStat struct {
 
 // SendPush 发送推送
 // @Summary 发送推送
-// @Description 向指定目标发送推送通知。支持JWT Token和API Key双重认证方式
+// @Description 向指定目标发送推送通知。支持JWT Token和带Scope的App Secret
 // @Tags 推送管理
 // @Accept json
 // @Produce json
-// @Security BearerAuth || ApiKeyAuth
+// @Security BearerAuth
 // @Param appId path int true "应用ID"
 // @Param request body SendPushRequest true "推送信息"
 // @Success 200 {object} response.APIResponse{data=[]models.PushLog}
 // @Failure 400 {object} response.APIResponse
-// @Failure 401 {object} response.APIResponse "未认证或API密钥无效"
+// @Failure 401 {object} response.APIResponse "未认证或App Secret无效"
 // @Failure 403 {object} response.APIResponse
 // @Failure 422 {object} response.APIResponse
 // @Router /apps/{appId}/push [post]
@@ -152,6 +153,12 @@ func (p *PushController) SendPush(c *gin.Context) {
 	var req SendPushRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "请求参数错误: "+err.Error())
+		return
+	}
+	if req.Target.Type == "all" && !middleware.EnsureAppSecretScopes(c, models.ScopePushBroadcast) {
+		return
+	}
+	if req.Schedule != nil && *req.Schedule != "" && !middleware.EnsureAppSecretScopes(c, models.ScopePushSchedule) {
 		return
 	}
 
@@ -187,46 +194,48 @@ func (p *PushController) SendPush(c *gin.Context) {
 		return
 	}
 
-	// 记录审计日志
-	go func() {
-		ipAddress := c.ClientIP()
-		userAgent := c.GetHeader("User-Agent")
-		appIDUint := uint(appID)
+	// App Secret 请求由审计中间件以机器主体记录，不能映射为 user_id=0。
+	if c.GetString("auth_type") != "app_secret" {
+		go func() {
+			ipAddress := c.ClientIP()
+			userAgent := c.GetHeader("User-Agent")
+			appIDUint := uint(appID)
 
-		// 准备推送详情数据（不包含敏感信息）
-		pushDetails := gin.H{
-			"title":        req.Title,
-			"content":      req.Content,
-			"target_type":  req.Target.Type,
-			"badge":        req.Badge,
-			"device_count": len(pushLogs),
-		}
-		if req.Schedule != nil {
-			pushDetails["scheduled"] = true
-			pushDetails["schedule_time"] = *req.Schedule
-		}
+			// 准备推送详情数据（不包含敏感信息）
+			pushDetails := gin.H{
+				"title":        req.Title,
+				"content":      req.Content,
+				"target_type":  req.Target.Type,
+				"badge":        req.Badge,
+				"device_count": len(pushLogs),
+			}
+			if req.Schedule != nil {
+				pushDetails["scheduled"] = true
+				pushDetails["schedule_time"] = *req.Schedule
+			}
 
-		// 使用第一个推送日志的ID作为资源ID
-		var resourceID string
-		if len(pushLogs) > 0 {
-			resourceID = strconv.FormatUint(uint64(pushLogs[0].ID), 10)
-		}
+			// 使用第一个推送日志的ID作为资源ID
+			var resourceID string
+			if len(pushLogs) > 0 {
+				resourceID = strconv.FormatUint(uint64(pushLogs[0].ID), 10)
+			}
 
-		err := p.auditService.LogActionWithBeforeAfter(
-			userID,
-			&appIDUint,
-			"push",
-			"push",
-			resourceID,
-			nil,         // 推送操作没有变更前数据
-			pushDetails, // 推送详情信息
-			ipAddress,
-			userAgent,
-		)
-		if err != nil {
-			// 审计记录失败不影响主流程
-		}
-	}()
+			err := p.auditService.LogActionWithBeforeAfter(
+				userID,
+				&appIDUint,
+				"push",
+				"push",
+				resourceID,
+				nil,         // 推送操作没有变更前数据
+				pushDetails, // 推送详情信息
+				ipAddress,
+				userAgent,
+			)
+			if err != nil {
+				// 审计记录失败不影响主流程
+			}
+		}()
+	}
 
 	message := "推送发送成功"
 	if req.Schedule != nil {
@@ -507,16 +516,16 @@ type SendBroadcastRequest struct {
 
 // SendSingle 单设备推送
 // @Summary 单设备推送
-// @Description 向指定设备发送推送通知。支持JWT Token和API Key双重认证方式
+// @Description 向指定设备发送推送通知。支持JWT Token和带Scope的App Secret
 // @Tags 推送管理
 // @Accept json
 // @Produce json
-// @Security BearerAuth || ApiKeyAuth
+// @Security BearerAuth
 // @Param appId path int true "应用ID"
 // @Param push body SendSingleRequest true "单推请求"
 // @Success 200 {object} response.APIResponse{data=object} "推送发送成功"
 // @Failure 400 {object} response.APIResponse "请求参数错误"
-// @Failure 401 {object} response.APIResponse "未认证或API密钥无效"
+// @Failure 401 {object} response.APIResponse "未认证或App Secret无效"
 // @Failure 403 {object} response.APIResponse "无权限"
 // @Router /apps/{appId}/push/single [post]
 func (ctrl *PushController) SendSingle(ctx *gin.Context) {
@@ -527,10 +536,6 @@ func (ctrl *PushController) SendSingle(ctx *gin.Context) {
 	}
 
 	userID := ctx.GetUint("user_id")
-	if userID == 0 {
-		response.Unauthorized(ctx, "用户信息获取失败")
-		return
-	}
 
 	var req SendSingleRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -570,16 +575,16 @@ func (ctrl *PushController) SendSingle(ctx *gin.Context) {
 
 // SendBatch 批量推送
 // @Summary 批量推送
-// @Description 向多个指定设备发送推送通知。支持JWT Token和API Key双重认证方式
+// @Description 向多个指定设备发送推送通知。支持JWT Token和带Scope的App Secret
 // @Tags 推送管理
 // @Accept json
 // @Produce json
-// @Security BearerAuth || ApiKeyAuth
+// @Security BearerAuth
 // @Param appId path int true "应用ID"
 // @Param push body SendBatchRequest true "批量推送请求"
 // @Success 200 {object} response.APIResponse{data=object} "推送发送成功"
 // @Failure 400 {object} response.APIResponse "请求参数错误"
-// @Failure 401 {object} response.APIResponse "未认证或API密钥无效"
+// @Failure 401 {object} response.APIResponse "未认证或App Secret无效"
 // @Failure 403 {object} response.APIResponse "无权限"
 // @Router /apps/{appId}/push/batch [post]
 func (ctrl *PushController) SendBatch(ctx *gin.Context) {
@@ -590,10 +595,6 @@ func (ctrl *PushController) SendBatch(ctx *gin.Context) {
 	}
 
 	userID := ctx.GetUint("user_id")
-	if userID == 0 {
-		response.Unauthorized(ctx, "用户信息获取失败")
-		return
-	}
 
 	var req SendBatchRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -644,16 +645,16 @@ func (ctrl *PushController) SendBatch(ctx *gin.Context) {
 
 // SendBroadcast 广播推送
 // @Summary 广播推送
-// @Description 向应用的所有设备发送推送通知。支持JWT Token和API Key双重认证方式
+// @Description 向应用的所有设备发送推送通知。支持JWT Token和具备广播Scope的App Secret
 // @Tags 推送管理
 // @Accept json
 // @Produce json
-// @Security BearerAuth || ApiKeyAuth
+// @Security BearerAuth
 // @Param appId path int true "应用ID"
 // @Param push body SendBroadcastRequest true "广播推送请求"
 // @Success 200 {object} response.APIResponse{data=object} "推送发送成功"
 // @Failure 400 {object} response.APIResponse "请求参数错误"
-// @Failure 401 {object} response.APIResponse "未认证或API密钥无效"
+// @Failure 401 {object} response.APIResponse "未认证或App Secret无效"
 // @Failure 403 {object} response.APIResponse "无权限"
 // @Router /apps/{appId}/push/broadcast [post]
 func (ctrl *PushController) SendBroadcast(ctx *gin.Context) {
@@ -664,10 +665,6 @@ func (ctrl *PushController) SendBroadcast(ctx *gin.Context) {
 	}
 
 	userID := ctx.GetUint("user_id")
-	if userID == 0 {
-		response.Unauthorized(ctx, "用户信息获取失败")
-		return
-	}
 
 	var req SendBroadcastRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -713,12 +710,12 @@ type PushStatisticsReportRequest struct {
 // @Tags 推送管理
 // @Accept json
 // @Produce json
-// @Security ApiKeyAuth
+// @Security AppKeyAuth
 // @Param appId path int true "应用ID"
 // @Param request body PushStatisticsReportRequest true "统计上报数据"
 // @Success 200 {object} response.APIResponse{data=object} "上报成功"
 // @Failure 400 {object} response.APIResponse "请求参数错误"
-// @Failure 401 {object} response.APIResponse "API密钥无效"
+// @Failure 401 {object} response.APIResponse "App Key无效"
 // @Failure 404 {object} response.APIResponse "设备或推送记录不存在"
 // @Router /apps/{appId}/push/statistics/report [post]
 func (ctrl *PushController) ReportPushStatistics(ctx *gin.Context) {

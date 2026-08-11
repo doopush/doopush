@@ -6,7 +6,7 @@
 
 | 接口 | 描述 | 认证 |
 |------|------|------|
-| `POST /apps/{appId}/push/statistics/report` | 上报点击或打开事件 | API Key |
+| `POST /apps/{appId}/push/statistics/report` | 上报点击或打开事件 | App Key |
 
 ## Base URL
 
@@ -23,11 +23,11 @@ https://doopush.com/api/v1
 **请求头**：
 
 ```http
-X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+X-App-Key: dp_ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 Content-Type: application/json
 ```
 
-API Key 必须属于路径中的应用。`device_token` 也必须是该应用中处于启用状态的设备。
+App Key 必须属于路径中的应用。`device_token` 也必须是该应用中处于启用状态的设备。
 
 ### 请求体
 
@@ -73,7 +73,7 @@ API Key 必须属于路径中的应用。`device_token` 也必须是该应用中
 
 ```bash
 curl -X POST "https://doopush.com/api/v1/apps/123/push/statistics/report" \
-     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+     -H "X-App-Key: dp_ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
      -H "Content-Type: application/json" \
      -d '{
        "device_token": "abc123def456ghi789...",
@@ -103,7 +103,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/statistics/report" \
 | HTTP 状态码 | 场景 |
 |-------------|------|
 | 400 | 请求格式错误或业务处理失败 |
-| 401 | API Key 缺失、无效或不属于路径中的应用 |
+| 401 | App Key 缺失、无效或不属于路径中的应用 |
 | 404 | 设备不存在或已禁用 |
 
 ```json
@@ -119,4 +119,4 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push/statistics/report" \
 - SDK 应在点击或打开事件发生后尽快上报。
 - 使用推送负载中的 `push_log_id` 或 `dedup_key` 关联原始推送。
 - 网络失败时可在客户端排队重试，但应避免无上限重试。
-- API Key 属于敏感凭证；移动端集成优先使用独立密钥，并通过定期轮换降低泄露风险。
+- App Key 是客户端公开引导标识，不授予推送发送或服务端数据访问权限；不要用 App Secret 替代它。

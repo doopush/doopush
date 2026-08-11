@@ -10,6 +10,7 @@ func AllModels() []interface{} {
 
 		// 应用相关
 		&App{},
+		&AppSecret{},
 		&AppConfig{},
 
 		// 设备相关

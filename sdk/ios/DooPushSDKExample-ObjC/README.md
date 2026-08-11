@@ -31,7 +31,7 @@ open DooPushSDKExample-ObjC.xcodeproj
 <dict>
     <key>APP_ID</key>
     <string>your_app_id_here</string>
-    <key>API_KEY</key>
+    <key>APP_KEY</key>
     <string>your_api_key_here</string>
     <key>BASE_URL</key>
     <string>https://your-server.com/api/v1</string>
@@ -41,7 +41,7 @@ open DooPushSDKExample-ObjC.xcodeproj
 
 **配置说明：**
 - `APP_ID`: DooPush 应用ID
-- `API_KEY`: DooPush API密钥
+- `APP_KEY`: DooPush App Key
 - `BASE_URL`: 服务器基础URL（包含API版本路径）
 
 **注意：** 此文件已添加到 `.gitignore`，不会被版本控制。
@@ -90,7 +90,7 @@ DooPushSDKExample-ObjC/
 
 // 1. 配置SDK
 - (void)configurePushSDK {
-    [DooPushManager.shared configureWithAppId:@"your_app_id" apiKey:@"your_api_key"];
+    [DooPushManager.shared configureWithAppId:@"your_app_id" appKey:@"dp_ak_xxx"];
 
     // 2. 设置代理
     DooPushManager.shared.delegate = self;

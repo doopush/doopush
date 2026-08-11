@@ -35,7 +35,7 @@
 
 - (void)configurePushSDK {
     [DooPushManager.shared configureWithAppId:AppConfig.appId
-                                       apiKey:AppConfig.apiKey
+                                       appKey:AppConfig.appKey
                                       baseURL:AppConfig.baseURL];
     
     DooPushManager.shared.delegate = PushNotificationManager.shared;

@@ -42,7 +42,7 @@ struct DooPushSDKExampleApp: App {
     private func configurePushSDK() {
         DooPushManager.shared.configure(
             appId: AppConfig.appId,
-            apiKey: AppConfig.apiKey,
+            appKey: AppConfig.appKey,
             baseURL: AppConfig.baseURL
         )
         

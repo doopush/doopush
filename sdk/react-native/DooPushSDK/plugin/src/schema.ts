@@ -3,7 +3,7 @@ import { z } from 'zod';
 /** Plugin input schema. Validated at prebuild time. */
 export const PluginConfigSchema = z.object({
   appId: z.string().min(1).optional(),
-  apiKey: z.string().min(1).optional(),
+  appKey: z.string().regex(/^dp_ak_[A-Za-z0-9]{32}$/, 'appKey must be dp_ak_ followed by 32 letters or digits').optional(),
   baseURL: z.string().url().optional(),
   ios: z
     .object({

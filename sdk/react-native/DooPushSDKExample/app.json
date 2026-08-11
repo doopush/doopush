@@ -45,7 +45,7 @@
         "doopush-react-native-sdk",
         {
           "appId": "1",
-          "apiKey": "dp_live_Ud7gxj1dHnbivXMulAShhIjES1py8X1g",
+          "appKey": "dp_ak_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "baseURL": "https://doopush.com/api/v1",
           "ios": { "mode": "development" },
           "android": {

@@ -48,15 +48,15 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
         Function("configure") { config: Map<String, Any> ->
             val appId = config["appId"] as? String
                 ?: throw IllegalArgumentException("configure requires appId")
-            val apiKey = config["apiKey"] as? String
-                ?: throw IllegalArgumentException("configure requires apiKey")
+            val appKey = config["appKey"] as? String
+                ?: throw IllegalArgumentException("configure requires appKey")
             val baseURL = config["baseURL"] as? String
             val context = appContext.reactContext
                 ?: throw IllegalStateException("React context unavailable")
             if (baseURL.isNullOrBlank()) {
-                DooPushManager.getInstance().configure(context, appId, apiKey)
+                DooPushManager.getInstance().configure(context, appId, appKey)
             } else {
-                DooPushManager.getInstance().configure(context, appId, apiKey, baseURL)
+                DooPushManager.getInstance().configure(context, appId, appKey, baseURL)
             }
         }
 
@@ -93,7 +93,7 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
         }
 
         AsyncFunction("acquireToken") { promise: Promise ->
-            DooPushManager.getInstance().registerForPushNotifications(
+            DooPushManager.getInstance().acquirePushToken(
                 object : DooPushRegisterCallback {
                     override fun onSuccess(token: String) {
                         promise.resolve(mapOf(

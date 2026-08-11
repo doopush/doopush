@@ -1,7 +1,9 @@
 package com.doopush.sdk
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -48,6 +50,131 @@ class DooPushManagementModeTest {
             DooPushManager.NotificationManagementMode.ACTIVE,
             DooPushManager.getInstance().notificationManagementMode
         )
+    }
+
+    @Test
+    fun configureForTokenAcquisitionDoesNotRequireAppCredentials() {
+        val ctx = androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>()
+
+        DooPushManager.getInstance().configureForTokenAcquisition(ctx)
+
+        assertFalse(DooPushStatistics.isReportingEnabled())
+    }
+
+    @Test
+    fun configureForTokenAcquisitionPreservesFullConfigurationAndRegistration() {
+        val ctx = androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>()
+        val manager = DooPushManager.getInstance()
+        ctx.getSharedPreferences("DooPushSDK.Storage", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putString("device_id", "existing_device_id")
+            .commit()
+        manager.configure(
+            ctx,
+            "existing_app_id",
+            "dp_ak_0123456789abcdef0123456789abcdef",
+            "https://example.com/api/v1"
+        )
+        val existingConfig = manager.getConfig()
+
+        manager.configureForTokenAcquisition(ctx)
+
+        assertSame(existingConfig, manager.getConfig())
+        assertEquals("existing_app_id", manager.getConfig()?.appId)
+        assertEquals("dp_ak_0123456789abcdef0123456789abcdef", manager.getConfig()?.appKey)
+        assertEquals("existing_device_id", manager.getDeviceId())
+        assertEquals(true, DooPushStatistics.isReportingEnabled())
+    }
+
+    @Test
+    fun acquirePushTokenPreservesFullRegistrationDeviceId() {
+        val ctx = androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>()
+        val manager = DooPushManager.getInstance()
+        val prefs = ctx.getSharedPreferences("DooPushSDK.Storage", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putString("device_id", "existing_device_id").commit()
+        manager.configure(ctx, "existing_app_id", "dp_ak_0123456789abcdef0123456789abcdef")
+
+        val tokenOnlyField = DooPushManager::class.java
+            .getDeclaredField("currentRegistrationTokenOnly")
+            .apply { isAccessible = true }
+        val tokenOnly = tokenOnlyField.get(manager) as java.util.concurrent.atomic.AtomicBoolean
+        tokenOnly.set(true)
+        val isRegistering = atomicBooleanField(manager, "isRegistering")
+        isRegistering.set(true)
+
+        val deviceInfo = com.doopush.sdk.models.DeviceInfo(
+            channel = "fcm",
+            bundleId = "com.example.app",
+            brand = "Google",
+            model = "Pixel",
+            systemVersion = "14",
+            appVersion = "1.0",
+            userAgent = "test"
+        )
+        val callback = object : DooPushRegisterCallback {
+            override fun onSuccess(token: String) {}
+            override fun onError(error: com.doopush.sdk.models.DooPushError) {}
+        }
+        val finishRegistration = DooPushManager::class.java.getDeclaredMethod(
+            "registerDeviceToServer",
+            com.doopush.sdk.models.DeviceInfo::class.java,
+            String::class.java,
+            DooPushRegisterCallback::class.java
+        ).apply { isAccessible = true }
+
+        finishRegistration.invoke(manager, deviceInfo, "new_native_token", callback)
+
+        assertEquals("existing_device_id", manager.getDeviceId())
+        assertEquals("existing_device_id", prefs.getString("device_id", null))
+        assertEquals("new_native_token", manager.getDeviceToken())
+    }
+
+    @Test
+    fun lateTokenCallbackFromTimedOutRequestIsIgnored() {
+        val manager = DooPushManager.getInstance()
+        val isRegistering = atomicBooleanField(manager, "isRegistering")
+        val generation = atomicLongField(manager, "registrationGeneration")
+        val previousRegistering = isRegistering.getAndSet(true)
+        val previousGeneration = generation.getAndSet(42L)
+        try {
+            var successReceived = false
+            val callback = object : DooPushRegisterCallback {
+                override fun onSuccess(token: String) {
+                    successReceived = true
+                }
+
+                override fun onError(error: com.doopush.sdk.models.DooPushError) {}
+            }
+            val deviceInfo = com.doopush.sdk.models.DeviceInfo(
+                channel = "fcm",
+                bundleId = "com.example.app",
+                brand = "Google",
+                model = "Pixel",
+                systemVersion = "14",
+                appVersion = "1.0",
+                userAgent = "test"
+            )
+            val finishRegistration = DooPushManager::class.java.getDeclaredMethod(
+                "registerDeviceToServer",
+                com.doopush.sdk.models.DeviceInfo::class.java,
+                String::class.java,
+                DooPushRegisterCallback::class.java,
+                Long::class.javaPrimitiveType,
+                Boolean::class.javaPrimitiveType
+            ).apply { isAccessible = true }
+
+            finishRegistration.invoke(manager, deviceInfo, "late_native_token", callback, 41L, true)
+
+            assertFalse(successReceived)
+            assertEquals(true, isRegistering.get())
+            assertEquals(42L, generation.get())
+        } finally {
+            isRegistering.set(previousRegistering)
+            generation.set(previousGeneration)
+        }
     }
 
     @Test
@@ -130,5 +257,89 @@ class DooPushManagementModeTest {
             atomic.set(previous)
             configuredAtomic.set(previousConfigured)
         }
+    }
+
+    @Test
+    fun acquirePushTokenWhileAnotherRegistrationInProgressCallsOnError() {
+        val manager = DooPushManager.getInstance()
+        val isConfigured = atomicBooleanField(manager, "isConfigured")
+        val isRegistering = atomicBooleanField(manager, "isRegistering")
+        val tokenOnly = atomicBooleanField(manager, "currentRegistrationTokenOnly")
+        val previousConfigured = isConfigured.getAndSet(true)
+        val previousRegistering = isRegistering.getAndSet(true)
+        val previousTokenOnly = tokenOnly.getAndSet(true)
+        try {
+            var errorReceived: com.doopush.sdk.models.DooPushError? = null
+
+            manager.acquirePushToken(object : DooPushRegisterCallback {
+                override fun onSuccess(token: String) {}
+                override fun onError(error: com.doopush.sdk.models.DooPushError) {
+                    errorReceived = error
+                }
+            })
+
+            assertNotNull("并发 token 获取应同步触发 onError", errorReceived)
+            assertEquals(
+                com.doopush.sdk.models.DooPushError.REGISTRATION_IN_PROGRESS,
+                errorReceived!!.code
+            )
+            assertEquals(true, isRegistering.get())
+            assertEquals(true, tokenOnly.get())
+        } finally {
+            isConfigured.set(previousConfigured)
+            isRegistering.set(previousRegistering)
+            tokenOnly.set(previousTokenOnly)
+        }
+    }
+
+    @Test
+    fun tokenAcquisitionFailureClearsTokenOnlyState() {
+        val manager = DooPushManager.getInstance()
+        val isRegistering = atomicBooleanField(manager, "isRegistering")
+        val tokenOnly = atomicBooleanField(manager, "currentRegistrationTokenOnly")
+        val previousRegistering = isRegistering.getAndSet(true)
+        val previousTokenOnly = tokenOnly.getAndSet(true)
+        try {
+            var errorReceived: com.doopush.sdk.models.DooPushError? = null
+            val callback = object : DooPushRegisterCallback {
+                override fun onSuccess(token: String) {}
+                override fun onError(error: com.doopush.sdk.models.DooPushError) {
+                    errorReceived = error
+                }
+            }
+            val finishWithError = DooPushManager::class.java.getDeclaredMethod(
+                "finishPushTokenAcquisitionWithError",
+                com.doopush.sdk.models.DooPushError::class.java,
+                DooPushRegisterCallback::class.java
+            ).apply { isAccessible = true }
+            val expectedError = com.doopush.sdk.models.DooPushError.networkTimeout("timeout")
+
+            finishWithError.invoke(manager, expectedError, callback)
+
+            assertSame(expectedError, errorReceived)
+            assertFalse(isRegistering.get())
+            assertFalse(tokenOnly.get())
+        } finally {
+            isRegistering.set(previousRegistering)
+            tokenOnly.set(previousTokenOnly)
+        }
+    }
+
+    private fun atomicBooleanField(
+        manager: DooPushManager,
+        name: String
+    ): java.util.concurrent.atomic.AtomicBoolean {
+        return DooPushManager::class.java.getDeclaredField(name)
+            .apply { isAccessible = true }
+            .get(manager) as java.util.concurrent.atomic.AtomicBoolean
+    }
+
+    private fun atomicLongField(
+        manager: DooPushManager,
+        name: String
+    ): java.util.concurrent.atomic.AtomicLong {
+        return DooPushManager::class.java.getDeclaredField(name)
+            .apply { isAccessible = true }
+            .get(manager) as java.util.concurrent.atomic.AtomicLong
     }
 }
