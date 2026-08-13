@@ -9,19 +9,7 @@ import (
 	"time"
 )
 
-// GenerateAPIKey 生成API密钥
-func GenerateAPIKey() string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-	b := make([]byte, 32)
-	for i := range b {
-		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
-		b[i] = charset[n.Int64()]
-	}
-	return string(b)
-}
-
-// HashString 字符串哈希 (用于API密钥等)
+// HashString 字符串哈希
 func HashString(input string) string {
 	hash := md5.Sum([]byte(input + "doopush_salt"))
 	return fmt.Sprintf("%x", hash)

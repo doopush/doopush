@@ -79,22 +79,6 @@ export interface App {
   updated_at: string
 }
 
-export interface AppAPIKey {
-  id: number
-  app_id: number
-  name: string
-  key_hash: string
-  key_prefix: string
-  key_suffix: string
-  status: number
-  expires_at: string | null
-  last_used: string | null
-  created_at: string
-  updated_at: string
-  // 用于显示的字段
-  last_4?: string
-}
-
 export interface AppConfig {
   id: number
   app_id: number

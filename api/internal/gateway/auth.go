@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
-	"github.com/doopush/doopush/api/pkg/utils"
 	"gorm.io/gorm"
 )
 
@@ -53,22 +51,8 @@ func authenticate(db *gorm.DB, p *HandshakeParams) (deviceID uint, err error) {
 	if err := db.Where("id = ? AND status = 1", p.AppID).First(&app).Error; err != nil {
 		return 0, &authError{status: http.StatusUnauthorized, msg: "app not found"}
 	}
-	// 2. AppKey 哈希匹配
-	keyHash := utils.HashString(p.AppKey)
-	var apiKey models.AppAPIKey
-	if err := db.Where("app_id = ? AND key_hash = ? AND status = 1", p.AppID, keyHash).First(&apiKey).Error; err != nil {
-		return 0, &authError{status: http.StatusUnauthorized, msg: "invalid appkey"}
-	}
-	if apiKey.ExpiresAt != nil && apiKey.ExpiresAt.Before(time.Now()) {
-		return 0, &authError{status: http.StatusUnauthorized, msg: "appkey expired"}
-	}
-	// 3. 设备 token 哈希匹配
-	tokenHash := utils.HashString(p.Token)
-	var device models.Device
-	if err := db.Where("app_id = ? AND token_hash = ? AND status = 1", p.AppID, tokenHash).First(&device).Error; err != nil {
-		return 0, &authError{status: http.StatusForbidden, msg: "invalid token"}
-	}
-	return device.ID, nil
+	// 旧 App Key 认证已移除；新凭证认证由后续功能提交引入。
+	return 0, &authError{status: http.StatusUnauthorized, msg: "appkey authentication unavailable"}
 }
 
 // AuthenticateRequest HTTP 层入口，握手前调用
