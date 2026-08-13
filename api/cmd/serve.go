@@ -143,11 +143,6 @@ func startServer() {
 			authenticated.POST("/apps/:appId/invitations", middleware.RequireAppRole("owner"), invitationCtrl.CreateInvitation)
 			authenticated.DELETE("/apps/:appId/invitations/:invitationId", middleware.RequireAppRole("owner"), invitationCtrl.CancelInvitation)
 
-			// API密钥管理
-			authenticated.GET("/apps/:appId/api-keys", middleware.RequireAppRole("developer"), appCtrl.GetAppAPIKeys)
-			authenticated.POST("/apps/:appId/api-keys", middleware.RequireAppRole("developer"), appCtrl.CreateAPIKey)
-			authenticated.DELETE("/apps/:appId/api-keys/:keyId", middleware.RequireAppRole("developer"), appCtrl.DeleteAPIKey)
-
 			// 设备管理
 			authenticated.GET("/apps/:appId/devices", middleware.RequireAppRole("viewer"), deviceCtrl.GetDevices)
 			authenticated.GET("/apps/:appId/devices/:deviceId", middleware.RequireAppRole("viewer"), deviceCtrl.GetDevice)
@@ -228,25 +223,6 @@ func startServer() {
 			receipt.POST("", callbackCtrl.ReceiveGenericCallback) // 通用回执接口
 		}
 
-		// API Key认证的路由 (供客户端SDK使用)
-		apiKeyRoutes := api.Group("")
-		apiKeyRoutes.Use(middleware.APIKeyAuth())
-		{
-			apiKeyRoutes.POST("/apps/:appId/devices", deviceCtrl.RegisterDevice)
-			apiKeyRoutes.POST("/apps/:appId/push/statistics/report", pushCtrl.ReportPushStatistics)
-		}
-
-		// 双重认证的路由 (支持JWT和API Key认证)
-		dualAuthRoutes := api.Group("")
-		dualAuthRoutes.Use(middleware.DualAuth())
-		dualAuthRoutes.Use(middleware.AuditLogger())
-		{
-			// 推送管理 - 发送类接口（支持JWT和API Key双重认证）
-			dualAuthRoutes.POST("/apps/:appId/push", pushCtrl.SendPush)
-			dualAuthRoutes.POST("/apps/:appId/push/single", pushCtrl.SendSingle)
-			dualAuthRoutes.POST("/apps/:appId/push/batch", pushCtrl.SendBatch)
-			dualAuthRoutes.POST("/apps/:appId/push/broadcast", pushCtrl.SendBroadcast)
-		}
 	}
 
 	// Swagger文档

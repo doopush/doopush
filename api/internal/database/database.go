@@ -60,6 +60,13 @@ func Connect() {
 
 // AutoMigrate 自动迁移数据表
 func AutoMigrate() {
+	// API Key 管理功能已移除，清理升级前遗留的数据表。
+	if DB.Migrator().HasTable("app_api_keys") {
+		if err := DB.Migrator().DropTable("app_api_keys"); err != nil {
+			log.Fatal("清理旧 API Key 数据表失败:", err)
+		}
+	}
+
 	// 执行自动迁移
 	if err := DB.AutoMigrate(models.AllModels()...); err != nil {
 		log.Fatal("数据库迁移失败:", err)

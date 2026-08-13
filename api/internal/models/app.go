@@ -21,28 +21,8 @@ type App struct {
 	Role        string         `gorm:"column:role;->;-:migration" json:"role,omitempty"`
 
 	// 关联关系
-	APIKeys         []AppAPIKey         `gorm:"foreignKey:AppID" json:"api_keys,omitempty"`
 	Devices         []Device            `gorm:"foreignKey:AppID" json:"devices,omitempty"`
 	UserPermissions []UserAppPermission `gorm:"foreignKey:AppID" json:"user_permissions,omitempty"`
-}
-
-// AppAPIKey 应用API密钥模型
-type AppAPIKey struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
-	AppID     uint           `gorm:"not null;comment:应用ID" json:"app_id" binding:"required"`
-	Name      string         `gorm:"size:100;not null" json:"name" example:"生产环境密钥" binding:"required"`
-	KeyHash   string         `gorm:"size:64;uniqueIndex;not null;comment:API密钥哈希" json:"-"`
-	KeyPrefix string         `gorm:"size:10;not null;comment:密钥前缀" json:"key_prefix" example:"dp_live_"`
-	KeySuffix string         `gorm:"size:8;not null;comment:密钥后缀" json:"key_suffix" example:"1a2b3c4d"`
-	Status    int            `gorm:"default:1;comment:密钥状态 1=启用 0=禁用" json:"status" example:"1"`
-	LastUsed  *time.Time     `gorm:"comment:最后使用时间" json:"last_used"`
-	ExpiresAt *time.Time     `gorm:"comment:过期时间" json:"expires_at"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
-
-	// 关联关系
-	App App `gorm:"foreignKey:AppID" json:"app,omitempty"`
 }
 
 // AppConfig 应用推送配置模型
@@ -65,11 +45,6 @@ type AppConfig struct {
 // TableName 设置表名
 func (App) TableName() string {
 	return "apps"
-}
-
-// TableName 设置表名
-func (AppAPIKey) TableName() string {
-	return "app_api_keys"
 }
 
 // TableName 设置表名
