@@ -96,7 +96,6 @@ func getResourceLabel(resource string) string {
 		"group":          "分组",
 		"scheduled_push": "定时推送",
 		"user":           "用户",
-		"api_key":        "API密钥",
 	}
 	if label, exists := labels[resource]; exists {
 		return label
@@ -126,7 +125,7 @@ func NewAuditController() *AuditController {
 // @Param user_id query int false "用户ID筛选"
 // @Param user_name query string false "用户名筛选"
 // @Param action query string false "操作类型筛选" Enums(create, update, delete, push, login, logout)
-// @Param resource query string false "资源类型筛选" Enums(device, push, config, template, group, scheduled_push, api_key)
+// @Param resource query string false "资源类型筛选" Enums(device, push, config, template, group, scheduled_push)
 // @Param ip_address query string false "IP地址筛选"
 // @Param start_time query string false "开始时间" example(2024-01-01T00:00:00Z)
 // @Param end_time query string false "结束时间" example(2024-01-31T23:59:59Z)

@@ -1,5 +1,5 @@
 import apiClient from './api-client'
-import type { App, AppAPIKey, AppConfig, AppInvitation, AppInviteCandidate, AppMember, AppRole, PaginationRequest } from '@/types/api'
+import type { App, AppConfig, AppInvitation, AppInviteCandidate, AppMember, AppRole, PaginationRequest } from '@/types/api'
 
 export class AppService {
   /**
@@ -76,36 +76,6 @@ export class AppService {
 
   static async removeAppMember(appId: number, userId: number): Promise<void> {
     return apiClient.delete(`/apps/${appId}/members/${userId}`)
-  }
-
-  /**
-   * 获取应用API密钥列表
-   */
-  static async getAppAPIKeys(appId: number): Promise<AppAPIKey[]> {
-    return apiClient.get(`/apps/${appId}/api-keys`)
-  }
-
-  /**
-   * 创建API密钥
-   */
-  static async createAPIKey(appId: number, data: {
-    name: string
-  }): Promise<{ api_key: string; key_info: AppAPIKey; warning?: string }> {
-    return apiClient.post(`/apps/${appId}/api-keys`, data)
-  }
-
-  /**
-   * 删除API密钥
-   */
-  static async deleteAPIKey(appId: number, keyId: number): Promise<void> {
-    return apiClient.delete(`/apps/${appId}/api-keys/${keyId}`)
-  }
-
-  /**
-   * 获取应用API密钥列表 (别名)
-   */
-  static async getAPIKeys(appId: number): Promise<AppAPIKey[]> {
-    return this.getAppAPIKeys(appId)
   }
 
   /**
