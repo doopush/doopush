@@ -20,8 +20,8 @@
 
 ## 前置条件
 
-- iOS 原生 SDK ≥ **1.2.0**（monorepo 本地开发可路径引用未发布版本）
-- Android 原生 SDK ≥ **1.2.0**（monorepo 本地开发可走 mavenLocal 用未发布版本）
+- iOS 原生 SDK ≥ **1.4.0**（monorepo 本地开发可路径引用未发布版本）
+- Android 原生 SDK ≥ **1.3.0**（monorepo 本地开发可走 mavenLocal 用未发布版本）
 - Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
 ## 快速安装
@@ -116,6 +116,19 @@ async function maintenance() {
 }
 ```
 
+### 服务端代理注册
+
+当应用不应持有 DooPush API Key 时，只在客户端获取原生推送 token：
+
+```tsx
+DooPush.configureLocal();
+const { token, vendor } = await DooPush.acquireToken();
+const deviceInfo = await DooPush.getDeviceInfo();
+// 将 token、vendor 和 deviceInfo 发送给受信任的业务服务端完成 DooPush 注册。
+```
+
+本地模式不会向 DooPush 注册设备、连接 Gateway 或上报统计数据。
+
 ## 本地开发
 
 本包是 [doopush monorepo](https://github.com/doopush/doopush) 的一部分，跟 iOS / Android 原生 SDK 平级。本地开发流程：
@@ -180,6 +193,11 @@ const { deviceId } = await DooPush.registerWithToken(token, 'fcm');
 MIT
 
 ## CHANGELOG
+
+### v0.6.0
+- **本地 token 模式**：新增 `configureLocal()` / `acquireToken()`，获取 APNs、FCM 或 OEM token 时不注册 DooPush、不连接 Gateway、不上报统计。
+- **Config Plugin**：DooPush `appId` / `apiKey` 改为可选，支持由业务服务端代理设备注册。
+- **依赖底座**：iOS SDK 升级到 1.4.0，Android SDK 升级到 1.3.0。
 
 ### v0.5.3
 - **Fix (Android / Expo 54)**：Honor 文件配置模式现在会从 `mcs-services.json` 解析 `app_id` / `developer_id`，并为 Honor Gradle 插件补齐显式 AGP 版本，避免注册时报错 3607 或构建失败。

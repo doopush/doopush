@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   # Native SDK dependency.
-  s.dependency 'DooPushSDK', '~> 1.2'
+  s.dependency 'DooPushSDK', '~> 1.4'
 
   s.dependency 'ExpoModulesCore'
 

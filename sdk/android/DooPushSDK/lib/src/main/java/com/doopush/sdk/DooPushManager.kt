@@ -126,6 +126,7 @@ class DooPushManager private constructor() {
     // 状态管理
     private val isConfigured = AtomicBoolean(false)
     private val isRegistering = AtomicBoolean(false)
+    private val tokenAcquisitionOnly = AtomicBoolean(false)
     
     // Handler
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -193,6 +194,7 @@ class DooPushManager private constructor() {
         honorConfig: DooPushConfig.HonorConfig? = null
     ) {
         try {
+            tokenAcquisitionOnly.set(false)
             Log.d(TAG, "开始配置 DooPush SDK")
             
             // 保存应用上下文
@@ -336,6 +338,18 @@ class DooPushManager private constructor() {
             isConfigured.set(false)
             throw e
         }
+    }
+
+    /** 配置为仅获取原生推送 token 的模式，不访问 DooPush 服务端。 */
+    fun configureForTokenAcquisition(context: Context) {
+        configure(
+            context = context,
+            appId = "local-token-acquisition",
+            apiKey = "local-token-acquisition",
+        )
+        tokenAcquisitionOnly.set(true)
+        DooPushStatistics.disableReporting()
+        Log.i(TAG, "DooPush SDK 已配置为本地 token 获取模式")
     }
     
     /**
@@ -874,6 +888,11 @@ class DooPushManager private constructor() {
             callback?.invoke(false, error)
             return
         }
+        if (tokenAcquisitionOnly.get()) {
+            Log.d(TAG, "本地 token 模式跳过设备信息上报")
+            callback?.invoke(false, DooPushError.configNotInitialized())
+            return
+        }
 
         val token = getDeviceToken()
         if (token.isNullOrBlank()) {
@@ -953,6 +972,14 @@ class DooPushManager private constructor() {
             ?.putString(PREF_VENDOR, vendor)
             ?.apply()
     }
+
+    private fun persistNativeToken(token: String, vendor: String) {
+        prefs()?.edit()
+            ?.putString(PREF_DEVICE_TOKEN, token)
+            ?.remove(PREF_DEVICE_ID)
+            ?.putString(PREF_VENDOR, vendor)
+            ?.apply()
+    }
     
     /**
      * 检查FCM服务是否可用
@@ -969,7 +996,7 @@ class DooPushManager private constructor() {
      * @param callback 测试结果回调
      */
     fun testNetworkConnection(callback: (Boolean) -> Unit) {
-        if (!checkInitialized()) {
+        if (!checkInitialized() || tokenAcquisitionOnly.get()) {
             callback(false)
             return
         }
@@ -1030,7 +1057,9 @@ class DooPushManager private constructor() {
         // 后台限制：主动断开，等前台恢复后再重连（与 iOS 行为对齐）
         wsConnection?.disconnect()
         wsConnection = null
-        DooPushStatistics.reportStatistics()
+        if (!tokenAcquisitionOnly.get()) {
+            DooPushStatistics.reportStatistics()
+        }
     }
     
     /**
@@ -1040,14 +1069,16 @@ class DooPushManager private constructor() {
         wsConnection?.disconnect()
         Log.d(TAG, "应用即将终止，上报统计数据")
         // 应用终止时上报统计数据
-        DooPushStatistics.reportStatistics()
+        if (!tokenAcquisitionOnly.get()) {
+            DooPushStatistics.reportStatistics()
+        }
     }
     
     /**
      * 立即上报推送统计数据
      */
     fun reportStatistics() {
-        if (!checkInitialized()) {
+        if (!checkInitialized() || tokenAcquisitionOnly.get()) {
             return
         }
         
@@ -1205,6 +1236,21 @@ class DooPushManager private constructor() {
         token: String,
         callback: DooPushRegisterCallback?
     ) {
+        if (tokenAcquisitionOnly.get()) {
+            isRegistering.set(false)
+            cachedToken = token
+            cachedDeviceId = null
+            cachedDeviceInfo = deviceInfo
+            persistNativeToken(token, deviceInfo.channel)
+            val result = DooPushRegisterResult(
+                token = token,
+                deviceId = "",
+                vendor = deviceInfo.channel
+            )
+            callback?.onSuccess(result) ?: this.callback?.onRegisterSuccess(result)
+            return
+        }
+
         networking!!.registerDevice(
             deviceInfo,
             token,
@@ -1240,6 +1286,7 @@ class DooPushManager private constructor() {
      * 连接到 WebSocket Gateway
      */
     private fun connectToGateway(token: String) {
+        if (tokenAcquisitionOnly.get()) return
         val config = this.config
         if (config == null) {
             Log.e(TAG, "SDK配置缺失，无法连接 WebSocket Gateway")
