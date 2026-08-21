@@ -102,7 +102,7 @@ export const withDooPushAppBuildGradle: ConfigPlugin<PluginConfig> = (config, va
     });
 
     // 3. Inject DooPush Android SDK dependency if not present.
-    contents = addDependency(contents, "implementation 'com.doopush:android-sdk:1.2.0'");
+    contents = addDependency(contents, "implementation 'com.doopush:android-sdk:1.3.0'");
 
     const vendorDependencies: Array<[boolean, string]> = [
       [!!v.hms, "implementation 'com.huawei.hms:push:6.11.0.300'"],

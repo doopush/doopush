@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Package, Edit, Trash2, Key, MoreHorizontal, Users } from 'lucide-react'
+import { Plus, Package, Edit, Trash2, MoreHorizontal, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -35,7 +35,6 @@ import { getIconURL } from '@/utils/app-utils'
 import { CreateAppDialog } from './components/create-app-dialog'
 import { EditAppDialog } from './components/edit-app-dialog'
 import { DeleteAppDialog } from './components/delete-app-dialog'
-import { APIKeysDialog } from './components/api-keys-dialog'
 import { AppMembersDialog } from './components/app-members-dialog'
 import type { App } from '@/types/api'
 
@@ -49,7 +48,6 @@ export function Apps() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [apiKeysDialogOpen, setAPIKeysDialogOpen] = useState(false)
   const [membersDialogOpen, setMembersDialogOpen] = useState(false)
   const [selectedApp, setSelectedApp] = useState<App | null>(null)
 
@@ -82,11 +80,6 @@ export function Apps() {
   const handleDeleteApp = (app: App) => {
     setSelectedApp(app)
     setDeleteDialogOpen(true)
-  }
-
-  const handleManageAPIKeys = (app: App) => {
-    setSelectedApp(app)
-    setAPIKeysDialogOpen(true)
   }
 
   const handleManageMembers = (app: App) => {
@@ -186,7 +179,7 @@ export function Apps() {
           <div className='flex flex-col gap-1'>
             <h1 className='text-2xl font-bold tracking-tight'>应用管理</h1>
             <p className='text-muted-foreground'>
-              管理您的推送应用，配置推送服务和API密钥
+              管理您的推送应用、客户端 App Key 和服务端 App Secret
             </p>
           </div>
           <Button onClick={() => setCreateDialogOpen(true)}>
@@ -301,10 +294,6 @@ export function Apps() {
                             <Edit className="mr-2 h-4 w-4" />
                             编辑应用
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleManageAPIKeys(app)}>
-                            <Key className="mr-2 h-4 w-4" />
-                            API密钥
-                          </DropdownMenuItem>
                           {app.role === 'owner' && (
                             <>
                               <DropdownMenuItem onClick={() => handleManageMembers(app)}>
@@ -354,12 +343,6 @@ export function Apps() {
               onSuccess={handleAppDeleted}
             />
             
-            <APIKeysDialog
-              app={selectedApp}
-              open={apiKeysDialogOpen}
-              onOpenChange={setAPIKeysDialogOpen}
-            />
-
             <AppMembersDialog
               app={selectedApp}
               open={membersDialogOpen}

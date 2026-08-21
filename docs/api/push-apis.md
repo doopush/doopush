@@ -1,6 +1,6 @@
 # 推送接口
 
-推送接口支持通用目标、单设备、批量和广播发送。公开调用统一使用与应用绑定的 API Key；Web 控制台使用的 JWT 日志、统计和管理路由属于内部实现，不作为公开 API 契约。
+推送接口支持通用目标、单设备、批量和广播发送。客户服务端使用与应用绑定、带 Scope 的 App Secret；Web 控制台使用用户 JWT。
 
 ## 接口概览
 
@@ -17,14 +17,14 @@
 https://doopush.com/api/v1
 ```
 
-推荐使用请求头认证：
+App Secret 和 JWT 都通过 Bearer Header 传递：
 
 ```http
-X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Authorization: Bearer dp_as_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 Content-Type: application/json
 ```
 
-也可使用 `?api_key=` Query 参数。API Key 必须属于路径中的应用。
+App Secret 至少需要 `push:send`。广播以及通用接口中的 `target.type=all` 还需要 `push:broadcast`；提供 `schedule_time` 时还需要 `push:schedule`。
 
 ## 通用推送
 
@@ -84,7 +84,7 @@ iOS SDK 会在设备注册时自动上报 APNs 环境。省略 `target.push_envi
 
 ```bash
 curl -X POST "https://doopush.com/api/v1/apps/123/push" \
-     -H "X-API-Key: dp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+     -H "Authorization: Bearer dp_as_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
      -H "Content-Type: application/json" \
      -d '{
        "title": "版本更新",
@@ -251,7 +251,7 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
 
 ## 消息回执接口
 
-Android 厂商可向以下无需 API Key 的路由上报送达或点击回执：
+Android 厂商可向以下无需 App Secret 的路由上报送达或点击回执：
 
 | 厂商 | 路由 |
 |------|------|
@@ -269,7 +269,8 @@ Android 厂商可向以下无需 API Key 的路由上报送达或点击回执：
 | HTTP 状态码 | 场景 |
 |-------------|------|
 | 400 | 请求字段错误、目标设备无效或业务校验失败 |
-| 401 | API Key 缺失、无效或不属于路径中的应用 |
+| 401 | App Secret 缺失、无效或不属于路径中的应用 |
+| 403 | App Secret 缺少请求所需的 Scope |
 | 422 | 部分业务入口无法找到目标设备时返回不可处理错误 |
 
 ```json
@@ -282,7 +283,8 @@ Android 厂商可向以下无需 API Key 的路由上报送达或点击回执：
 
 ## 最佳实践
 
-- 服务端保存 API Key，不要将其写入公开仓库或前端代码。
+- 服务端安全保存 App Secret，不要将其写入客户端、公开仓库或前端代码。
+- 为不同后端服务创建独立 App Secret，并只授予所需的最小 Scope。
 - 批量发送控制在 1000 个 Token 以内，更大范围使用标签、分组或广播。
 - iOS 目标优先依赖 SDK 上报的 APNs 环境；需要隔离测试流量时显式设置 `push_environment`。
 - 业务侧保存返回的日志 ID，以便在控制台查看最终投递状态。

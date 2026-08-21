@@ -89,17 +89,17 @@ erDiagram
     App ||--o{ Device : contains
     App ||--o{ PushLog : has
     App ||--o{ AppConfig : has
-    App ||--o{ AppAPIKey : has
-    
+    App ||--o{ AppSecret : has
+
     Device ||--o{ DeviceTagMap : has
     Device ||--o{ DeviceGroupMap : belongs_to
     Device ||--o{ PushResult : receives
-    
+
     DeviceGroup ||--o{ DeviceGroupMap : contains
     DeviceTag ||--o{ DeviceTagMap : applied_to
-    
+
     PushLog ||--o{ PushResult : generates
-    
+
     User {
         int id PK
         string username
@@ -107,7 +107,7 @@ erDiagram
         string password_hash
         datetime created_at
     }
-    
+
     App {
         int id PK
         string name
@@ -116,7 +116,7 @@ erDiagram
         int status
         datetime created_at
     }
-    
+
     Device {
         int id PK
         int app_id FK
@@ -127,7 +127,7 @@ erDiagram
         int status
         datetime last_seen
     }
-    
+
     PushLog {
         int id PK
         int app_id FK

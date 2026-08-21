@@ -43,7 +43,7 @@ npx expo install doopush-react-native-sdk
         "doopush-react-native-sdk",
         {
           "appId": "your_app_id",
-          "apiKey": "your_api_key",
+          "appKey": "dp_ak_xxx",
           "baseURL": "https://doopush.com/api/v1",
           "ios": { "mode": "production" },
           "android": {
@@ -93,7 +93,7 @@ Android OEM vendor 在 `app.json` 的 `android.vendors` 下分别配置。**支�
         "doopush-react-native-sdk",
         {
           "appId": "your_app_id",
-          "apiKey": "your_api_key",
+          "appKey": "dp_ak_xxx",
           "android": {
             "vendors": {
               "fcm":    { "googleServicesFile": "./google-services.json" },
@@ -128,7 +128,7 @@ export default function App() {
   useEffect(() => {
     DooPush.configure({
       appId: 'your_app_id',
-      apiKey: 'your_api_key',
+      appKey: 'dp_ak_xxx',
     });
     const sub = DooPush.addMessageListener((m: DooPushMessage) => {
       console.log('收到推送', m);

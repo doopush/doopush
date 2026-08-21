@@ -1,280 +1,81 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import {
-  Settings,
-  Plus,
-  Copy,
-  Trash2,
-  MoreHorizontal
-} from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Copy, Eye, EyeOff, KeyRound, MoreHorizontal, Pencil, Plus, Settings, Trash2 } from 'lucide-react'
+import { AppService } from '@/services/app-service'
+import { useAuthStore } from '@/stores/auth-store'
+import type { AppSecret } from '@/types/api'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-
-import { useAuthStore } from '@/stores/auth-store'
-import { AppService } from '@/services/app-service'
-import { CreateApiKeyDialog } from './create-api-key-dialog'
-import { DeleteApiKeyDialog } from './delete-api-key-dialog'
-import type { AppAPIKey } from '@/types/api'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
+import { CreateAppSecretDialog } from './create-app-secret-dialog'
+import { RevokeAppSecretDialog } from './revoke-app-secret-dialog'
+import { EditAppSecretScopesDialog } from './edit-app-secret-scopes-dialog'
+import { scopeLabel } from './app-secret-scopes'
 
 export function AppConfigTab() {
   const { currentApp } = useAuthStore()
-  const [apiKeys, setApiKeys] = useState<AppAPIKey[]>([])
+  const [secrets, setSecrets] = useState<AppSecret[]>([])
   const [loading, setLoading] = useState(false)
-  
-  // 对话框状态
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedApiKey, setSelectedApiKey] = useState<AppAPIKey | null>(null)
-  
+  const [createOpen, setCreateOpen] = useState(false)
+  const [revokeOpen, setRevokeOpen] = useState(false)
+  const [editScopesOpen, setEditScopesOpen] = useState(false)
+  const [selectedSecret, setSelectedSecret] = useState<AppSecret | null>(null)
+  const [appKeyVisible, setAppKeyVisible] = useState(false)
 
-
-  // 防重复调用的ref
-  const loadingRef = useRef(false)
-
-  // 加载API密钥列表
-  const loadApiKeys = useCallback(async () => {
-    if (!currentApp) return
-    
-    // 防重复调用检查
-    if (loadingRef.current) {
-      return
-    }
-    
+  const loadSecrets = useCallback(async () => {
+    if (!currentApp || currentApp.role !== 'owner') return
     try {
-      loadingRef.current = true
       setLoading(true)
-      const data = await AppService.getAPIKeys(currentApp.id)
-      setApiKeys(data)
+      setSecrets(await AppService.getAppSecrets(currentApp.id))
     } catch (error) {
-      console.error('加载API密钥列表失败:', error)
-      toast.error('加载API密钥列表失败')
-    } finally {
-      loadingRef.current = false
-      setLoading(false)
-    }
+      toast.error((error as Error).message || '加载 App Secret 失败')
+    } finally { setLoading(false) }
   }, [currentApp])
 
-  useEffect(() => {
-    if (currentApp) {
-      loadApiKeys()
-    }
-  }, [currentApp, loadApiKeys])
+  useEffect(() => { loadSecrets() }, [loadSecrets])
+  useEffect(() => { setAppKeyVisible(false) }, [currentApp?.id])
+  if (!currentApp) return null
 
-  // 复制到剪贴板
-  const copyToClipboard = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      toast.success(`${label}已复制到剪贴板`)
-    } catch (_error) {
-      toast.error('复制失败，请手动复制')
-    }
+  const copy = async (value: string, label: string) => {
+    await navigator.clipboard.writeText(value)
+    toast.success(`${label}已复制`)
   }
 
+  return <div className="space-y-6">
+    <Card>
+      <CardHeader><CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5" />客户端接入</CardTitle><CardDescription>App ID 和 App Key 可以包含在客户端应用中，只用于 SDK 注册。</CardDescription></CardHeader>
+      <CardContent className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2"><Label htmlFor="app-id">App ID</Label><div className="flex gap-2"><Input id="app-id" value={currentApp.id} readOnly className="bg-muted" /><Button size="icon" variant="outline" title="复制 App ID" onClick={() => copy(String(currentApp.id), 'App ID')}><Copy className="h-4 w-4" /></Button></div></div>
+        <div className="space-y-2"><Label htmlFor="bundle-id">Bundle ID</Label><Input id="bundle-id" value={currentApp.package_name} readOnly className="bg-muted" /></div>
+        <div className="space-y-2 md:col-span-2"><Label htmlFor="app-key">App Key</Label><div className="flex gap-2"><Input id="app-key" type={appKeyVisible ? 'text' : 'password'} value={currentApp.app_key || ''} readOnly className="bg-muted font-mono" /><Button type="button" size="icon" variant="outline" title={appKeyVisible ? '隐藏 App Key' : '显示 App Key'} aria-label={appKeyVisible ? '隐藏 App Key' : '显示 App Key'} onClick={() => setAppKeyVisible((visible) => !visible)} disabled={!currentApp.app_key}>{appKeyVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button><Button size="icon" variant="outline" title={appKeyVisible ? '复制 App Key' : '请先显示 App Key'} onClick={() => copy(currentApp.app_key, 'App Key')} disabled={!currentApp.app_key || !appKeyVisible}><Copy className="h-4 w-4" /></Button></div></div>
+      </CardContent>
+    </Card>
 
+    {currentApp.role === 'owner' && <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2"><KeyRound className="h-5 w-5" />App Secrets</div>
+          <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />创建 App Secret</Button>
+        </CardTitle>
+        <CardDescription>仅用于服务端 API。每个后端服务应使用独立 Secret 和最小权限。</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? <div className="py-8 text-center text-muted-foreground">加载中...</div> : secrets.length === 0 ? <div className="py-8 text-center text-muted-foreground">尚未创建 App Secret，请先创建一个</div> : <Table>
+          <TableHeader><TableRow><TableHead>密钥名称</TableHead><TableHead>App Secret</TableHead><TableHead>权限</TableHead><TableHead>状态</TableHead><TableHead>最后使用</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+          <TableBody>{secrets.map((secret) => {
+            const active = secret.status === 1 && !secret.revoked_at && (!secret.expires_at || new Date(secret.expires_at) > new Date())
+            return <TableRow key={secret.id} className="group"><TableCell className="font-medium">{secret.name}</TableCell><TableCell><code className="rounded bg-muted px-2 py-1 font-mono text-sm">{secret.prefix}****************{secret.suffix}</code></TableCell><TableCell><div className="flex max-w-md flex-wrap gap-1">{secret.scopes.map((scope) => <Badge key={scope} variant="secondary">{scopeLabel(scope)}</Badge>)}</div></TableCell><TableCell><Badge variant={active ? 'default' : 'secondary'}>{active ? '有效' : '已失效'}</Badge></TableCell><TableCell className="text-sm text-muted-foreground">{secret.last_used_at ? new Date(secret.last_used_at).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '从未使用'}</TableCell><TableCell className="text-right">{active && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0" title="App Secret 操作"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => { setSelectedSecret(secret); setEditScopesOpen(true) }}><Pencil className="mr-2 h-4 w-4" />编辑权限</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="text-destructive" onClick={() => { setSelectedSecret(secret); setRevokeOpen(true) }}><Trash2 className="mr-2 h-4 w-4" />撤销 Secret</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}</TableCell></TableRow>
+          })}</TableBody>
+        </Table>}
+      </CardContent>
+    </Card>}
 
-
-
-  // 处理删除API密钥
-  const handleDeleteApiKey = (apiKey: AppAPIKey) => {
-    setSelectedApiKey(apiKey)
-    setDeleteDialogOpen(true)
-  }
-
-  // 处理创建成功
-  const handleApiKeyCreated = () => {
-    setCreateDialogOpen(false)
-    loadApiKeys()
-  }
-
-  // 处理删除成功
-  const handleApiKeyDeleted = () => {
-    setDeleteDialogOpen(false)
-    setSelectedApiKey(null)
-    loadApiKeys()
-  }
-
-  if (!currentApp) {
-    return null
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* 应用基础信息 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            应用基础信息
-          </CardTitle>
-          <CardDescription>
-            SDK集成所需的基础参数信息
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="app-id">App ID</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="app-id"
-                  value={currentApp.id.toString()}
-                  readOnly
-                  className="bg-muted"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => copyToClipboard(currentApp.id.toString(), 'App ID')}
-                  title="复制App ID"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="bundle-id">Bundle ID</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="bundle-id"
-                  value={currentApp.package_name}
-                  readOnly
-                  className="bg-muted"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => copyToClipboard(currentApp.package_name, 'Bundle ID')}
-                  title="复制Bundle ID"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* API密钥管理 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              API 密钥管理
-            </div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              创建API密钥
-            </Button>
-          </CardTitle>
-          <CardDescription>
-            管理应用的API密钥，用于SDK认证和服务端API调用
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center text-muted-foreground py-8">
-              加载中...
-            </div>
-          ) : apiKeys.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              暂无API密钥，请先创建一个
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>密钥名称</TableHead>
-                  <TableHead>API密钥</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {apiKeys.map((apiKey) => {
-                  return (
-                    <TableRow key={apiKey.id}>
-                      <TableCell className="font-medium">
-                        {apiKey.name}
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-sm bg-muted px-2 py-1 rounded font-mono">
-                          {apiKey.key_prefix}****************{apiKey.key_suffix}
-                        </code>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {new Date(apiKey.created_at).toLocaleString('zh-CN', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteApiKey(apiKey)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              删除密钥
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* 对话框组件 */}
-      <CreateApiKeyDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSuccess={handleApiKeyCreated}
-      />
-      
-      <DeleteApiKeyDialog
-        apiKey={selectedApiKey}
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onSuccess={handleApiKeyDeleted}
-      />
-    </div>
-  )
+    <CreateAppSecretDialog app={currentApp} open={createOpen} onOpenChange={setCreateOpen} onSuccess={loadSecrets} />
+    <EditAppSecretScopesDialog app={currentApp} secret={selectedSecret} open={editScopesOpen} onOpenChange={setEditScopesOpen} onSuccess={loadSecrets} />
+    <RevokeAppSecretDialog app={currentApp} secret={selectedSecret} open={revokeOpen} onOpenChange={setRevokeOpen} onSuccess={loadSecrets} />
+  </div>
 }

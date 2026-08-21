@@ -2,12 +2,8 @@ import { z } from 'zod';
 
 /** Plugin input schema. Validated at prebuild time. */
 export const PluginConfigSchema = z.object({
-  appId: z
-    .string({ required_error: 'appId is required', invalid_type_error: 'appId is required' })
-    .min(1, 'appId is required'),
-  apiKey: z
-    .string({ required_error: 'apiKey is required', invalid_type_error: 'apiKey is required' })
-    .min(1, 'apiKey is required'),
+  appId: z.string().min(1).optional(),
+  appKey: z.string().regex(/^dp_ak_[A-Za-z0-9]{32}$/, 'appKey must be dp_ak_ followed by 32 letters or digits').optional(),
   baseURL: z.string().url().optional(),
   ios: z
     .object({

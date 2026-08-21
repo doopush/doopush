@@ -18,7 +18,7 @@ import expo.modules.kotlin.modules.ModuleDefinition
 
 /**
  * DooPush React Native SDK — Android bridge
- * v0.5.0
+ * v0.6.0
  *
  * Mode: ACTIVE (default) — DooPush owns FCM display via DooPushFirebaseMessagingService.
  * Coexistence with expo-notifications/react-native-firebase is exposed through
@@ -48,16 +48,22 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
         Function("configure") { config: Map<String, Any> ->
             val appId = config["appId"] as? String
                 ?: throw IllegalArgumentException("configure requires appId")
-            val apiKey = config["apiKey"] as? String
-                ?: throw IllegalArgumentException("configure requires apiKey")
+            val appKey = config["appKey"] as? String
+                ?: throw IllegalArgumentException("configure requires appKey")
             val baseURL = config["baseURL"] as? String
             val context = appContext.reactContext
                 ?: throw IllegalStateException("React context unavailable")
             if (baseURL.isNullOrBlank()) {
-                DooPushManager.getInstance().configure(context, appId, apiKey)
+                DooPushManager.getInstance().configure(context, appId, appKey)
             } else {
-                DooPushManager.getInstance().configure(context, appId, apiKey, baseURL)
+                DooPushManager.getInstance().configure(context, appId, appKey, baseURL)
             }
+        }
+
+        Function("configureLocal") {
+            val context = appContext.reactContext
+                ?: throw IllegalStateException("React context unavailable")
+            DooPushManager.getInstance().configureForTokenAcquisition(context)
         }
 
         // ── register ────────────────────────────────────────────────────
@@ -81,6 +87,28 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
                     }
                     override fun onError(error: DooPushError) {
                         promise.reject("E_REGISTER", error.getFullDescription(), error)
+                    }
+                }
+            )
+        }
+
+        AsyncFunction("acquireToken") { promise: Promise ->
+            DooPushManager.getInstance().acquirePushToken(
+                object : DooPushRegisterCallback {
+                    override fun onSuccess(token: String) {
+                        promise.resolve(mapOf(
+                            "token" to token,
+                            "vendor" to currentVendor()
+                        ))
+                    }
+                    override fun onSuccess(result: DooPushRegisterResult) {
+                        promise.resolve(mapOf(
+                            "token" to result.token,
+                            "vendor" to normalizeVendor(result.vendor)
+                        ))
+                    }
+                    override fun onError(error: DooPushError) {
+                        promise.reject("E_ACQUIRE_TOKEN", error.getFullDescription(), error)
                     }
                 }
             )
@@ -238,7 +266,7 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
         ))
     }
 
-    // Direct token-fetch callbacks are not part of the RN v0.5.0 surface; apps consume
+    // Direct token-fetch callbacks are not part of the RN surface; apps consume
     // register/registerWithToken plus onRegister/onRegisterError/onMessage events.
     override fun onTokenReceived(token: String) {
         // No-op.

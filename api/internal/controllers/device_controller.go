@@ -55,12 +55,12 @@ type DeviceListResponse struct {
 // @Tags 设备管理
 // @Accept json
 // @Produce json
-// @Security ApiKeyAuth
+// @Security AppKeyAuth
 // @Param appId path int true "应用ID"
 // @Param request body RegisterDeviceRequest true "设备信息，必须包含bundle_id用于安全验证，可选包含tags数组进行标签绑定"
 // @Success 201 {object} response.APIResponse "注册成功，返回设备信息"
 // @Failure 400 {object} response.APIResponse "请求参数错误"
-// @Failure 401 {object} response.APIResponse "API密钥无效或与应用不匹配"
+// @Failure 401 {object} response.APIResponse "App Key无效或与应用不匹配"
 // @Failure 422 {object} response.APIResponse "Bundle ID与应用包名不匹配"
 // @Router /apps/{appId}/devices [post]
 func (d *DeviceController) RegisterDevice(c *gin.Context) {

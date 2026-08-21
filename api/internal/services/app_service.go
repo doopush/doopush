@@ -3,7 +3,6 @@ package services
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -37,6 +36,8 @@ func (s *AppService) CreateApp(userID uint, name, packageName, description, plat
 		return nil, errors.New("包名已存在")
 	}
 
+	appKey := utils.GenerateSecureToken(models.AppKeyPrefix)
+
 	// 创建应用
 	app := &models.App{
 		Name:        name,
@@ -45,6 +46,7 @@ func (s *AppService) CreateApp(userID uint, name, packageName, description, plat
 		Platform:    platform,
 		AppIcon:     appIcon,
 		Status:      1,
+		AppKey:      appKey,
 		Role:        "owner",
 	}
 
@@ -354,88 +356,4 @@ func (s *AppService) DeleteApp(appID uint, userID uint) error {
 		}
 		return nil
 	})
-}
-
-// GetAppAPIKeys 获取应用API密钥列表
-func (s *AppService) GetAppAPIKeys(appID uint, userID uint) ([]models.AppAPIKey, error) {
-	// 检查用户权限
-	userService := NewUserService()
-	hasPermission, err := userService.CheckAppPermission(userID, appID, "viewer")
-	if err != nil {
-		return nil, errors.New("权限检查失败")
-	}
-	if !hasPermission {
-		return nil, errors.New("无权限访问该应用")
-	}
-
-	var apiKeys []models.AppAPIKey
-	if err := database.DB.Where("app_id = ? AND status = 1", appID).Find(&apiKeys).Error; err != nil {
-		return nil, errors.New("获取API密钥失败")
-	}
-
-	return apiKeys, nil
-}
-
-// CreateAPIKey 创建API密钥
-func (s *AppService) CreateAPIKey(appID uint, userID uint, name string) (*models.AppAPIKey, string, error) {
-	// 检查用户权限 (需要developer以上权限)
-	userService := NewUserService()
-	hasPermission, err := userService.CheckAppPermission(userID, appID, "developer")
-	if err != nil {
-		return nil, "", errors.New("权限检查失败")
-	}
-	if !hasPermission {
-		return nil, "", errors.New("无权限创建API密钥")
-	}
-
-	// 生成API密钥
-	keyBody := utils.GenerateAPIKey()
-	apiKey := fmt.Sprintf("dp_live_%s", keyBody)
-
-	// 提取后缀 (取最后8个字符)
-	keySuffix := keyBody[len(keyBody)-8:]
-	if len(keyBody) < 8 {
-		keySuffix = keyBody
-	}
-
-	appAPIKey := &models.AppAPIKey{
-		AppID:     appID,
-		Name:      name,
-		KeyHash:   utils.HashString(apiKey),
-		KeyPrefix: "dp_live_",
-		KeySuffix: keySuffix,
-		Status:    1,
-	}
-
-	if err := database.DB.Create(appAPIKey).Error; err != nil {
-		return nil, "", errors.New("API密钥创建失败")
-	}
-
-	return appAPIKey, apiKey, nil
-}
-
-// DeleteAPIKey 删除API密钥
-func (s *AppService) DeleteAPIKey(appID uint, keyID uint, userID uint) error {
-	// 检查用户权限 (需要developer以上权限)
-	userService := NewUserService()
-	hasPermission, err := userService.CheckAppPermission(userID, appID, "developer")
-	if err != nil {
-		return errors.New("权限检查失败")
-	}
-	if !hasPermission {
-		return errors.New("无权限删除API密钥")
-	}
-
-	// 检查API密钥是否存在且属于指定应用
-	var apiKey models.AppAPIKey
-	if err := database.DB.Where("id = ? AND app_id = ?", keyID, appID).First(&apiKey).Error; err != nil {
-		return errors.New("API密钥不存在")
-	}
-
-	// 软删除API密钥
-	if err := database.DB.Delete(&apiKey).Error; err != nil {
-		return errors.New("删除API密钥失败")
-	}
-
-	return nil
 }

@@ -3,16 +3,15 @@ package utils
 import (
 	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
 )
 
-// GenerateAPIKey 生成API密钥
-func GenerateAPIKey() string {
+func generateRandomCredentialBody() string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
 	b := make([]byte, 32)
 	for i := range b {
 		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
@@ -21,7 +20,18 @@ func GenerateAPIKey() string {
 	return string(b)
 }
 
-// HashString 字符串哈希 (用于API密钥等)
+// GenerateSecureToken 生成带凭证类型前缀的 32 位随机令牌。
+func GenerateSecureToken(prefix string) string {
+	return prefix + generateRandomCredentialBody()
+}
+
+// HashCredential 使用 SHA-256 生成凭证摘要。
+func HashCredential(input string) string {
+	hash := sha256.Sum256([]byte(input))
+	return fmt.Sprintf("%x", hash)
+}
+
+// HashString 字符串哈希（用于设备 Token、推送去重等）。
 func HashString(input string) string {
 	hash := md5.Sum([]byte(input + "doopush_salt"))
 	return fmt.Sprintf("%x", hash)

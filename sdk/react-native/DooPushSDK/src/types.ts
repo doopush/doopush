@@ -26,8 +26,8 @@ export type DooPushPermissionStatus =
 export interface DooPushConfig {
   /** DooPush platform appId (assigned by server) */
   appId: string;
-  /** DooPush platform apiKey (assigned by server) */
-  apiKey: string;
+  /** DooPush App Key used by client SDK requests. */
+  appKey: string;
   /** API base URL. Defaults to https://doopush.com/api/v1 if omitted. */
   baseURL?: string;
   /** Log level for native SDK side. */
@@ -40,9 +40,15 @@ export interface DooPushRegisterResult {
   vendor: DooPushVendor;
 }
 
+export interface DooPushTokenResult {
+  token: string;
+  vendor: DooPushVendor;
+}
+
 export interface DooPushDeviceInfo {
   platform: 'ios' | 'android' | string;
   channel: DooPushVendor | string;
+  pushEnvironment?: 'development' | 'production' | string;
   bundleId: string;
   brand: string;
   model: string;

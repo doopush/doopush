@@ -1,11 +1,11 @@
 package gateway
 
 import (
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
@@ -53,14 +53,9 @@ func authenticate(db *gorm.DB, p *HandshakeParams) (deviceID uint, err error) {
 	if err := db.Where("id = ? AND status = 1", p.AppID).First(&app).Error; err != nil {
 		return 0, &authError{status: http.StatusUnauthorized, msg: "app not found"}
 	}
-	// 2. AppKey 哈希匹配
-	keyHash := utils.HashString(p.AppKey)
-	var apiKey models.AppAPIKey
-	if err := db.Where("app_id = ? AND key_hash = ? AND status = 1", p.AppID, keyHash).First(&apiKey).Error; err != nil {
+	// 2. 固定 App Key 匹配
+	if subtle.ConstantTimeCompare([]byte(p.AppKey), []byte(app.AppKey)) != 1 {
 		return 0, &authError{status: http.StatusUnauthorized, msg: "invalid appkey"}
-	}
-	if apiKey.ExpiresAt != nil && apiKey.ExpiresAt.Before(time.Now()) {
-		return 0, &authError{status: http.StatusUnauthorized, msg: "appkey expired"}
 	}
 	// 3. 设备 token 哈希匹配
 	tokenHash := utils.HashString(p.Token)

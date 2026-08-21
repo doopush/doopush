@@ -18,7 +18,7 @@ class PushNotificationManager: NSObject, ObservableObject {
         // 配置 DooPush SDK
         DooPushManager.shared.configure(
             appId: "your_app_id_here",
-            apiKey: "your_api_key_here"
+            appKey: "dp_ak_xxx"
         )
         
         // 设置代理

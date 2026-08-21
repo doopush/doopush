@@ -1,13 +1,12 @@
 import { validatePluginConfig } from '../schema';
 
+const appKey = 'dp_ak_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+
 describe('validatePluginConfig', () => {
   test('accepts minimum valid config', () => {
-    const result = validatePluginConfig({
-      appId: 'app_123',
-      apiKey: 'key_abc',
-    });
-    expect(result.appId).toBe('app_123');
-    expect(result.apiKey).toBe('key_abc');
+    const result = validatePluginConfig({});
+    expect(result.appId).toBeUndefined();
+    expect(result.appKey).toBeUndefined();
     expect(result.ios.mode).toBe('production'); // default
     expect(result.android.vendors).toEqual({});
   });
@@ -15,7 +14,7 @@ describe('validatePluginConfig', () => {
   test('accepts full config with fcm vendor', () => {
     const result = validatePluginConfig({
       appId: 'app_123',
-      apiKey: 'key_abc',
+      appKey,
       baseURL: 'https://test.doopush.com/api/v1',
       ios: { mode: 'development' },
       android: {
@@ -32,7 +31,7 @@ describe('validatePluginConfig', () => {
   test('accepts android OEM vendor config', () => {
     const result = validatePluginConfig({
       appId: 'app_123',
-      apiKey: 'key_abc',
+      appKey,
       android: {
         vendors: {
           hms: { agconnectServicesFile: './agconnect-services.json' },
@@ -54,23 +53,11 @@ describe('validatePluginConfig', () => {
     expect(result.android.vendors.xiaomi?.appKey).toBe('mi_key');
   });
 
-  test('rejects missing appId', () => {
-    expect(() => validatePluginConfig({ apiKey: 'k' })).toThrow(
-      /appId is required/
-    );
-  });
-
-  test('rejects missing apiKey', () => {
-    expect(() => validatePluginConfig({ appId: 'a' })).toThrow(
-      /apiKey is required/
-    );
-  });
-
   test('rejects fcm vendor without googleServicesFile', () => {
     expect(() =>
       validatePluginConfig({
         appId: 'a',
-        apiKey: 'k',
+        appKey,
         android: { vendors: { fcm: {} } },
       })
     ).toThrow(/googleServicesFile is required/);
@@ -80,7 +67,7 @@ describe('validatePluginConfig', () => {
     expect(() =>
       validatePluginConfig({
         appId: 'a',
-        apiKey: 'k',
+        appKey,
         android: { vendors: { xiaomi: { appId: 'mi_app' } } },
       })
     ).toThrow(/xiaomi requires either servicesFile or appId \+ appKey/);
@@ -90,7 +77,7 @@ describe('validatePluginConfig', () => {
     expect(() =>
       validatePluginConfig({
         appId: 'a',
-        apiKey: 'k',
+        appKey,
         android: { vendors: { hms: {} } },
       })
     ).toThrow(/agconnectServicesFile is required/);
@@ -98,7 +85,13 @@ describe('validatePluginConfig', () => {
 
   test('rejects invalid baseURL', () => {
     expect(() =>
-      validatePluginConfig({ appId: 'a', apiKey: 'k', baseURL: 'not-a-url' })
+      validatePluginConfig({ appId: 'a', appKey, baseURL: 'not-a-url' })
     ).toThrow();
+  });
+
+  test('rejects an app key without a 32-character body', () => {
+    expect(() => validatePluginConfig({ appId: 'a', appKey: 'dp_ak_test' })).toThrow(
+      /32 letters or digits/
+    );
   });
 });

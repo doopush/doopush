@@ -69,6 +69,10 @@ public extension DooPushManager {
     /// 同时通过 KVO 监听 UNUserNotificationCenter.delegate 的替换；
     /// 若第三方（如 expo-notifications）后续接管，自动把 DooPush 代理重新装回顶层
     @objc public func enableAutomaticNotificationTracking() {
+        guard notificationManagementMode == .active else {
+            DooPushLogger.debug("passive 模式下跳过自动通知事件采集")
+            return
+        }
         let center = UNUserNotificationCenter.current()
         // 避免重复包裹代理
         if center.delegate is DooPushNotificationProxy {
@@ -104,5 +108,4 @@ public extension DooPushManager {
         DooPushLogger.info("已关闭自动通知事件采集，并还原通知代理")
     }
 }
-
 

@@ -39,7 +39,7 @@ export function DeviceDetailsDialog({ device, open, onOpenChange }: DeviceDetail
   }
 
   const getStatusBadge = (status: number) => {
-    return status === 1 
+    return status === 1
       ? { label: '启用', className: 'bg-green-100 text-green-800' }
       : { label: '禁用', className: 'bg-red-100 text-red-800' }
   }
@@ -85,7 +85,7 @@ export function DeviceDetailsDialog({ device, open, onOpenChange }: DeviceDetail
                   </Badge>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">品牌:</span>
@@ -190,9 +190,9 @@ export function DeviceDetailsDialog({ device, open, onOpenChange }: DeviceDetail
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">最后活跃:</span>
                 <span className="text-sm font-medium">
-                  {formatDistanceToNow(new Date(device.last_seen), { 
-                    addSuffix: true, 
-                    locale: zhCN 
+                  {formatDistanceToNow(new Date(device.last_seen), {
+                    addSuffix: true,
+                    locale: zhCN
                   })}
                 </span>
               </div>

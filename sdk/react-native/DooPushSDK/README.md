@@ -20,8 +20,8 @@
 
 ## 前置条件
 
-- iOS 原生 SDK ≥ **1.2.0**（monorepo 本地开发可路径引用未发布版本）
-- Android 原生 SDK ≥ **1.2.0**（monorepo 本地开发可走 mavenLocal 用未发布版本）
+- iOS 原生 SDK ≥ **1.4.0**（monorepo 本地开发可路径引用未发布版本）
+- Android 原生 SDK ≥ **1.3.0**（monorepo 本地开发可走 mavenLocal 用未发布版本）
 - Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
 ## 快速安装
@@ -40,7 +40,7 @@ npx expo install doopush-react-native-sdk
         "doopush-react-native-sdk",
         {
           "appId": "your_app_id",
-          "apiKey": "your_api_key",
+          "appKey": "dp_ak_xxx",
           "baseURL": "https://doopush.com/api/v1",
           "ios": { "mode": "production" },
           "android": {
@@ -82,7 +82,7 @@ export default function App() {
   useEffect(() => {
     DooPush.configure({
       appId: 'your_app_id',
-      apiKey: 'your_api_key',
+      appKey: 'dp_ak_xxx',
     });
     const sub = DooPush.addMessageListener((m: DooPushMessage) => {
       console.log('收到推送', m);
@@ -115,6 +115,21 @@ async function maintenance() {
   console.log(permission);
 }
 ```
+
+### 服务端代理注册
+
+当应用不需要连接 DooPush 服务时，只在客户端获取原生推送 token：
+
+```tsx
+DooPush.configureLocal();
+const { token, vendor } = await DooPush.acquireToken();
+const deviceInfo = await DooPush.getDeviceInfo();
+// 将 token、vendor 和 deviceInfo 发送给受信任的业务服务端完成 DooPush 注册。
+```
+
+`acquireToken()` 只获取 token，不会触发 DooPush 设备注册。`configureLocal()` 仅在没有
+DooPush 凭据时初始化原生 token 提供方；如果此前已调用 `configure()`，现有配置、统计和
+Gateway 状态不会被修改。
 
 ## 本地开发
 
@@ -180,6 +195,11 @@ const { deviceId } = await DooPush.registerWithToken(token, 'fcm');
 MIT
 
 ## CHANGELOG
+
+### v0.6.0
+- **仅获取 token**：新增 `configureLocal()` / `acquireToken()`，获取 APNs、FCM 或 OEM token 时不触发 DooPush 设备注册，也不改变已有 SDK 配置和网络功能。
+- **Config Plugin**：DooPush `appId` / `appKey` 可选，支持只获取原生推送 Token 的场景。
+- **依赖底座**：iOS SDK 升级到 1.4.0，Android SDK 升级到 1.3.0。
 
 ### v0.5.3
 - **Fix (Android / Expo 54)**：Honor 文件配置模式现在会从 `mcs-services.json` 解析 `app_id` / `developer_id`，并为 Honor Gradle 插件补齐显式 AGP 版本，避免注册时报错 3607 或构建失败。

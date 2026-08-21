@@ -115,7 +115,7 @@ struct SettingsView: View {
     private var configurationInfo: some View {
         Group {
             configRow(title: "应用 ID", value: AppConfig.appId)
-            configRow(title: "API 密钥", value: AppConfig.apiKey)
+            configRow(title: "App Key", value: AppConfig.appKey)
             configRow(title: "服务器地址", value: AppConfig.displayBaseURL)
             configRow(title: "SDK 版本", value: DooPushManager.sdkVersion)
         }

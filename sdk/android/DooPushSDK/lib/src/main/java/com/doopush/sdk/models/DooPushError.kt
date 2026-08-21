@@ -2,51 +2,51 @@ package com.doopush.sdk.models
 
 /**
  * DooPush SDK 错误信息类
- * 
+ *
  * 统一的错误处理和错误信息封装
  */
 data class DooPushError(
-    
+
     /**
      * 错误码
      */
     val code: Int,
-    
+
     /**
      * 错误消息
      */
     override val message: String,
-    
+
     /**
      * 详细错误信息 (可选)
      */
     val details: String? = null,
-    
+
     /**
      * 原始异常 (可选)
      */
     override val cause: Throwable? = null
 ) : Throwable(message, cause) {
-    
+
     companion object {
         // 网络相关错误码
         const val NETWORK_ERROR = 1000
         const val ERROR_NETWORK_UNAVAILABLE = 1001
         const val ERROR_NETWORK_TIMEOUT = 1002
         const val ERROR_NETWORK_REQUEST_FAILED = 1003
-        
+
         // 配置相关错误码
         const val CONFIG_INVALID_APP_ID = 2001
-        const val CONFIG_INVALID_API_KEY = 2002
+        const val CONFIG_INVALID_APP_KEY = 2002
         const val CONFIG_INVALID_BASE_URL = 2003
         const val CONFIG_NOT_INITIALIZED = 2004
         const val CONFIG_INVALID_PARAMETER = 2005
-        
+
         // FCM相关错误码
         const val FCM_TOKEN_FETCH_FAILED = 3001
         const val FCM_SERVICE_UNAVAILABLE = 3002
         const val FCM_REGISTRATION_FAILED = 3003
-        
+
         // HMS相关错误码
         const val HMS_NOT_AVAILABLE = 3101
         const val HMS_CONFIG_INVALID = 3102
@@ -54,7 +54,7 @@ data class DooPushError(
         const val HMS_TOKEN_EMPTY = 3104
         const val HMS_AUTH_ERROR = 3105
         const val HMS_PUSH_ERROR = 3106
-        
+
         // 小米推送相关错误码
         const val XIAOMI_NOT_AVAILABLE = 3201
         const val XIAOMI_INIT_FAILED = 3202
@@ -62,7 +62,7 @@ data class DooPushError(
         const val XIAOMI_REGISTER_FAILED = 3204
         const val XIAOMI_CONFIG_INVALID = 3205
         const val XIAOMI_PUSH_ERROR = 3206
-        
+
         // OPPO推送相关错误码
         const val OPPO_NOT_AVAILABLE = 3301
         const val OPPO_INIT_FAILED = 3302
@@ -70,7 +70,7 @@ data class DooPushError(
         const val OPPO_REGISTER_FAILED = 3304
         const val OPPO_CONFIG_INVALID = 3305
         const val OPPO_PUSH_ERROR = 3306
-        
+
         // VIVO推送相关错误码
         const val VIVO_NOT_AVAILABLE = 3401
         const val VIVO_INIT_FAILED = 3402
@@ -78,7 +78,7 @@ data class DooPushError(
         const val VIVO_REGISTER_FAILED = 3404
         const val VIVO_CONFIG_INVALID = 3405
         const val VIVO_PUSH_ERROR = 3406
-        
+
         // 魅族推送相关错误码
         const val MEIZU_NOT_AVAILABLE = 3501
         const val MEIZU_INIT_FAILED = 3502
@@ -86,7 +86,7 @@ data class DooPushError(
         const val MEIZU_REGISTER_FAILED = 3504
         const val MEIZU_CONFIG_INVALID = 3505
         const val MEIZU_PUSH_ERROR = 3506
-        
+
         // 荣耀推送相关错误码
         const val HONOR_NOT_AVAILABLE = 3601
         const val HONOR_SDK_NOT_AVAILABLE = 3602
@@ -96,11 +96,11 @@ data class DooPushError(
         const val HONOR_SDK_ERROR = 3606
         const val HONOR_APP_ID_MISSING = 3607
         const val HONOR_UNKNOWN_ERROR = 3608
-        
+
         // 权限相关错误码
         const val PERMISSION_DENIED = 4001
         const val NOTIFICATION_PERMISSION_DENIED = 4002
-        
+
         // API相关错误码
         const val API_BAD_REQUEST = 5100
         const val API_UNAUTHORIZED = 5101
@@ -112,7 +112,7 @@ data class DooPushError(
         const val ERROR_API_DEVICE_REGISTRATION_FAILED = 5001
         const val ERROR_API_TOKEN_UPDATE_FAILED = 5002
         const val ERROR_API_INVALID_RESPONSE = 5003
-        
+
         // TCP连接相关错误码
         const val ERROR_TCP_CONNECTION_FAILED = 6001
         const val ERROR_TCP_CONNECTION_TIMEOUT = 6002
@@ -126,7 +126,7 @@ data class DooPushError(
 
         // 系统相关错误码
         const val UNKNOWN_ERROR = 9999
-        
+
         /**
          * 创建网络不可用错误
          */
@@ -137,7 +137,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建网络超时错误
          */
@@ -148,7 +148,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建配置未初始化错误
          */
@@ -158,7 +158,7 @@ data class DooPushError(
                 message = "SDK尚未初始化，请先调用configure方法"
             )
         }
-        
+
         /**
          * 创建FCM Token获取失败错误
          */
@@ -170,7 +170,7 @@ data class DooPushError(
                 cause = cause
             )
         }
-        
+
         /**
          * 创建权限被拒绝错误
          */
@@ -180,7 +180,7 @@ data class DooPushError(
                 message = "推送权限被拒绝，请在设置中开启通知权限"
             )
         }
-        
+
         /**
          * 创建HMS不可用错误
          */
@@ -190,7 +190,7 @@ data class DooPushError(
                 message = "华为推送服务不可用，请检查设备是否为华为设备且已安装HMS Core"
             )
         }
-        
+
         /**
          * 创建HMS配置无效错误
          */
@@ -200,7 +200,7 @@ data class DooPushError(
                 message = "华为推送配置无效，请检查App ID是否正确"
             )
         }
-        
+
         /**
          * 创建HMS Token获取失败错误
          */
@@ -211,7 +211,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建HMS Token为空错误
          */
@@ -221,7 +221,7 @@ data class DooPushError(
                 message = "华为推送Token为空"
             )
         }
-        
+
         /**
          * 创建HMS认证失败错误
          */
@@ -232,7 +232,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建HMS推送发送失败错误
          */
@@ -243,7 +243,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建小米推送不可用错误
          */
@@ -253,7 +253,7 @@ data class DooPushError(
                 message = "小米推送服务不可用，请检查设备是否为小米设备且已安装小米推送SDK"
             )
         }
-        
+
         /**
          * 创建小米推送初始化失败错误
          */
@@ -264,7 +264,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建小米推送Token获取失败错误
          */
@@ -276,7 +276,7 @@ data class DooPushError(
                 cause = cause
             )
         }
-        
+
         /**
          * 创建小米推送注册失败错误
          */
@@ -287,7 +287,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建小米推送配置无效错误
          */
@@ -298,7 +298,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建小米推送操作错误
          */
@@ -309,7 +309,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建OPPO推送不可用错误
          */
@@ -319,7 +319,7 @@ data class DooPushError(
                 message = "OPPO推送服务不可用，可能是设备不支持或SDK未集成"
             )
         }
-        
+
         /**
          * 创建OPPO推送初始化失败错误
          */
@@ -330,7 +330,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建OPPO推送Token获取失败错误
          */
@@ -342,7 +342,7 @@ data class DooPushError(
                 cause = cause
             )
         }
-        
+
         /**
          * 创建OPPO推送注册失败错误
          */
@@ -353,7 +353,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建OPPO推送配置无效错误
          */
@@ -364,7 +364,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建OPPO推送操作错误
          */
@@ -375,7 +375,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建VIVO推送不可用错误
          */
@@ -385,7 +385,7 @@ data class DooPushError(
                 message = "VIVO推送服务不可用，可能是设备不支持或SDK未集成"
             )
         }
-        
+
         /**
          * 创建VIVO推送初始化失败错误
          */
@@ -396,7 +396,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建VIVO推送Token获取失败错误
          */
@@ -408,7 +408,7 @@ data class DooPushError(
                 cause = cause
             )
         }
-        
+
         /**
          * 创建VIVO推送注册失败错误
          */
@@ -419,7 +419,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建VIVO推送配置无效错误
          */
@@ -430,7 +430,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建VIVO推送操作错误
          */
@@ -441,7 +441,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建魅族推送不可用错误
          */
@@ -451,7 +451,7 @@ data class DooPushError(
                 message = "魅族推送服务不可用，可能是设备不支持或SDK未集成"
             )
         }
-        
+
         /**
          * 创建魅族推送初始化失败错误
          */
@@ -462,7 +462,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建魅族推送Token获取失败错误
          */
@@ -474,7 +474,7 @@ data class DooPushError(
                 cause = cause
             )
         }
-        
+
         /**
          * 创建魅族推送注册失败错误
          */
@@ -485,7 +485,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建魅族推送配置无效错误
          */
@@ -496,7 +496,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建魅族推送操作错误
          */
@@ -507,7 +507,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建荣耀推送不可用错误
          */
@@ -517,7 +517,7 @@ data class DooPushError(
                 message = "荣耀推送服务不可用，可能是设备不支持或SDK未集成"
             )
         }
-        
+
         /**
          * 创建荣耀推送SDK不可用错误
          */
@@ -527,7 +527,7 @@ data class DooPushError(
                 message = "荣耀推送SDK不可用，请确保已集成荣耀推送SDK"
             )
         }
-        
+
         /**
          * 创建荣耀推送初始化失败错误
          */
@@ -538,7 +538,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建荣耀推送Token获取失败错误
          */
@@ -550,7 +550,7 @@ data class DooPushError(
                 cause = cause
             )
         }
-        
+
         /**
          * 创建荣耀推送配置无效错误
          */
@@ -561,7 +561,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建荣耀推送SDK错误
          */
@@ -572,7 +572,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建荣耀推送未知错误
          */
@@ -583,7 +583,7 @@ data class DooPushError(
                 details = details
             )
         }
-        
+
         /**
          * 创建未知系统错误
          */
@@ -595,7 +595,7 @@ data class DooPushError(
                 cause = cause
             )
         }
-        
+
         /**
          * 从异常创建错误对象
          */
@@ -607,7 +607,7 @@ data class DooPushError(
             )
         }
     }
-    
+
     /**
      * 获取完整的错误描述
      */
@@ -619,49 +619,49 @@ data class DooPushError(
         }
         return builder.toString()
     }
-    
+
     /**
      * 是否为网络相关错误
      */
     fun isNetworkError(): Boolean {
         return code in 1001..1999
     }
-    
+
     /**
      * 是否为配置相关错误
      */
     fun isConfigError(): Boolean {
         return code in 2001..2999
     }
-    
+
     /**
      * 是否为FCM相关错误
      */
     fun isFcmError(): Boolean {
         return code in 3001..3099
     }
-    
+
     /**
      * 是否为HMS相关错误
      */
     fun isHmsError(): Boolean {
         return code in 3101..3199
     }
-    
+
     /**
      * 是否为荣耀推送相关错误
      */
     fun isHonorError(): Boolean {
         return code in 3501..3599
     }
-    
+
     /**
      * 是否为权限相关错误
      */
     fun isPermissionError(): Boolean {
         return code in 4001..4999
     }
-    
+
     /**
      * 是否为TCP连接相关错误
      */

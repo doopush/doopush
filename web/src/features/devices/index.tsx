@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { 
-  Smartphone, 
-  MoreHorizontal, 
-  Eye, 
+import {
+  Smartphone,
+  MoreHorizontal,
+  Eye,
   Power,
   PowerOff,
   Trash2,
@@ -64,14 +64,14 @@ export function Devices() {
   const [platformFilter, setPlatformFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [pushEnvFilter, setPushEnvFilter] = useState<string>('all')
-  
+
   // 对话框状态
   const [deviceDetailsOpen, setDeviceDetailsOpen] = useState(false)
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  
+
   // 统计数据
   const [deviceStats, setDeviceStats] = useState({
     total: 0,
@@ -92,12 +92,12 @@ export function Devices() {
   // 加载设备列表
   const loadDevices = useCallback(async () => {
     if (!currentApp) return
-    
+
     // 防重复调用检查
     if (loadingRef.current) {
       return
     }
-    
+
     try {
       loadingRef.current = true
       setLoading(true)
@@ -168,7 +168,7 @@ export function Devices() {
 
   const handleConfirmDelete = async () => {
     if (!deviceToDelete) return
-    
+
     try {
       setIsDeleting(true)
       await DeviceService.deleteDevice(currentApp!.id, deviceToDelete.token)
@@ -192,7 +192,7 @@ export function Devices() {
   }
 
   const getStatusBadge = (status: number) => {
-    return status === 1 
+    return status === 1
       ? { label: '启用', className: 'bg-green-100 text-green-800' }
       : { label: '禁用', className: 'bg-red-100 text-red-800' }
   }
@@ -228,7 +228,7 @@ export function Devices() {
       </Header>
 
       {!currentApp ? (
-        <NoAppSelected 
+        <NoAppSelected
           icon={<Smartphone className="h-16 w-16 text-muted-foreground" />}
           description={APP_SELECTION_DESCRIPTIONS.devices}
         />
@@ -308,7 +308,7 @@ export function Devices() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              
+
               <Select value={platformFilter} onValueChange={setPlatformFilter}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
@@ -418,7 +418,7 @@ export function Devices() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm text-muted-foreground">
-                            {device.user_agent.length > 50 
+                            {device.user_agent.length > 50
                               ? `${device.user_agent.slice(0, 50)}...`
                               : device.user_agent
                             }
@@ -451,9 +451,9 @@ export function Devices() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
-                          {device.last_seen ? formatDistanceToNow(new Date(device.last_seen), { 
-                            addSuffix: true, 
-                            locale: zhCN 
+                          {device.last_seen ? formatDistanceToNow(new Date(device.last_seen), {
+                            addSuffix: true,
+                            locale: zhCN
                           }) : '-'}
                         </TableCell>
                         <TableCell className="text-right">
@@ -482,7 +482,7 @@ export function Devices() {
                                 )}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleDeleteDevice(device)}
                                 className="text-red-600"
                               >
@@ -531,7 +531,7 @@ export function Devices() {
                     <div className="bg-muted p-3 rounded-md">
                       <p className="text-sm font-medium">{deviceToDelete.model}</p>
                       <p className="text-xs text-muted-foreground font-mono break-all">
-                        {deviceToDelete.token.length > 40 
+                        {deviceToDelete.token.length > 40
                           ? `${deviceToDelete.token.slice(0, 40)}...`
                           : deviceToDelete.token
                         }
