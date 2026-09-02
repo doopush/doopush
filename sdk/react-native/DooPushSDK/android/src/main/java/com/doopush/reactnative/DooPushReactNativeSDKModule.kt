@@ -18,7 +18,7 @@ import expo.modules.kotlin.modules.ModuleDefinition
 
 /**
  * DooPush React Native SDK — Android bridge
- * v0.6.0
+ * v0.6.1
  *
  * Mode: ACTIVE (default) — DooPush owns FCM display via DooPushFirebaseMessagingService.
  * Coexistence with expo-notifications/react-native-firebase is exposed through
