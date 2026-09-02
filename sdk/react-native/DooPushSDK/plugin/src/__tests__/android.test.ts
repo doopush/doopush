@@ -1,4 +1,5 @@
 import { withAndroid } from '../android/withAndroid';
+import { upsertDependency } from '../android/withAppBuildGradle';
 import { preferHostNotificationIcon } from '../android/withNotificationManifest';
 import { ExpoConfig } from '@expo/config-types';
 
@@ -103,5 +104,36 @@ describe('preferHostNotificationIcon', () => {
     expect(preferHostNotificationIcon(manifest)).toBe(false);
     expect(manifest.manifest.$['xmlns:tools']).toBeUndefined();
     expect(manifest.manifest.application[0]['meta-data']).toBeUndefined();
+  });
+});
+
+describe('upsertDependency', () => {
+  const dependency = "implementation 'com.doopush:android-sdk:1.3.1'";
+
+  test('upgrades an existing DooPush SDK dependency', () => {
+    const contents = `dependencies {
+    implementation 'com.doopush:android-sdk:1.3.0'
+}`;
+
+    const result = upsertDependency(contents, dependency);
+
+    expect(result).toContain(dependency);
+    expect(result).not.toContain('com.doopush:android-sdk:1.3.0');
+  });
+
+  test('inserts the dependency when it is absent', () => {
+    const result = upsertDependency('dependencies {\n}', dependency);
+
+    expect(result).toContain(dependency);
+  });
+
+  test('does not duplicate the current dependency', () => {
+    const contents = `dependencies {
+    ${dependency}
+}`;
+
+    const result = upsertDependency(contents, dependency);
+
+    expect(result.match(/com\.doopush:android-sdk:1\.3\.1/g)).toHaveLength(1);
   });
 });

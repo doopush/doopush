@@ -21,7 +21,7 @@
 ## 前置条件
 
 - iOS 原生 SDK ≥ **1.4.0**（monorepo 本地开发可路径引用未发布版本）
-- Android 原生 SDK ≥ **1.3.0**（monorepo 本地开发可走 mavenLocal 用未发布版本）
+- Android 原生 SDK ≥ **1.3.1**（monorepo 本地开发可走 mavenLocal 用未发布版本）
 - Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
 ## 快速安装
@@ -195,6 +195,11 @@ const { deviceId } = await DooPush.registerWithToken(token, 'fcm');
 MIT
 
 ## CHANGELOG
+
+### v0.6.1
+- **认证迁移**：公开配置、TypeScript 类型以及 iOS/Android 原生桥接统一从 `apiKey` 切换为 `appKey`。
+- **发布修复**：重新发布 PR #10 对应的 npm 制品，避免 `v0.6.0` 与 npm `0.6.0` 内容不一致。
+- **依赖底座**：iOS SDK 保持 1.4.0，Android SDK 升级到 1.3.1。
 
 ### v0.6.0
 - **仅获取 token**：新增 `configureLocal()` / `acquireToken()`，获取 APNs、FCM 或 OEM token 时不触发 DooPush 设备注册，也不改变已有 SDK 配置和网络功能。

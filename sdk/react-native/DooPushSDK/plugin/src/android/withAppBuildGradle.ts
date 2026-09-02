@@ -43,6 +43,20 @@ function addDependency(contents: string, dependency: string): string {
   return contents.replace(/dependencies\s*{/, `dependencies {\n    ${dependency}`);
 }
 
+export function upsertDependency(contents: string, dependency: string): string {
+  const coordinate = dependency.match(/['"]([^'"]+)['"]/)?.[1];
+  const artifact = coordinate?.match(/^(.+):[^:]+$/)?.[1];
+  if (!coordinate || !artifact) return addDependency(contents, dependency);
+
+  const escapedArtifact = artifact.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const existingCoordinate = new RegExp(`(['"])${escapedArtifact}:[^'"]+\\1`);
+  if (existingCoordinate.test(contents)) {
+    return contents.replace(existingCoordinate, (_match, quote: string) => `${quote}${coordinate}${quote}`);
+  }
+
+  return addDependency(contents, dependency);
+}
+
 function mergeManifestPlaceholders(
   contents: string,
   placeholderValues: Record<string, string | undefined>
@@ -102,7 +116,7 @@ export const withDooPushAppBuildGradle: ConfigPlugin<PluginConfig> = (config, va
     });
 
     // 3. Inject DooPush Android SDK dependency if not present.
-    contents = addDependency(contents, "implementation 'com.doopush:android-sdk:1.3.0'");
+    contents = upsertDependency(contents, "implementation 'com.doopush:android-sdk:1.3.1'");
 
     const vendorDependencies: Array<[boolean, string]> = [
       [!!v.hms, "implementation 'com.huawei.hms:push:6.11.0.300'"],
