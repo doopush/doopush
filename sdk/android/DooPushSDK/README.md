@@ -308,6 +308,10 @@ A: SDK 提供了详细的日志输出，使用 `adb logcat -s DooPushManager` �
 
 ## 更新日志
 
+### v1.3.1
+- **认证迁移**：设备注册与网关鉴权统一使用 App Key，匹配新的应用凭证模型。
+- **发布修复**：使用新版本坐标发布 PR #10 的 Android SDK，避免复用 `v1.3.0` 导致 JitPack/Gradle 缓存旧制品。
+
 ### v1.2.2
 - **Fix (OPPO)**：OPPO/HeyTap 厂商注册失败时只抛通用超时错误，无法定位根因；`onError` 改为透出 MCS 返回的真实错误信息（`getFullDescription()`），便于排查静默失败。
 - `BuildConfig.SDK_VERSION` / `DooPushDevice.SDK_VERSION` → `1.2.2`。
