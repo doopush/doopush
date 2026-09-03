@@ -21,7 +21,7 @@ import type {
 /**
  * DooPush React Native SDK — imperative API
  *
- * v0.6.1 — registration, local token acquisition, OEM channels, token/device getters, hooks,
+ * v0.6.2 — registration, local token acquisition, OEM channels, token/device getters, hooks,
  * notification events, WebSocket gateway, badge, statistics, and coexistence controls.
  */
 

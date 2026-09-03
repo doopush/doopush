@@ -43,6 +43,9 @@ function addDependency(contents: string, dependency: string): string {
   return contents.replace(/dependencies\s*{/, `dependencies {\n    ${dependency}`);
 }
 
+export const DOOPUSH_ANDROID_SDK_COORDINATE =
+  'com.github.doopush:doopush-android-sdk:1.3.1';
+
 export function upsertDependency(contents: string, dependency: string): string {
   const coordinate = dependency.match(/['"]([^'"]+)['"]/)?.[1];
   const artifact = coordinate?.match(/^(.+):[^:]+$/)?.[1];
@@ -116,7 +119,10 @@ export const withDooPushAppBuildGradle: ConfigPlugin<PluginConfig> = (config, va
     });
 
     // 3. Inject DooPush Android SDK dependency if not present.
-    contents = upsertDependency(contents, "implementation 'com.doopush:android-sdk:1.3.1'");
+    contents = upsertDependency(
+      contents,
+      `implementation '${DOOPUSH_ANDROID_SDK_COORDINATE}'`
+    );
 
     const vendorDependencies: Array<[boolean, string]> = [
       [!!v.hms, "implementation 'com.huawei.hms:push:6.11.0.300'"],

@@ -1,5 +1,8 @@
 import { withAndroid } from '../android/withAndroid';
-import { upsertDependency } from '../android/withAppBuildGradle';
+import {
+  DOOPUSH_ANDROID_SDK_COORDINATE,
+  upsertDependency,
+} from '../android/withAppBuildGradle';
 import { preferHostNotificationIcon } from '../android/withNotificationManifest';
 import { ExpoConfig } from '@expo/config-types';
 
@@ -108,17 +111,17 @@ describe('preferHostNotificationIcon', () => {
 });
 
 describe('upsertDependency', () => {
-  const dependency = "implementation 'com.doopush:android-sdk:1.3.1'";
+  const dependency = `implementation '${DOOPUSH_ANDROID_SDK_COORDINATE}'`;
 
-  test('upgrades an existing DooPush SDK dependency', () => {
+  test('upgrades an existing JitPack dependency', () => {
     const contents = `dependencies {
-    implementation 'com.doopush:android-sdk:1.3.0'
+    implementation 'com.github.doopush:doopush-android-sdk:1.3.0'
 }`;
 
     const result = upsertDependency(contents, dependency);
 
     expect(result).toContain(dependency);
-    expect(result).not.toContain('com.doopush:android-sdk:1.3.0');
+    expect(result).not.toContain('com.github.doopush:doopush-android-sdk:1.3.0');
   });
 
   test('inserts the dependency when it is absent', () => {
@@ -134,6 +137,6 @@ describe('upsertDependency', () => {
 
     const result = upsertDependency(contents, dependency);
 
-    expect(result.match(/com\.doopush:android-sdk:1\.3\.1/g)).toHaveLength(1);
+    expect(result.match(/com\.github\.doopush:doopush-android-sdk:1\.3\.1/g)).toHaveLength(1);
   });
 });
