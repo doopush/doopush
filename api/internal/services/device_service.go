@@ -36,28 +36,26 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 	// 检查设备是否已存在
 	tokenHash := utils.HashString(token)
 	var existingDevice models.Device
+	updates := deviceRegistrationUpdates(
+		token,
+		platform,
+		channel,
+		pushEnv,
+		brand,
+		model,
+		systemVer,
+		appVersion,
+		userAgent,
+	)
 
-	if err := database.DB.Where("app_id = ? AND token_hash = ?", appID, tokenHash).First(&existingDevice).Error; err == nil {
-		// 设备已存在，更新信息
-		updates := map[string]interface{}{
-			"brand":            brand,
-			"model":            model,
-			"system_ver":       systemVer,
-			"app_version":      appVersion,
-			"user_agent":       userAgent,
-			"push_environment": pushEnv,
-			"status":           1,
-			"last_seen":        utils.TimeNow(),
-		}
-
-		if err := database.DB.Preload("App").Model(&existingDevice).Updates(updates).Error; err != nil {
-			return nil, errors.New("设备信息更新失败")
-		}
-		if err := database.DB.Preload("App").First(&existingDevice, existingDevice.ID).Error; err != nil {
-			return nil, errors.New("设备信息更新失败")
-		}
-
-		return &existingDevice, nil
+	lookupErr := database.DB.Unscoped().
+		Where("app_id = ? AND token_hash = ?", appID, tokenHash).
+		First(&existingDevice).Error
+	if lookupErr == nil {
+		return restoreRegisteredDevice(&existingDevice, updates)
+	}
+	if !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+		return nil, errors.New("设备注册失败")
 	}
 
 	// 创建新设备
@@ -78,28 +76,13 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 	}
 
 	if err := database.DB.Create(device).Error; err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			// 并发场景下可能同时写入，捕获唯一索引冲突后回退到更新逻辑
-			if err := database.DB.Where("app_id = ? AND token_hash = ?", appID, tokenHash).First(&existingDevice).Error; err == nil {
-				updates := map[string]interface{}{
-					"token":            token,
-					"brand":            brand,
-					"model":            model,
-					"system_ver":       systemVer,
-					"app_version":      appVersion,
-					"user_agent":       userAgent,
-					"push_environment": pushEnv,
-					"status":           1,
-					"last_seen":        utils.TimeNow(),
-				}
-				if updErr := database.DB.Model(&existingDevice).Updates(updates).Error; updErr != nil {
-					return nil, errors.New("设备信息更新失败")
-				}
-				if err := database.DB.Preload("App").First(&existingDevice, existingDevice.ID).Error; err != nil {
-					return nil, errors.New("设备信息更新失败")
-				}
-				return &existingDevice, nil
-			}
+		// Another request may have inserted the unique app/token pair after our
+		// lookup. Query without the soft-delete scope so this also recovers a
+		// concurrently deleted device, independent of driver error translation.
+		if lookupErr := database.DB.Unscoped().
+			Where("app_id = ? AND token_hash = ?", appID, tokenHash).
+			First(&existingDevice).Error; lookupErr == nil {
+			return restoreRegisteredDevice(&existingDevice, updates)
 		}
 		return nil, errors.New("设备注册失败")
 	}
@@ -110,6 +93,33 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 		return device, nil
 	}
 
+	return device, nil
+}
+
+func deviceRegistrationUpdates(token, platform, channel, pushEnv, brand, model, systemVer, appVersion, userAgent string) map[string]interface{} {
+	return map[string]interface{}{
+		"token":            token,
+		"platform":         platform,
+		"channel":          channel,
+		"brand":            brand,
+		"model":            model,
+		"system_ver":       systemVer,
+		"app_version":      appVersion,
+		"user_agent":       userAgent,
+		"push_environment": pushEnv,
+		"status":           1,
+		"last_seen":        utils.TimeNow(),
+		"deleted_at":       nil,
+	}
+}
+
+func restoreRegisteredDevice(device *models.Device, updates map[string]interface{}) (*models.Device, error) {
+	if err := database.DB.Unscoped().Model(device).Updates(updates).Error; err != nil {
+		return nil, errors.New("设备信息更新失败")
+	}
+	if err := database.DB.Preload("App").First(device, device.ID).Error; err != nil {
+		return nil, errors.New("设备信息更新失败")
+	}
 	return device, nil
 }
 
