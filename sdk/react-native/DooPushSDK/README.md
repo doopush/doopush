@@ -196,6 +196,9 @@ MIT
 
 ## CHANGELOG
 
+### v0.6.2
+- **Android 依赖修复**：原生模块与 Expo config plugin 改用 JitPack 实际发布的 `com.github.doopush:doopush-android-sdk:1.3.1` 坐标。
+
 ### v0.6.1
 - **认证迁移**：公开配置、TypeScript 类型以及 iOS/Android 原生桥接统一从 `apiKey` 切换为 `appKey`。
 - **发布修复**：重新发布 PR #10 对应的 npm 制品，避免 `v0.6.0` 与 npm `0.6.0` 内容不一致。
