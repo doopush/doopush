@@ -41,7 +41,7 @@ allprojects {
 ```kotlin
 dependencies {
     // DooPush SDK
-    implementation 'com.github.doopush:doopush-android-sdk:1.2.0'
+    implementation 'com.github.doopush:doopush-android-sdk:1.3.2'
 
     // 必需：FCM
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
@@ -307,6 +307,10 @@ A: SDK 提供了详细的日志输出，使用 `adb logcat -s DooPushManager` �
 如有问题请提交 Issue 或联系技术支持团队。
 
 ## 更新日志
+
+### v1.3.2
+- **Fix (生命周期)**：SDK 通过 `ProcessLifecycleOwner` 统一管理应用前后台状态，后台主动断开 Gateway WebSocket，前台自动恢复连接。
+- **Fix (连接竞态)**：Gateway 建连统一串行到主线程；设备注册在后台完成时只缓存结果，避免异步回调重新建立后台连接。
 
 ### v1.3.1
 - **认证迁移**：设备注册与网关鉴权统一使用 App Key，匹配新的应用凭证模型。
