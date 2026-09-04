@@ -44,7 +44,7 @@ function addDependency(contents: string, dependency: string): string {
 }
 
 export const DOOPUSH_ANDROID_SDK_COORDINATE =
-  'com.github.doopush:doopush-android-sdk:1.3.3';
+  'com.github.doopush:doopush-android-sdk:1.3.4';
 
 export function upsertDependency(contents: string, dependency: string): string {
   const coordinate = dependency.match(/['"]([^'"]+)['"]/)?.[1];

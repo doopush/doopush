@@ -138,7 +138,7 @@ describe('upsertDependency', () => {
 
     const result = upsertDependency(contents, dependency);
 
-    expect(result.match(/com\.github\.doopush:doopush-android-sdk:1\.3\.3/g)).toHaveLength(1);
+    expect(result.match(/com\.github\.doopush:doopush-android-sdk:1\.3\.4/g)).toHaveLength(1);
   });
 });
 
