@@ -90,6 +90,47 @@ class DooPushManagementModeTest {
     }
 
     @Test
+    fun repeatedGatewayConnectReusesActiveConnectionWithSameIdentity() {
+        val manager = DooPushManager.getInstance()
+        val foreground = atomicBooleanField(manager, "isAppInForeground")
+        val configField = DooPushManager::class.java.getDeclaredField("config")
+            .apply { isAccessible = true }
+        val wsField = DooPushManager::class.java.getDeclaredField("wsConnection")
+            .apply { isAccessible = true }
+        val previousForeground = foreground.getAndSet(true)
+        val previousConfig = configField.get(manager)
+
+        manager.disconnectWebSocket()
+        configField.set(
+            manager,
+            DooPushConfig(
+                appId = "test_app",
+                appKey = "test_key",
+                baseURL = "http://127.0.0.1:1/api/v1"
+            )
+        )
+
+        try {
+            val connect = DooPushManager::class.java.getDeclaredMethod(
+                "connectToGatewayOnMainThread",
+                String::class.java
+            ).apply { isAccessible = true }
+
+            connect.invoke(manager, "same_token")
+            val firstConnection = wsField.get(manager)
+            assertNotNull(firstConnection)
+
+            connect.invoke(manager, "same_token")
+
+            assertSame(firstConnection, wsField.get(manager))
+        } finally {
+            manager.disconnectWebSocket()
+            configField.set(manager, previousConfig)
+            foreground.set(previousForeground)
+        }
+    }
+
+    @Test
     fun setPassiveMode() {
         DooPushManager.getInstance().setNotificationManagementMode(
             DooPushManager.NotificationManagementMode.PASSIVE

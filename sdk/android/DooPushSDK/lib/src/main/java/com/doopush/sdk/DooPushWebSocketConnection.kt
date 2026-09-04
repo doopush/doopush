@@ -68,6 +68,17 @@ class DooPushWebSocketConnection(
     val isActive: Boolean
         get() = active.get()
 
+    fun matchesConnection(
+        baseUrl: String,
+        appId: String,
+        appKey: String,
+        token: String,
+    ): Boolean =
+        this.baseUrl == baseUrl &&
+            this.appId == appId &&
+            this.appKey == appKey &&
+            this.token == token
+
     /**
      * 前台唤醒：仅当活跃、且当前既未连上也无在途重连时，立即补一次重连。
      * 用于回前台/重复 onResume 时复用已有连接对象，避免无谓重建触发服务端 4001 替换。

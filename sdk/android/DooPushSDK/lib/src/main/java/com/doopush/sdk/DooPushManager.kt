@@ -1488,6 +1488,16 @@ class DooPushManager private constructor() {
             return
         }
 
+        val existingConnection = wsConnection
+        if (
+            existingConnection != null &&
+            existingConnection.isActive &&
+            existingConnection.matchesConnection(config.baseURL, config.appId, config.appKey, token)
+        ) {
+            existingConnection.reconnectIfNeeded()
+            return
+        }
+
         Log.i(TAG, "准备连接 WebSocket Gateway - ${config.baseURL}")
 
         // 断开可能存在的旧连接
