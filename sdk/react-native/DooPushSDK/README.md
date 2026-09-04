@@ -21,7 +21,7 @@
 ## 前置条件
 
 - iOS 原生 SDK ≥ **1.4.0**（monorepo 本地开发可路径引用未发布版本）
-- Android 原生 SDK ≥ **1.3.1**（monorepo 本地开发可走 mavenLocal 用未发布版本）
+- Android 原生 SDK ≥ **1.3.2**
 - Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
 ## 快速安装
@@ -195,6 +195,10 @@ const { deviceId } = await DooPush.registerWithToken(token, 'fcm');
 MIT
 
 ## CHANGELOG
+
+### v0.6.3
+- **Android 生命周期修复**：升级到 Android SDK 1.3.2，由原生 SDK 单点管理进程前后台状态，应用退到后台时断开 Gateway、回到前台时重新连接，并避免注册回调竞态在后台重建连接。
+- **依赖清理**：发布包仅使用正式 JitPack 坐标，移除本地 Maven 仓库回退。
 
 ### v0.6.2
 - **Android 依赖修复**：原生模块与 Expo config plugin 改用 JitPack 实际发布的 `com.github.doopush:doopush-android-sdk:1.3.1` 坐标。

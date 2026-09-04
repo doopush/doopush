@@ -2,7 +2,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 group = 'com.doopush.reactnative'
-version = '0.6.2'
+version = '0.6.3'
 
 def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
 apply from: expoModulesCorePlugin
@@ -18,7 +18,7 @@ android {
         minSdkVersion safeExtGet("minSdkVersion", 26)
         targetSdkVersion safeExtGet("targetSdkVersion", 34)
         versionCode 1
-        versionName "0.6.2"
+        versionName "0.6.3"
     }
 
     compileOptions {
@@ -35,14 +35,13 @@ repositories {
     google()
     // JitPack for the published Android SDK.
     maven { url 'https://jitpack.io' }
-    mavenLocal()  // for local DooPush SDK during dev
 }
 
 dependencies {
     // RN bridge directly uses NotificationManagerCompat / ContextCompat for permission checks.
     implementation 'androidx.core:core-ktx:1.12.0'
     // JitPack publishes this repository under its public GitHub-derived coordinates.
-    implementation 'com.github.doopush:doopush-android-sdk:1.3.1'
+    implementation 'com.github.doopush:doopush-android-sdk:1.3.2'
 
     // FCM (transitive via DooPush AAR's runtime deps for FCM, but explicit here for clarity).
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
