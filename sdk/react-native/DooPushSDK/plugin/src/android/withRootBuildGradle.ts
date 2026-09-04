@@ -6,6 +6,10 @@ import type { PluginConfig } from '../schema';
 import * as fs from 'fs';
 import * as path from 'path';
 
+export function removeLegacyMavenLocal(contents: string): string {
+  return contents.replace(/^\s*mavenLocal\(\)\s*(?:\/\/.*)?\r?\n/gm, '');
+}
+
 /**
  * Honor's asplugin requires an explicit AGP classpath version in root build.gradle.
  * Expo SDK ≥54 declares AGP without a version (version catalog manages it), so pin
@@ -38,7 +42,7 @@ function pinAgpClasspathVersion(contents: string, projectRoot: string): string {
  */
 export const withDooPushRootBuildGradle: ConfigPlugin<PluginConfig> = (config, validated) => {
   return withProjectBuildGradle(config, (cfg) => {
-    let contents = cfg.modResults.contents;
+    let contents = removeLegacyMavenLocal(cfg.modResults.contents);
 
     const addAllProjectsRepo = (repo: string, marker: string) => {
       const allprojectsStart = contents.search(/allprojects\s*{/);
@@ -110,9 +114,6 @@ export const withDooPushRootBuildGradle: ConfigPlugin<PluginConfig> = (config, v
       // Expo SDK ≥54 omits the version (managed by the version catalog). Pin it.
       contents = pinAgpClasspathVersion(contents, cfg.modRequest.projectRoot);
     }
-
-    // mavenLocal for development.
-    addAllProjectsRepo('mavenLocal()', 'mavenLocal()');
 
     cfg.modResults.contents = contents;
     return cfg;

@@ -4,7 +4,7 @@ import UserNotifications
 
 /**
  * DooPush React Native SDK — iOS bridge
- * v0.6.3
+ * v0.6.4
  *
  * Mode: ACTIVE (default) — DooPush owns UNUserNotificationCenterDelegate via the
  * delegate-forwarding mechanism in DooPushSDK. Coexists with

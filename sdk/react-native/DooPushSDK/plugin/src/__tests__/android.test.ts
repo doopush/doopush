@@ -3,6 +3,7 @@ import {
   DOOPUSH_ANDROID_SDK_COORDINATE,
   upsertDependency,
 } from '../android/withAppBuildGradle';
+import { removeLegacyMavenLocal } from '../android/withRootBuildGradle';
 import { preferHostNotificationIcon } from '../android/withNotificationManifest';
 import { ExpoConfig } from '@expo/config-types';
 
@@ -138,5 +139,23 @@ describe('upsertDependency', () => {
     const result = upsertDependency(contents, dependency);
 
     expect(result.match(/com\.github\.doopush:doopush-android-sdk:1\.3\.2/g)).toHaveLength(1);
+  });
+});
+
+describe('removeLegacyMavenLocal', () => {
+  test('removes the old local repository without changing published repositories', () => {
+    const contents = `allprojects {
+  repositories {
+    mavenLocal() // injected by an older DooPush plugin
+    maven { url 'https://jitpack.io' }
+    mavenCentral()
+  }
+}`;
+
+    const result = removeLegacyMavenLocal(contents);
+
+    expect(result).not.toContain('mavenLocal()');
+    expect(result).toContain("maven { url 'https://jitpack.io' }");
+    expect(result).toContain('mavenCentral()');
   });
 });

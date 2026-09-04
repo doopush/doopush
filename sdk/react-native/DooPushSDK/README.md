@@ -196,6 +196,9 @@ MIT
 
 ## CHANGELOG
 
+### v0.6.4
+- **Config Plugin 清理**：停止向宿主工程注入 `mavenLocal()`，并在 prebuild 时移除旧版本遗留的本地 Maven 仓库条目，确保线上构建只从正式仓库解析 Android SDK。
+
 ### v0.6.3
 - **Android 生命周期修复**：升级到 Android SDK 1.3.2，由原生 SDK 单点管理进程前后台状态，应用退到后台时断开 Gateway、回到前台时重新连接，并避免注册回调竞态在后台重建连接。
 - **依赖清理**：发布包仅使用正式 JitPack 坐标，移除本地 Maven 仓库回退。
