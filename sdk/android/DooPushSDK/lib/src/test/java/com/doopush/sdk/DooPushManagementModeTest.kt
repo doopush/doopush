@@ -3,7 +3,9 @@ package com.doopush.sdk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -11,6 +13,14 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class DooPushManagementModeTest {
+
+    private fun callback() = object : DooPushCallback {
+        override fun onRegisterSuccess(token: String) = Unit
+        override fun onRegisterError(error: com.doopush.sdk.models.DooPushError) = Unit
+        override fun onMessageReceived(message: com.doopush.sdk.models.PushMessage) = Unit
+        override fun onTokenReceived(token: String) = Unit
+        override fun onTokenError(error: com.doopush.sdk.models.DooPushError) = Unit
+    }
 
     @Before
     fun setUp() {
@@ -25,6 +35,58 @@ class DooPushManagementModeTest {
             DooPushManager.NotificationManagementMode.ACTIVE,
             DooPushManager.getInstance().notificationManagementMode
         )
+    }
+
+    @Test
+    fun removeCallbackOnlyClearsMatchingOwner() {
+        val manager = DooPushManager.getInstance()
+        val oldOwner = callback()
+        val newOwner = callback()
+
+        manager.setCallback(oldOwner)
+        manager.setCallback(newOwner)
+        manager.removeCallback(oldOwner)
+        assertTrue(DooPushManager.hasActiveCallback())
+
+        manager.removeCallback(newOwner)
+        assertFalse(DooPushManager.hasActiveCallback())
+    }
+
+    @Test
+    fun websocketConnectionIsNotCreatedWhileAppIsBackgrounded() {
+        val manager = DooPushManager.getInstance()
+        val foreground = atomicBooleanField(manager, "isAppInForeground")
+        val configField = DooPushManager::class.java.getDeclaredField("config")
+            .apply { isAccessible = true }
+        val wsField = DooPushManager::class.java.getDeclaredField("wsConnection")
+            .apply { isAccessible = true }
+        val previousForeground = foreground.getAndSet(false)
+        val previousConfig = configField.get(manager)
+
+        manager.disconnectWebSocket()
+        configField.set(
+            manager,
+            DooPushConfig(
+                appId = "test_app",
+                appKey = "test_key",
+                baseURL = "http://127.0.0.1:1/api/v1"
+            )
+        )
+
+        try {
+            val connect = DooPushManager::class.java.getDeclaredMethod(
+                "connectToGatewayOnMainThread",
+                String::class.java
+            ).apply { isAccessible = true }
+
+            connect.invoke(manager, "registered_while_backgrounded")
+
+            assertNull(wsField.get(manager))
+        } finally {
+            manager.disconnectWebSocket()
+            configField.set(manager, previousConfig)
+            foreground.set(previousForeground)
+        }
     }
 
     @Test

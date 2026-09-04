@@ -28,9 +28,6 @@ class ExampleApplication : Application() {
         // 创建通知渠道
         createNotificationChannel()
 
-        // 注册应用生命周期处理器
-        AppLifecycleHandler.register(this)
-
         // 这里不直接配置SDK，而是在MainActivity中配置
         // 因为配置可能需要用户输入或从配置文件读取
 

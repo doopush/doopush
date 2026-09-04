@@ -49,6 +49,7 @@ dependencies {
     // Android 核心库
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.lifecycle:lifecycle-process:2.7.0'
 
     // Firebase 推送服务
     implementation platform('com.google.firebase:firebase-bom:32.7.0')

@@ -639,44 +639,9 @@ DooPushManager.getInstance().reportStatistics()
 
 ### 应用生命周期处理
 
-```kotlin
-class MyApplication : Application() {
-    
-    override fun onCreate() {
-        super.onCreate()
-        // SDK初始化...
-        
-        // 注册应用生命周期监听
-        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
-            override fun onActivityResumed(activity: Activity) {
-                // 应用进入前台（清通知 + 重置角标）
-                DooPushManager.getInstance().applicationDidBecomeActive(activity.applicationContext)
-            }
-            
-            override fun onActivityPaused(activity: Activity) {
-                // 应用进入后台
-                DooPushManager.getInstance().applicationWillResignActive()
-                // 断开 WebSocket 长连接
-                DooPushManager.getInstance().applicationWillTerminate()
-            }
-            
-            // 其他生命周期方法...
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
-            override fun onActivityStarted(activity: Activity) {}
-            override fun onActivityStopped(activity: Activity) {}
-            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
-            override fun onActivityDestroyed(activity: Activity) {}
-        })
-    }
-    
-    override fun onTerminate() {
-        super.onTerminate()
-        // 应用终止时清理资源
-        DooPushManager.getInstance().applicationWillTerminate()
-        DooPushManager.getInstance().release()
-    }
-}
-```
+SDK 通过 `ProcessLifecycleOwner` 自动感知整个应用进程的前后台状态。应用进入后台时会主动断开 Gateway WebSocket，回到前台时自动恢复连接。
+
+宿主应用不需要、也不应转发 Activity 的 `onResume` / `onPause`。Activity 级回调会把页面跳转、图片选择器或第三方 Activity 误判成应用进入后台。
 
 ## 🔍 调试和故障排查
 

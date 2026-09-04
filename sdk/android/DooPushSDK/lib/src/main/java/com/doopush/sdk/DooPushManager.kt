@@ -4,6 +4,9 @@ import android.content.Context
 import android.util.Log
 import android.os.Handler
 import android.os.Looper
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.doopush.sdk.models.DeviceInfo
 import com.doopush.sdk.models.DooPushError
 import com.doopush.sdk.models.PushMessage
@@ -123,19 +126,23 @@ class DooPushManager private constructor() {
     private var honorService: HonorService? = null
     private var wsConnection: DooPushWebSocketConnection? = null
     private var applicationContext: Context? = null
+    private var processLifecycleObserver: DefaultLifecycleObserver? = null
 
     // 状态管理
     private val isConfigured = AtomicBoolean(false)
     private val isRegistering = AtomicBoolean(false)
     private val tokenAcquisitionOnly = AtomicBoolean(false)
     private val currentRegistrationTokenOnly = AtomicBoolean(false)
+    private val isAppInForeground = AtomicBoolean(false)
     private val registrationGeneration = AtomicLong(0)
 
     // Handler
     private val mainHandler = Handler(Looper.getMainLooper())
 
     // 回调监听器
+    @Volatile
     private var callback: DooPushCallback? = null
+    private val callbackLock = Any()
 
     // 设备信息缓存
     private var cachedDeviceInfo: DeviceInfo? = null
@@ -377,6 +384,7 @@ class DooPushManager private constructor() {
 
             // 设置配置状态
             isConfigured.set(true)
+            registerProcessLifecycleObserver()
 
             Log.i(TAG, "DooPush SDK 配置完成")
             Log.d(TAG, config!!.getSummary())
@@ -418,8 +426,25 @@ class DooPushManager private constructor() {
      * @param callback 回调监听器
      */
     fun setCallback(callback: DooPushCallback?) {
-        this.callback = callback
+        synchronized(callbackLock) {
+            this.callback = callback
+        }
         Log.d(TAG, "回调监听器已${if (callback != null) "设置" else "移除"}")
+    }
+
+    /** 仅移除指定 owner，避免旧桥接实例销毁时清掉新实例的回调。 */
+    fun removeCallback(callback: DooPushCallback) {
+        val removed = synchronized(callbackLock) {
+            if (this.callback === callback) {
+                this.callback = null
+                true
+            } else {
+                false
+            }
+        }
+        if (removed) {
+            Log.d(TAG, "回调监听器已移除")
+        }
     }
 
     /**
@@ -1119,7 +1144,7 @@ class DooPushManager private constructor() {
      * 应用进入前台时调用，执行通知清除和角标重置
      * @param context Android 上下文，推荐使用 Application 上下文
      */
-    fun applicationDidBecomeActive(context: Context) {
+    private fun handleApplicationDidBecomeActive(context: Context) {
         Log.d(TAG, "应用进入前台")
         // 清除通知栏消息
         // TODO 如果应用没有初始化 SDK 也可以清除通知？
@@ -1143,7 +1168,7 @@ class DooPushManager private constructor() {
     /**
      * 应用进入后台时调用
      */
-    fun applicationWillResignActive() {
+    private fun handleApplicationWillResignActive() {
         Log.d(TAG, "应用进入后台")
         // 后台限制：主动断开，等前台恢复后再重连（与 iOS 行为对齐）
         wsConnection?.disconnect()
@@ -1162,6 +1187,37 @@ class DooPushManager private constructor() {
         // 应用终止时上报统计数据
         if (!tokenAcquisitionOnly.get()) {
             DooPushStatistics.reportStatistics()
+        }
+    }
+
+    private fun registerProcessLifecycleObserver() {
+        if (processLifecycleObserver != null) return
+
+        val observer = object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                isAppInForeground.set(true)
+                applicationContext?.let { handleApplicationDidBecomeActive(it) }
+            }
+
+            override fun onStop(owner: LifecycleOwner) {
+                isAppInForeground.set(false)
+                handleApplicationWillResignActive()
+            }
+        }
+        processLifecycleObserver = observer
+        mainHandler.post {
+            if (processLifecycleObserver === observer) {
+                ProcessLifecycleOwner.get().lifecycle.addObserver(observer)
+            }
+        }
+    }
+
+    private fun unregisterProcessLifecycleObserver() {
+        val observer = processLifecycleObserver ?: return
+        processLifecycleObserver = null
+        isAppInForeground.set(false)
+        mainHandler.post {
+            ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)
         }
     }
 
@@ -1235,6 +1291,8 @@ class DooPushManager private constructor() {
         Log.d(TAG, "释放SDK资源")
 
         try {
+            unregisterProcessLifecycleObserver()
+
             // 清除Firebase监听器
             DooPushFirebaseMessagingService.messageListener = null
             DooPushFirebaseMessagingService.tokenRefreshListener = null
@@ -1411,7 +1469,19 @@ class DooPushManager private constructor() {
      * 连接到 WebSocket Gateway
      */
     private fun connectToGateway(token: String) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post { connectToGatewayOnMainThread(token) }
+            return
+        }
+        connectToGatewayOnMainThread(token)
+    }
+
+    private fun connectToGatewayOnMainThread(token: String) {
         if (tokenAcquisitionOnly.get()) return
+        if (!isAppInForeground.get()) {
+            Log.d(TAG, "应用位于后台，延迟连接 WebSocket Gateway")
+            return
+        }
         val config = this.config
         if (config == null) {
             Log.e(TAG, "SDK配置缺失，无法连接 WebSocket Gateway")
