@@ -78,7 +78,7 @@ allprojects {
 ```kotlin
 dependencies {
     // DooPush SDK - JitPack
-    implementation 'com.github.doopush:doopush-android-sdk:1.3.0'
+    implementation 'com.github.doopush:doopush-android-sdk:1.3.2'
 
     // 必需：Firebase Cloud Messaging
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
