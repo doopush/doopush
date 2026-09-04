@@ -44,6 +44,10 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
             DooPushManager.getInstance().setCallback(this@DooPushReactNativeSDKModule)
         }
 
+        OnDestroy {
+            DooPushManager.getInstance().removeCallback(this@DooPushReactNativeSDKModule)
+        }
+
         // ── configure ───────────────────────────────────────────────────
         Function("configure") { config: Map<String, Any> ->
             val appId = config["appId"] as? String
