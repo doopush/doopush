@@ -21,7 +21,7 @@
 ## 前置条件
 
 - iOS 原生 SDK ≥ **1.4.0**（monorepo 本地开发可路径引用未发布版本）
-- Android 原生 SDK ≥ **1.3.2**
+- Android 原生 SDK ≥ **1.3.3**
 - Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
 ## 快速安装
@@ -195,6 +195,9 @@ const { deviceId } = await DooPush.registerWithToken(token, 'fcm');
 MIT
 
 ## CHANGELOG
+
+### v0.6.5
+- **Android Gateway 单飞**：升级到 Android SDK 1.3.3，避免前台恢复与注册成功并发时为同一设备身份重复建立 WebSocket。
 
 ### v0.6.4
 - **Config Plugin 清理**：停止向宿主工程注入 `mavenLocal()`，并在 prebuild 时移除旧版本遗留的本地 Maven 仓库条目，确保线上构建只从正式仓库解析 Android SDK。
