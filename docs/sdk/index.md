@@ -8,7 +8,7 @@ DooPush 为移动应用提供完整的跨平台推送解决方案，支持 iOS�
 |------|------|----------|------|
 | **iOS** | ✅ 已支持 | v1.3.0 | 原生 APNs 集成，生产可用 |
 | **Android** | ✅ 已支持 | v1.3.2 | 多厂商推送支持，生产可用 |
-| **React Native** | ✅ 已支持 | v0.6.3 | 基于 Expo Modules 的 RN/Expo 接入层，支持 APNs、FCM 与 6 类 Android OEM 通道，生产可用 |
+| **React Native** | ✅ 已支持 | v0.6.4 | 基于 Expo Modules 的 RN/Expo 接入层，支持 APNs、FCM 与 6 类 Android OEM 通道，生产可用 |
 
 ## 📖 iOS SDK 文档
 
