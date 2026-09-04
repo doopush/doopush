@@ -123,6 +123,10 @@ class DooPushManagementModeTest {
             connect.invoke(manager, "same_token")
 
             assertSame(firstConnection, wsField.get(manager))
+            val reconnectScheduled = firstConnection!!::class.java
+                .getDeclaredField("reconnectScheduled")
+                .apply { isAccessible = true }
+            assertFalse(reconnectScheduled.getBoolean(firstConnection))
         } finally {
             manager.disconnectWebSocket()
             configField.set(manager, previousConfig)

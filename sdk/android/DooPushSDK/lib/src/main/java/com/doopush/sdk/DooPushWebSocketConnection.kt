@@ -39,6 +39,8 @@ class DooPushWebSocketConnection(
     // 当前是否已建立连接（onOpen 置 true，终结回调置 false），供前台守卫判断是否需要补连
     @Volatile
     private var connected = false
+    // 首次握手与重连握手均只能有一个在途，避免注册完成时重复安排补连。
+    private val connecting = AtomicBoolean(false)
     // 单飞：是否已有待执行的重连，避免守卫与失败回调叠加多条连接
     @Volatile
     private var reconnectScheduled = false
@@ -57,6 +59,7 @@ class DooPushWebSocketConnection(
     fun disconnect() {
         active.set(false)
         connected = false
+        connecting.set(false)
         reconnectScheduled = false
         // 取消任何已排队的重连任务，避免闭包持有本对象到下次定时触发（最长 15s）
         handler.removeCallbacksAndMessages(null)
@@ -85,12 +88,13 @@ class DooPushWebSocketConnection(
      */
     fun reconnectIfNeeded() {
         if (!active.get()) return
-        if (connected || reconnectScheduled) return
+        if (connected || connecting.get() || reconnectScheduled) return
         reconnectDelayMs = 1_000L
         scheduleReconnect()
     }
 
     private fun doConnect() {
+        if (!active.get() || connected || !connecting.compareAndSet(false, true)) return
         val wsUrl = wsUrlFromBase(baseUrl)
         val req = Request.Builder()
             .url("$wsUrl?appid=$appId&appkey=$appKey&token=$token")
@@ -99,6 +103,7 @@ class DooPushWebSocketConnection(
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 // 过期回调（已被新连接取代）忽略，避免污染连接状态
                 if (webSocket !== ws) return
+                connecting.set(false)
                 Log.i(TAG, "ws open")
                 connected = true
                 openSinceMs = System.currentTimeMillis()
@@ -116,6 +121,7 @@ class DooPushWebSocketConnection(
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 // 过期回调忽略：只有当前连接的终结才更新状态/触发重连
                 if (webSocket !== ws) return
+                connecting.set(false)
                 Log.i(TAG, "ws closed code=$code reason=$reason")
                 connected = false
                 maybeResetBackoff()
@@ -126,6 +132,7 @@ class DooPushWebSocketConnection(
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 // 过期回调忽略：只有当前连接的终结才更新状态/触发重连
                 if (webSocket !== ws) return
+                connecting.set(false)
                 Log.w(TAG, "ws failure: ${t.message}, http=${response?.code}")
                 connected = false
                 maybeResetBackoff()
