@@ -3,6 +3,7 @@ package push
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/doopush/doopush/api/internal/database"
@@ -19,6 +20,18 @@ type PushProvider interface {
 type PushManager struct {
 	providers map[string]PushProvider
 }
+
+// apnsProviderEntry 进程级缓存的APNs提供者
+type apnsProviderEntry struct {
+	configHash string
+	provider   *APNsProvider
+}
+
+// APNs提供者进程级缓存（按应用+环境），跨推送批次复用HTTP/2连接和JWT
+var (
+	apnsProviderCacheMu sync.Mutex
+	apnsProviderCache   = make(map[string]*apnsProviderEntry)
+)
 
 // NewPushManager 创建推送管理器
 func NewPushManager() *PushManager {
@@ -79,6 +92,21 @@ func (m *PushManager) createAPNsProvider(app *models.App, environment string) (P
 		return &MockAPNsProvider{}, nil
 	}
 
+	// 复用进程级缓存的提供者，配置变更后自动重建
+	cacheKey := fmt.Sprintf("%d_%s", app.ID, environment)
+	configHash := utils.HashString(config.Config)
+
+	apnsProviderCacheMu.Lock()
+	defer apnsProviderCacheMu.Unlock()
+
+	if entry, exists := apnsProviderCache[cacheKey]; exists {
+		if entry.configHash == configHash {
+			return entry.provider, nil
+		}
+		entry.provider.client.CloseIdleConnections()
+		delete(apnsProviderCache, cacheKey)
+	}
+
 	// 解析APNs配置
 	var apnsConfig APNsConfig
 	if err := json.Unmarshal([]byte(config.Config), &apnsConfig); err != nil {
@@ -111,6 +139,7 @@ func (m *PushManager) createAPNsProvider(app *models.App, environment string) (P
 		return &MockAPNsProvider{}, nil
 	}
 
+	apnsProviderCache[cacheKey] = &apnsProviderEntry{configHash: configHash, provider: provider}
 	return provider, nil
 }
 

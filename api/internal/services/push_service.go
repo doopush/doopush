@@ -317,6 +317,12 @@ func (s *PushService) processPushLogs(pushLogs []models.PushLog) {
 			status = "sent"
 		}
 
+		// APNs返回410表示设备token已失效（如App被卸载重装），停用该设备避免后续继续推送
+		if !result.Success && device.Platform == "ios" &&
+			(result.ErrorCode == "Unregistered" || result.ErrorCode == "ExpiredToken") {
+			database.DB.Model(&device).Update("status", 0)
+		}
+
 		// 保存结果到数据库
 		database.DB.Create(result)
 		database.DB.Model(&pushLog).Updates(map[string]interface{}{

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -30,9 +31,17 @@ type APNsProvider struct {
 	bundleID   string
 	privateKey *ecdsa.PrivateKey
 
+	// 缓存的JWT：APNs要求provider token复用20~60分钟，频繁更换会返回 TooManyProviderTokenUpdates
+	jwtMu       sync.Mutex
+	jwtToken    string
+	jwtIssuedAt time.Time
+
 	// P12证书认证相关
 	cert tls.Certificate
 }
+
+// apnsJWTRefreshInterval JWT刷新间隔（APNs拒绝超过1小时的token，且不允许20分钟内频繁更换）
+const apnsJWTRefreshInterval = 50 * time.Minute
 
 // APNsConfig APNs配置结构
 type APNsConfig struct {
@@ -360,6 +369,9 @@ func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) 
 
 		var apnsError APNsErrorResponse
 		if json.Unmarshal(responseBody, &apnsError) == nil {
+			if apnsError.Reason == "ExpiredProviderToken" || apnsError.Reason == "InvalidProviderToken" {
+				a.invalidateJWT()
+			}
 			result.ErrorCode = apnsError.Reason
 			result.ErrorMessage = apnsError.Reason + " (HTTP " + fmt.Sprintf("%d", resp.StatusCode) + ")"
 		} else {
@@ -374,18 +386,24 @@ func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) 
 	return result
 }
 
-// generateJWT 生成JWT认证token（用于P8密钥认证）
+// generateJWT 获取JWT认证token（用于P8密钥认证），在刷新间隔内复用同一个token
 func (a *APNsProvider) generateJWT() (string, error) {
 	if a.authType != "p8" || a.privateKey == nil {
 		return "", fmt.Errorf("未配置P8密钥认证")
 	}
 
-	// 创建JWT claims
+	a.jwtMu.Lock()
+	defer a.jwtMu.Unlock()
+
 	now := time.Now()
+	if a.jwtToken != "" && now.Sub(a.jwtIssuedAt) < apnsJWTRefreshInterval {
+		return a.jwtToken, nil
+	}
+
+	// 创建JWT claims（APNs只使用iss和iat）
 	claims := jwt.MapClaims{
 		"iss": a.teamID,
 		"iat": now.Unix(),
-		"exp": now.Add(time.Hour).Unix(), // 1小时后过期
 	}
 
 	// 创建token
@@ -393,7 +411,21 @@ func (a *APNsProvider) generateJWT() (string, error) {
 	token.Header["kid"] = a.keyID
 
 	// 签名token
-	return token.SignedString(a.privateKey)
+	signed, err := token.SignedString(a.privateKey)
+	if err != nil {
+		return "", err
+	}
+
+	a.jwtToken = signed
+	a.jwtIssuedAt = now
+	return signed, nil
+}
+
+// invalidateJWT 清除缓存的JWT，下次请求时重新生成
+func (a *APNsProvider) invalidateJWT() {
+	a.jwtMu.Lock()
+	defer a.jwtMu.Unlock()
+	a.jwtToken = ""
 }
 
 // APNsErrorResponse APNs错误响应
