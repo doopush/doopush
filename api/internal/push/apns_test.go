@@ -6,6 +6,8 @@ import (
 	"crypto/rand"
 	"testing"
 	"time"
+
+	"github.com/doopush/doopush/api/internal/models"
 )
 
 func newTestP8Provider(t *testing.T) *APNsProvider {
@@ -47,5 +49,41 @@ func TestGenerateJWTRefreshesAfterIntervalOrInvalidation(t *testing.T) {
 	regenerated, _ := provider.generateJWT()
 	if regenerated == refreshed {
 		t.Fatal("expected JWT to be regenerated after invalidation")
+	}
+}
+
+func TestBuildAPNsPayloadAppliesAPNsOptionsToAps(t *testing.T) {
+	pushLog := &models.PushLog{
+		Title:   "Permission",
+		Content: "Bash",
+		Payload: `{"action":"open_page","data":"{}","apns":{"category":"happy.permission","thread_id":"session-1"},"oppo":{"category":"IM"}}`,
+	}
+
+	payload := buildAPNsPayload(pushLog)
+
+	aps, ok := payload["aps"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected aps dictionary")
+	}
+	if aps["category"] != "happy.permission" {
+		t.Fatalf("expected aps.category, got %v", aps["category"])
+	}
+	if aps["thread-id"] != "session-1" {
+		t.Fatalf("expected aps.thread-id, got %v", aps["thread-id"])
+	}
+	if _, exists := payload["apns"]; exists {
+		t.Fatal("expected apns options to stay out of the root dictionary")
+	}
+	if payload["action"] != "open_page" || payload["data"] != "{}" {
+		t.Fatal("expected custom data to stay at the root")
+	}
+}
+
+func TestBuildAPNsPayloadWithoutAPNsOptionsHasNoCategory(t *testing.T) {
+	payload := buildAPNsPayload(&models.PushLog{Title: "T", Content: "C", Payload: `{"apns":"invalid"}`})
+
+	aps := payload["aps"].(map[string]interface{})
+	if _, exists := aps["category"]; exists {
+		t.Fatal("expected no category")
 	}
 }

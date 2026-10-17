@@ -39,6 +39,7 @@ type PushPayload struct {
 	Oppo   map[string]interface{} `json:"oppo,omitempty"`                              // OPPO厂商参数
 	Vivo   map[string]interface{} `json:"vivo,omitempty"`                              // vivo厂商参数
 	Meizu  map[string]interface{} `json:"meizu,omitempty"`                             // 魅族厂商参数
+	APNs   map[string]interface{} `json:"apns,omitempty"`                              // APNs参数
 }
 
 func (p PushPayload) toMap() map[string]interface{} {
@@ -69,6 +70,9 @@ func (p PushPayload) toMap() map[string]interface{} {
 	}
 	if p.Meizu != nil {
 		payload["meizu"] = p.Meizu
+	}
+	if p.APNs != nil {
+		payload["apns"] = p.APNs
 	}
 	return payload
 }

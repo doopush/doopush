@@ -223,6 +223,25 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
 
 厂商字段和值应遵循对应厂商 API 规范。不同厂商的 TTL 单位并不统一，例如小米使用毫秒、vivo 使用秒。
 
+### APNs 字段
+
+`payload.apns` 中的参数写入 iOS 通知的 `aps` 字典，不会出现在通知的自定义数据中：
+
+| 参数 | 写入 | 描述 |
+|------|------|------|
+| `category` | `aps.category` | App 通过 `UNNotificationCategory` 注册的分类标识，通知会显示该分类的操作按钮 |
+| `thread_id` | `aps.thread-id` | 通知分组标识，相同值的通知在通知中心归为一组 |
+
+```json
+{
+  "action": "open_page",
+  "apns": {
+    "category": "message.reply",
+    "thread_id": "conversation-42"
+  }
+}
+```
+
 ## 响应与异步投递
 
 立即推送成功时，`data` 返回创建的推送日志数组。接口创建日志后即返回，实际厂商调用在后台执行，日志状态随后从 `pending` 更新为 `sent` 或 `failed`。

@@ -234,8 +234,8 @@ type APNsAlert struct {
 	Subtitle string `json:"subtitle,omitempty"`
 }
 
-// SendPush 发送APNs推送
-func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) *models.PushResult {
+// buildAPNsPayload 构建 APNs 根级载荷：标准 aps 字段、自定义数据与统计标识
+func buildAPNsPayload(pushLog *models.PushLog) map[string]interface{} {
 	// 构建 APNs 标准 aps 字段
 	apsMap := map[string]interface{}{
 		"alert": map[string]interface{}{
@@ -257,6 +257,10 @@ func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) 
 				if k == "aps" { // 避免覆盖标准字段
 					continue
 				}
+				if k == "apns" { // APNs 专属参数写入 aps，不放在顶层
+					applyAPNsOptions(apsMap, v)
+					continue
+				}
 				payloadMap[k] = v
 			}
 		}
@@ -269,6 +273,28 @@ func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) 
 		payloadMap["dedup_key"] = pushLog.DedupKey
 	}
 	payloadMap["dp_source"] = "doopush"
+
+	return payloadMap
+}
+
+// applyAPNsOptions 将 payload.apns 中的参数写入 aps：
+// category 对应 App 注册的通知分类（通知上的操作按钮），thread_id 用于通知分组
+func applyAPNsOptions(apsMap map[string]interface{}, options interface{}) {
+	opts, ok := options.(map[string]interface{})
+	if !ok {
+		return
+	}
+	if category, ok := opts["category"].(string); ok && category != "" {
+		apsMap["category"] = category
+	}
+	if threadID, ok := opts["thread_id"].(string); ok && threadID != "" {
+		apsMap["thread-id"] = threadID
+	}
+}
+
+// SendPush 发送APNs推送
+func (a *APNsProvider) SendPush(device *models.Device, pushLog *models.PushLog) *models.PushResult {
+	payloadMap := buildAPNsPayload(pushLog)
 
 	// 序列化载荷
 	payloadJSON, err := json.Marshal(payloadMap)
