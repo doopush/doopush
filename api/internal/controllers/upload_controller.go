@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,8 +15,15 @@ import (
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
 	"github.com/doopush/doopush/api/pkg/response"
+	"github.com/doopush/doopush/api/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
+
+// uploadImageSize 上传位图统一缩放的最大边长（像素）
+const uploadImageSize = 256
+
+// maxSVGSize SVG 原样保存，单独限制大小
+const maxSVGSize = 200 * 1024
 
 // UploadController 文件上传控制器
 type UploadController struct{}
@@ -113,6 +122,35 @@ func (u *UploadController) UploadImage(c *gin.Context) {
 		return
 	}
 
+	// 读取文件内容（已限制5MB），按实际内容校验，不信任客户端声明的类型
+	data, err := io.ReadAll(io.LimitReader(file, maxSize+1))
+	if err != nil || int64(len(data)) > maxSize {
+		response.BadRequest(c, "文件读取失败")
+		return
+	}
+
+	if ext == ".svg" {
+		// SVG 为矢量图，原样保存（访问时由 /uploads 响应头禁止执行脚本）
+		if len(data) > maxSVGSize {
+			response.Error(c, http.StatusRequestEntityTooLarge, "SVG 文件大小不能超过200KB")
+			return
+		}
+		if !utils.LooksLikeSVG(data) {
+			response.BadRequest(c, "文件内容与类型不符")
+			return
+		}
+		contentType = "image/svg+xml"
+	} else {
+		// 位图统一居中裁剪为正方形并缩放到 256×256 以内，存为 PNG
+		data, err = utils.SquareThumbnailPNG(data, uploadImageSize)
+		if err != nil {
+			response.BadRequest(c, err.Error())
+			return
+		}
+		ext = ".png"
+		contentType = "image/png"
+	}
+
 	// 创建上传目录
 	uploadDir := "uploads"
 	typeDir := filepath.Join(uploadDir, getUploadSubDir(uploadType))
@@ -122,27 +160,27 @@ func (u *UploadController) UploadImage(c *gin.Context) {
 		return
 	}
 
-	// 生成唯一文件名
-	timestamp := time.Now().Unix()
-	filename := fmt.Sprintf("%s_%d%s", uploadType, timestamp, ext)
+	// 生成唯一文件名（时间戳 + 随机后缀，避免同一秒内上传互相覆盖）
+	filename := fmt.Sprintf("%s_%d_%s%s", uploadType, time.Now().Unix(), randomHex(4), ext)
 	filePath := filepath.Join(typeDir, filename)
 
-	// 创建目标文件
-	dst, err := os.Create(filePath)
+	// 创建目标文件（O_EXCL 保证不覆盖已有文件）
+	dst, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		response.InternalServerError(c, "创建文件失败")
 		return
 	}
-	defer dst.Close()
-
-	// 复制文件内容
-	_, err = io.Copy(dst, file)
+	_, err = dst.Write(data)
+	if closeErr := dst.Close(); err == nil {
+		err = closeErr
+	}
 	if err != nil {
 		// 清理已创建的文件
 		os.Remove(filePath)
 		response.InternalServerError(c, "文件保存失败")
 		return
 	}
+	size := int64(len(data))
 
 	// 构建返回URL
 	url := "/" + strings.ReplaceAll(filePath, "\\", "/")
@@ -154,7 +192,7 @@ func (u *UploadController) UploadImage(c *gin.Context) {
 		Filename:         filename,
 		FilePath:         filePath,
 		FileURL:          url,
-		FileSize:         header.Size,
+		FileSize:         size,
 		MimeType:         contentType,
 		UploadType:       uploadType,
 		Status:           1,
@@ -170,8 +208,15 @@ func (u *UploadController) UploadImage(c *gin.Context) {
 	response.Success(c, UploadResponse{
 		Filename: filename,
 		URL:      url,
-		Size:     header.Size,
+		Size:     size,
 	})
+}
+
+// randomHex 生成 n 字节的随机十六进制串
+func randomHex(n int) string {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 // getUploadSubDir 根据上传类型获取子目录

@@ -70,7 +70,7 @@ func startServer() {
 	r.Use(middleware.CORS())
 
 	// 静态文件服务
-	r.Static("/uploads", "./uploads")
+	r.Group("/uploads", middleware.UploadsSecurityHeaders()).Static("/", "./uploads")
 
 	// Redis 不可用时设备列表回退到 DB 的 is_online，与请求路径的容错策略一致；不阻断启动
 	rdb, err := redisclient.New()
