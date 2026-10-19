@@ -117,22 +117,21 @@ export function TenantTab() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />租户设置</CardTitle>
         <CardDescription>
-          租户用于共享本应用的推送能力：接入方（如私有部署的业务服务器）用 App Key 自助注册获得租户密钥，
-          只能绑定登录过它的设备（凭设备推送 Token）并向这些设备推送，无需持有 App Secret。
+          让其他服务器（如私有部署的业务系统）共用本应用的推送通道：凭 App Key 自助注册，只能向登录过它的设备推送，无需 App Secret。
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 md:grid-cols-2">
         <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
           <div className="space-y-1">
             <Label htmlFor="tenant-registration">允许租户自助注册</Label>
-            <p className="text-sm text-muted-foreground">关闭后不再接受新注册，已有租户不受影响。同一 IP 24 小时内最多注册 10 个。</p>
+            <p className="text-sm text-muted-foreground">关闭后停止新注册，已有租户不受影响。同一 IP 24 小时内限注册 10 个。</p>
           </div>
           <Switch id="tenant-registration" checked={registration} onCheckedChange={setRegistration} disabled={!isOwner} />
         </div>
         <div className="space-y-2 rounded-lg border p-4">
           <Label htmlFor="tenant-quota">租户默认每日推送上限</Label>
           <Input id="tenant-quota" type="number" min={0} value={defaultQuota} onChange={(e) => setDefaultQuota(e.target.value)} disabled={!isOwner} />
-          <p className="text-sm text-muted-foreground">按设备条数计算，0 表示不限。单个租户可单独设置。</p>
+          <p className="text-sm text-muted-foreground">按推送设备数计，0 为不限，可在租户列表中单独设置。</p>
         </div>
         {isOwner && <div className="md:col-span-2 flex justify-end">
           <Button onClick={saveSettings} disabled={savingSettings}>{savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}保存设置</Button>
@@ -146,7 +145,7 @@ export function TenantTab() {
           <div className="flex items-center gap-2"><Users className="h-5 w-5" />租户列表</div>
           <Button variant="outline" onClick={loadTenants} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />刷新</Button>
         </CardTitle>
-        <CardDescription>名称和站点由接入方自报，仅供识别。禁用后该租户的请求返回 403；删除后其密钥失效，接入方会重新注册为新租户。</CardDescription>
+        <CardDescription>名称和站点由接入方自报。禁用后拒绝其请求；删除后密钥失效，接入方会重新注册。</CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? <div className="py-8 text-center text-muted-foreground">加载中...</div> : tenants.length === 0 ? <div className="py-8 text-center text-muted-foreground">暂无租户</div> : <Table>
