@@ -1,5 +1,5 @@
 import apiClient from './api-client'
-import type { App, AppConfig, AppInvitation, AppInviteCandidate, AppMember, AppRole, AppSecret, AppSecretScope, PaginationRequest } from '@/types/api'
+import type { App, AppConfig, AppInvitation, AppInviteCandidate, AppMember, AppRole, AppSecret, AppSecretScope, PaginationRequest, Tenant, TenantSettings } from '@/types/api'
 
 export class AppService {
   /**
@@ -96,6 +96,22 @@ export class AppService {
 
   static async revokeAppSecret(appId: number, secretId: number): Promise<void> {
     return apiClient.delete(`/apps/${appId}/app-secrets/${secretId}`)
+  }
+
+  static async getTenants(appId: number): Promise<Tenant[]> {
+    return apiClient.get(`/apps/${appId}/tenants`)
+  }
+
+  static async updateTenant(appId: number, tenantId: number, data: { status?: number; daily_quota?: number }): Promise<Tenant> {
+    return apiClient.patch(`/apps/${appId}/tenants/${tenantId}`, data)
+  }
+
+  static async deleteTenant(appId: number, tenantId: number): Promise<void> {
+    return apiClient.delete(`/apps/${appId}/tenants/${tenantId}`)
+  }
+
+  static async updateTenantSettings(appId: number, data: Partial<TenantSettings>): Promise<TenantSettings> {
+    return apiClient.put(`/apps/${appId}/tenant-settings`, data)
   }
 
   /**

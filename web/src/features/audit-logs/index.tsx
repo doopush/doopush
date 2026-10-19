@@ -299,6 +299,8 @@ export function AuditLogs() {
       template: '模板',
       group: '分组',
       app_secret: 'App Secret',
+      tenant: '租户',
+      tenant_settings: '租户设置',
       scheduled_push: '定时推送',
     }
     return labels[log.resource] || log.resource
@@ -447,6 +449,7 @@ export function AuditLogs() {
                       <SelectItem value='template'>模板</SelectItem>
                       <SelectItem value='group'>分组</SelectItem>
                       <SelectItem value='app_secret'>App Secret</SelectItem>
+                      <SelectItem value='tenant'>租户</SelectItem>
                       <SelectItem value='scheduled_push'>定时推送</SelectItem>
                     </SelectContent>
                   </Select>

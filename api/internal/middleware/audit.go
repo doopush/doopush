@@ -187,6 +187,15 @@ func parseActionFromRequest(c *gin.Context) (action, resource, resourceID string
 				if len(pathParts) > i+1 && isNumeric(pathParts[i+1]) {
 					resourceID = pathParts[i+1]
 				}
+			case "tenants":
+				resource = "tenant"
+				resourceID = ""
+				if len(pathParts) > i+1 && isNumeric(pathParts[i+1]) {
+					resourceID = pathParts[i+1]
+				}
+			case "tenant-settings":
+				resource = "tenant_settings"
+				resourceID = ""
 			case "devices":
 				resource = "device"
 				if len(pathParts) > i+1 && isNumeric(pathParts[i+1]) {

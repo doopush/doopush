@@ -12,6 +12,8 @@ func AllModels() []interface{} {
 		&App{},
 		&AppSecret{},
 		&AppConfig{},
+		&Tenant{},
+		&TenantDevice{},
 
 		// 设备相关
 		&Device{},

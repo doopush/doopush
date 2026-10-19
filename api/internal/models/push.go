@@ -11,6 +11,7 @@ type PushLog struct {
 	ID        uint           `gorm:"primarykey" json:"id" example:"1"`
 	AppID     uint           `gorm:"not null;index;comment:应用ID" json:"app_id" binding:"required"`
 	DeviceID  uint           `gorm:"not null;index;comment:设备ID" json:"device_id" binding:"required"`
+	TenantID  *uint          `gorm:"index;comment:发起推送的租户ID" json:"tenant_id,omitempty"`
 	Title     string         `gorm:"size:200;not null;comment:推送标题" json:"title" example:"新消息" binding:"required"`
 	Content   string         `gorm:"type:text;not null;comment:推送内容" json:"content" example:"您有一条新消息" binding:"required"`
 	Payload   string         `gorm:"type:json;comment:推送载荷" json:"payload" example:"{\"action\":\"open_page\"}"`

@@ -21,13 +21,16 @@ Web 控制台还会调用一组 JWT 管理路由，用于应用、成员、配�
 ### 📱 设备相关
 - [**设备注册**](./device-apis.md) - 注册或更新设备 Token 与环境
 
+### 🏢 租户相关
+- [**租户接口**](./tenant-apis.md) - 多个接入方共享同一客户端应用：自助注册、按 Token 绑定设备、限定范围推送
+
 ### 📊 数据相关
 - [**统计上报**](./data-apis.md) - 上报推送点击与打开事件
 
 ## 🌐 API 基础信息
 
 - **Base URL**: `https://doopush.com/api/v1`
-- **认证方式**: App Key / App Secret / JWT Token
+- **认证方式**: App Key / App Secret / 租户密钥 / JWT Token
 - **数据格式**: JSON
 - **字符编码**: UTF-8
 

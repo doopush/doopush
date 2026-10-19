@@ -91,15 +91,17 @@ func getActionLabel(action string) string {
 // getResourceLabel 获取资源类型的中文标签
 func getResourceLabel(resource string) string {
 	labels := map[string]string{
-		"app":            "应用",
-		"device":         "设备",
-		"push":           "推送",
-		"config":         "配置",
-		"template":       "模板",
-		"group":          "分组",
-		"scheduled_push": "定时推送",
-		"user":           "用户",
-		"app_secret":     "App Secret",
+		"app":             "应用",
+		"device":          "设备",
+		"push":            "推送",
+		"config":          "配置",
+		"template":        "模板",
+		"group":           "分组",
+		"scheduled_push":  "定时推送",
+		"user":            "用户",
+		"app_secret":      "App Secret",
+		"tenant":          "租户",
+		"tenant_settings": "租户设置",
 	}
 	if label, exists := labels[resource]; exists {
 		return label

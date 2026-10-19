@@ -6,6 +6,7 @@ DooPush 将客户端接入和服务端调用分成两类应用凭证，任何凭
 |---|---|---|
 | App ID + App Key | 客户端 SDK | 注册设备、连接 Gateway、上报推送统计 |
 | App Secret | 客户服务端 | 根据 Scope 调用服务端 API |
+| 租户密钥 | 共享通道接入方服务端 | 仅能绑定登录过自己的设备并向其推送，见 [租户接口](./tenant-apis.md) |
 
 ## App Key
 

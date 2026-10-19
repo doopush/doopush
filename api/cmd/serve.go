@@ -94,6 +94,7 @@ func startServer() {
 	exportCtrl := controllers.NewExportController()
 	callbackCtrl := controllers.NewCallbackController()
 	invitationCtrl := controllers.NewInvitationController()
+	tenantCtrl := controllers.NewTenantController()
 
 	// 基础路由 (无需认证)
 	r.GET("/health", healthCtrl.Check)
@@ -152,6 +153,12 @@ func startServer() {
 			authenticated.POST("/apps/:appId/app-secrets", middleware.RequireAppRole("owner"), appCtrl.CreateAppSecret)
 			authenticated.PATCH("/apps/:appId/app-secrets/:secretId", middleware.RequireAppRole("owner"), appCtrl.UpdateAppSecretScopes)
 			authenticated.DELETE("/apps/:appId/app-secrets/:secretId", middleware.RequireAppRole("owner"), appCtrl.RevokeAppSecret)
+
+			// 租户（共享通道）管理
+			authenticated.GET("/apps/:appId/tenants", middleware.RequireAppRole("developer"), tenantCtrl.List)
+			authenticated.PATCH("/apps/:appId/tenants/:tenantId", middleware.RequireAppRole("owner"), tenantCtrl.Update)
+			authenticated.DELETE("/apps/:appId/tenants/:tenantId", middleware.RequireAppRole("owner"), tenantCtrl.Delete)
+			authenticated.PUT("/apps/:appId/tenant-settings", middleware.RequireAppRole("owner"), tenantCtrl.UpdateSettings)
 
 			// 设备管理
 			authenticated.GET("/apps/:appId/devices", middleware.RequireAppRole("viewer"), deviceCtrl.GetDevices)
@@ -239,6 +246,17 @@ func startServer() {
 		{
 			appKeyRoutes.POST("/apps/:appId/devices", deviceCtrl.RegisterDevice)
 			appKeyRoutes.POST("/apps/:appId/push/statistics/report", pushCtrl.ReportPushStatistics)
+			// 租户自助注册：App Key 公开，限额与开关在服务层校验。
+			appKeyRoutes.POST("/apps/:appId/tenants", tenantCtrl.Register)
+		}
+
+		// 租户接口：租户密钥只能绑定/解绑自己的设备、向自己的设备推送。
+		tenantRoutes := api.Group("")
+		tenantRoutes.Use(middleware.TenantAuth())
+		{
+			tenantRoutes.POST("/apps/:appId/tenant/devices", tenantCtrl.BindDevice)
+			tenantRoutes.DELETE("/apps/:appId/tenant/devices/:deviceId", tenantCtrl.UnbindDevice)
+			tenantRoutes.POST("/apps/:appId/tenant/push", tenantCtrl.Push)
 		}
 
 		// 服务端业务接口支持控制台 JWT 或带 Scope 的 App Secret。

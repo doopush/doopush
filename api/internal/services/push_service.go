@@ -30,6 +30,7 @@ type PushRequest struct {
 	Target   PushTarget             `json:"target" binding:"required"`
 	Schedule *time.Time             `json:"schedule_time,omitempty"`
 	Badge    *int                   `json:"badge,omitempty"` // 新增角标字段
+	TenantID *uint                  `json:"-"`               // 租户推送时记录发起方，用于配额与统计
 }
 
 // PushTarget 推送目标
@@ -102,6 +103,7 @@ func (s *PushService) SendPush(appID uint, userID uint, req PushRequest) ([]mode
 			Channel:  device.Channel,
 			Status:   "pending",
 			DedupKey: dedupKey,
+			TenantID: req.TenantID,
 		}
 
 		// 设置角标数量

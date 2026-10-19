@@ -75,9 +75,33 @@ export interface App {
   app_icon?: string
   role?: AppRole
 	app_key: string
+  tenant_registration?: boolean
+  tenant_daily_quota?: number
   created_by?: number
   created_at: string
   updated_at: string
+}
+
+export interface Tenant {
+  id: number
+  app_id: number
+  name: string
+  site_url: string
+  suffix: string
+  status: number  // 1=正常, 0=禁用
+  daily_quota: number  // 0=使用应用默认值
+  register_ip: string
+  last_used_at: string | null
+  last_used_ip?: string
+  device_count: number
+  today_push_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface TenantSettings {
+  tenant_registration: boolean
+  tenant_daily_quota: number
 }
 
 export type AppSecretScope =

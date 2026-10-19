@@ -10,7 +10,8 @@ import {
   RefreshCw,
   CheckCircle,
   AlertCircle,
-  Cog
+  Cog,
+  Users
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -53,6 +54,7 @@ import { EditConfigDialog } from './components/edit-config-dialog'
 import { DeleteConfigDialog } from './components/delete-config-dialog'
 import { TestConfigDialog } from './components/test-config-dialog'
 import { AppConfigTab } from './components/app-config-tab'
+import { TenantTab } from './components/tenant-tab'
 import { Apple, Android } from '@/components/platform-icon'
 import type { AppConfig } from '@/types/api'
 import { toast } from 'sonner'
@@ -172,6 +174,7 @@ export function PushConfig() {
     const tabs = ['app']
     if (supportsPlatform('ios')) tabs.push('ios')
     if (supportsPlatform('android')) tabs.push('android')
+    tabs.push('tenants')
     return tabs
   }, [supportsPlatform])
 
@@ -207,8 +210,8 @@ export function PushConfig() {
                   管理应用 "{currentApp.name}" 的推送服务配置
                 </p>
               </div>
-              {/* 只在非应用配置tab时显示按钮 */}
-              {activeTab !== 'app' && (
+              {/* 只在推送通道tab时显示按钮 */}
+              {(activeTab === 'ios' || activeTab === 'android') && (
                 <div className='flex items-center gap-2'>
                   <Button variant="outline" onClick={() => loadConfigs(true)}>
                     <RefreshCw className="mr-2 h-4 w-4" />
@@ -242,11 +245,20 @@ export function PushConfig() {
                     <Badge variant="secondary">{androidConfigs.length}</Badge>
                   </TabsTrigger>
                 )}
+                <TabsTrigger value="tenants" className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  租户
+                </TabsTrigger>
               </TabsList>
 
               {/* 应用配置 */}
               <TabsContent value="app" className="space-y-4">
                 <AppConfigTab />
+              </TabsContent>
+
+              {/* 租户（共享通道） */}
+              <TabsContent value="tenants" className="space-y-4">
+                <TenantTab />
               </TabsContent>
 
               {/* iOS配置 */}

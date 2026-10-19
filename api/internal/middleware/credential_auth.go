@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"crypto/subtle"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/doopush/doopush/api/internal/config"
 	"github.com/doopush/doopush/api/internal/database"
 	"github.com/doopush/doopush/api/internal/models"
+	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/auth"
 	"github.com/doopush/doopush/api/pkg/response"
 	"github.com/doopush/doopush/api/pkg/utils"
@@ -132,4 +134,37 @@ func EnsureAppSecretScopes(c *gin.Context, scopes ...string) bool {
 		}
 	}
 	return true
+}
+
+// TenantAuth 用于租户接口。租户密钥只能访问挂在此中间件下的租户路由，不能调用普通服务端 API。
+// 密钥无效或租户已删除返回 401（接入方可重新注册）；租户被禁用返回 403（接入方不应重新注册）。
+func TenantAuth() gin.HandlerFunc {
+	tenantService := services.NewTenantService()
+	return func(c *gin.Context) {
+		appID, ok := pathAppID(c)
+		if !ok {
+			return
+		}
+		parts := strings.SplitN(c.GetHeader("Authorization"), " ", 2)
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			response.Unauthorized(c, "需要租户密钥")
+			c.Abort()
+			return
+		}
+		tenant, err := tenantService.AuthenticateTenant(appID, parts[1])
+		if err != nil {
+			if errors.Is(err, services.ErrTenantDisabled) {
+				response.Forbidden(c, err.Error())
+			} else {
+				response.Unauthorized(c, err.Error())
+			}
+			c.Abort()
+			return
+		}
+		tenantService.TouchTenant(tenant, c.ClientIP())
+		c.Set("auth_type", "tenant")
+		c.Set("app_id", appID)
+		c.Set("tenant", tenant)
+		c.Next()
+	}
 }
