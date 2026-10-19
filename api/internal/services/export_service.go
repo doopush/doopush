@@ -658,13 +658,8 @@ func (s *ExportService) generateDailyDataSheet(f *excelize.File, appID uint, sta
 			Where("app_id = ? AND status = 'failed' AND created_at >= ? AND created_at < ?", appID, current, nextDay).
 			Count(&failedPush)
 
-		// 点击/打开（自然日匹配）
-		var clickCount, openCount int
-		var stat models.PushStatistics
-		if err := database.DB.Where("app_id = ? AND date = ?", appID, current).First(&stat).Error; err == nil {
-			clickCount = stat.ClickCount
-			openCount = stat.OpenCount
-		}
+		// 点击/打开（按自然日区间汇总）
+		clickCount, openCount := sumEngagement(appID, current, nextDay)
 
 		// 写入数据
 		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), current.Format("2006-01-02"))

@@ -534,14 +534,8 @@ func (s *PushService) getDailyStats(appID uint, startDate, endDate time.Time) []
 			Where("app_id = ? AND status = 'failed' AND created_at >= ? AND created_at < ?", appID, dayStart, nextDay).
 			Count(&failedPushes)
 
-		// 查询点击和打开数据（从统计表，使用自然日匹配）
-		var clickCount, openCount int
-		var stat models.PushStatistics
-		err := database.DB.Where("app_id = ? AND date = ?", appID, dayStart).First(&stat).Error
-		if err == nil {
-			clickCount = stat.ClickCount
-			openCount = stat.OpenCount
-		}
+		// 查询点击和打开数据（从统计表，按自然日区间汇总）
+		clickCount, openCount := sumEngagement(appID, dayStart, nextDay)
 
 		dailyStats = append(dailyStats, DailyStat{
 			Date:          dateStr,
@@ -615,6 +609,26 @@ func (s *PushService) getPlatformStats(appID uint, startDate time.Time) []Platfo
 	return platformStats
 }
 
+// localDayStart 返回 t 所在自然日（服务器本地时区）的零点
+func localDayStart(t time.Time) time.Time {
+	t = t.Local()
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local)
+}
+
+// sumEngagement 汇总 [start, end) 内的点击数和打开数。
+// 按区间汇总而非精确匹配日期：早期版本按 UTC 零点写入（东八区为当天 08:00），需一并统计。
+func sumEngagement(appID uint, start, end time.Time) (clickCount, openCount int) {
+	var sum struct {
+		Clicks int
+		Opens  int
+	}
+	database.DB.Model(&models.PushStatistics{}).
+		Where("app_id = ? AND date >= ? AND date < ?", appID, start, end).
+		Select("COALESCE(SUM(click_count), 0) AS clicks, COALESCE(SUM(open_count), 0) AS opens").
+		Scan(&sum)
+	return sum.Clicks, sum.Opens
+}
+
 // PushStatisticsEventReport 推送统计事件上报结构（与控制器保持一致）
 type PushStatisticsEventReport struct {
 	PushLogID uint   `json:"push_log_id,omitempty"`
@@ -631,8 +645,12 @@ func (s *PushService) ReportPushStatistics(appID uint, deviceToken string, repor
 		return errors.New("设备不存在")
 	}
 
-	// 按日期分组统计，用于批量更新 PushStatistics 表
-	dateStatsMap := make(map[string]*models.PushStatistics)
+	// 按自然日累计点击/打开增量
+	type engagementDelta struct {
+		day           time.Time
+		clicks, opens int
+	}
+	deltas := make(map[string]*engagementDelta)
 
 	// 处理每个统计事件
 	for _, report := range reports {
@@ -659,56 +677,48 @@ func (s *PushService) ReportPushStatistics(appID uint, deviceToken string, repor
 			continue // 跳过找不到的推送记录
 		}
 
-		// 计算事件发生的日期
-		eventTime := time.Unix(report.Timestamp, 0)
-		dateStr := eventTime.Format("2006-01-02")
-
-		// 获取或创建日期统计记录
-		if _, exists := dateStatsMap[dateStr]; !exists {
-			var stat models.PushStatistics
-			err := database.DB.Where("app_id = ? AND date = ?", appID, eventTime.Truncate(24*time.Hour)).First(&stat).Error
-			if err != nil {
-				// 如果不存在，创建新记录
-				stat = models.PushStatistics{
-					AppID:         appID,
-					Date:          eventTime.Truncate(24 * time.Hour),
-					TotalPushes:   0,
-					SuccessPushes: 0,
-					FailedPushes:  0,
-					ClickCount:    0,
-					OpenCount:     0,
-				}
-			}
-			dateStatsMap[dateStr] = &stat
+		// 计算事件发生的自然日（服务器本地时区零点，与统计查询一致）
+		day := localDayStart(time.Unix(report.Timestamp, 0))
+		dateStr := day.Format("2006-01-02")
+		d, exists := deltas[dateStr]
+		if !exists {
+			d = &engagementDelta{day: day}
+			deltas[dateStr] = d
 		}
-
-		// 更新对应的统计数据
 		switch report.Event {
 		case "click":
-			dateStatsMap[dateStr].ClickCount++
+			d.clicks++
 		case "open":
-			dateStatsMap[dateStr].OpenCount++
+			d.opens++
 		}
 
 		log.Printf("统计事件记录: 设备=%s, 事件=%s, 推送=%d", deviceToken, report.Event, pushLog.ID)
 	}
 
-	// 批量更新或创建统计记录
-	for dateStr, stat := range dateStatsMap {
-		if stat.ID == 0 {
-			// 新建记录
-			if err := database.DB.Create(stat).Error; err != nil {
-				log.Printf("创建统计记录失败: %s - %v", dateStr, err)
-				return errors.New("统计数据保存失败")
-			}
-		} else {
-			// 更新现有记录
-			if err := database.DB.Save(stat).Error; err != nil {
+	// 原子累加到当日统计记录；并发首次写入可能产生同日多条记录，读取端按区间汇总，不影响结果
+	for dateStr, d := range deltas {
+		var existing models.PushStatistics
+		err := database.DB.Select("id").
+			Where("app_id = ? AND date >= ? AND date < ?", appID, d.day, d.day.AddDate(0, 0, 1)).
+			Order("id").First(&existing).Error
+		if err == nil {
+			err = database.DB.Model(&existing).UpdateColumns(map[string]interface{}{
+				"click_count": gorm.Expr("click_count + ?", d.clicks),
+				"open_count":  gorm.Expr("open_count + ?", d.opens),
+				"updated_at":  time.Now(),
+			}).Error
+			if err != nil {
 				log.Printf("更新统计记录失败: %s - %v", dateStr, err)
 				return errors.New("统计数据更新失败")
 			}
+		} else {
+			stat := models.PushStatistics{AppID: appID, Date: d.day, ClickCount: d.clicks, OpenCount: d.opens}
+			if err := database.DB.Create(&stat).Error; err != nil {
+				log.Printf("创建统计记录失败: %s - %v", dateStr, err)
+				return errors.New("统计数据保存失败")
+			}
 		}
-		log.Printf("统计数据已更新: %s - 点击:%d, 打开:%d", dateStr, stat.ClickCount, stat.OpenCount)
+		log.Printf("统计数据已累加: %s - 点击+%d, 打开+%d", dateStr, d.clicks, d.opens)
 	}
 
 	return nil

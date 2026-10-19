@@ -93,8 +93,9 @@ func (a *statsAccumulator) flush() {
 	}
 }
 
-func todayUTC() time.Time {
-	return time.Now().Truncate(24 * time.Hour)
+// today 返回服务器本地时区的当日零点（与推送统计的自然日口径一致）
+func today() time.Time {
+	return localDayStart(time.Now())
 }
 
 func boolToInt(b bool) int {
@@ -161,7 +162,7 @@ func (s *CallbackService) ProcessHuaweiCallback(callback interface{}) error {
 			Body:         body,
 			RawData:      string(rawData),
 		})
-		stats.add(device.AppID, "huawei", todayUTC(), statDelta{total: 1, success: 1, delivery: 1})
+		stats.add(device.AppID, "huawei", today(), statDelta{total: 1, success: 1, delivery: 1})
 	}
 	createInBatches(rows)
 	stats.flush()
@@ -230,7 +231,7 @@ func (s *CallbackService) ProcessHonorCallback(callback interface{}) error {
 			RequestID: requestID,
 			RawData:   string(rawData),
 		})
-		stats.add(device.AppID, "honor", todayUTC(), statDelta{
+		stats.add(device.AppID, "honor", today(), statDelta{
 			total:    1,
 			success:  boolToInt(success),
 			failure:  boolToInt(!success),
@@ -330,7 +331,7 @@ func (s *CallbackService) ProcessOppoCallback(callbacks []interface{}) error {
 				EventTypeName:   it.eventType,
 				RawData:         string(it.raw),
 			})
-			stats.add(device.AppID, "oppo", todayUTC(), statDelta{total: 1, success: 1, delivery: 1})
+			stats.add(device.AppID, "oppo", today(), statDelta{total: 1, success: 1, delivery: 1})
 		}
 	}
 	createInBatches(rows)
@@ -393,7 +394,7 @@ func (s *CallbackService) ProcessVivoCallback(callback map[string]interface{}) e
 			AckType: ackType,
 			RawData: string(rawData),
 		})
-		stats.add(device.AppID, "vivo", todayUTC(), statDelta{
+		stats.add(device.AppID, "vivo", today(), statDelta{
 			total:    1,
 			success:  boolToInt(success),
 			failure:  boolToInt(!success),
@@ -485,7 +486,7 @@ func (s *CallbackService) ProcessXiaomiCallback(callback map[string]interface{})
 					delta.delivery = 1
 				}
 			}
-			stats.add(device.AppID, "xiaomi", todayUTC(), delta)
+			stats.add(device.AppID, "xiaomi", today(), delta)
 		}
 	}
 	createInBatches(rows)
@@ -564,7 +565,7 @@ func (s *CallbackService) ProcessMeizuCallback(callback map[string]interface{}) 
 			} else {
 				delta.delivery = 1
 			}
-			stats.add(device.AppID, "meizu", todayUTC(), delta)
+			stats.add(device.AppID, "meizu", today(), delta)
 		}
 	}
 	createInBatches(rows)
