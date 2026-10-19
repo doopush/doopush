@@ -10,6 +10,7 @@ import (
 	"github.com/doopush/doopush/api/internal/push"
 	"github.com/doopush/doopush/api/internal/services"
 	"github.com/doopush/doopush/api/pkg/response"
+	"github.com/doopush/doopush/api/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -271,6 +272,15 @@ func (ctrl *ConfigController) TestAppConfig(ctx *gin.Context) {
 		return
 	}
 
+	// 测试设备若已注册，按其上报的推送环境发送；未注册时按正式环境
+	pushEnv := "production"
+	var testDevice models.Device
+	if err := database.DB.Select("push_environment").
+		Where("app_id = ? AND token_hash = ?", appID, utils.HashString(req.DeviceID)).
+		First(&testDevice).Error; err == nil && testDevice.PushEnv != "" {
+		pushEnv = testDevice.PushEnv
+	}
+
 	// 创建推送管理器进行真实测试
 	pushManager := push.NewPushManager()
 
@@ -282,6 +292,7 @@ func (ctrl *ConfigController) TestAppConfig(ctx *gin.Context) {
 		req.Platform,
 		req.Channel,
 		req.DeviceID,
+		pushEnv,
 		appConfig.Config,
 	)
 

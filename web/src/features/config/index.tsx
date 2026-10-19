@@ -272,7 +272,6 @@ export function PushConfig() {
                           <TableRow>
                             <TableHead>推送通道</TableHead>
                             <TableHead>配置状态</TableHead>
-                            <TableHead>推送环境</TableHead>
                             <TableHead>创建时间</TableHead>
                             <TableHead className="text-right">操作</TableHead>
                           </TableRow>
@@ -294,26 +293,6 @@ export function PushConfig() {
                                   <CheckCircle className="mr-1 h-3 w-3" />
                                   已配置
                                 </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {(() => {
-                                  let env = '开发环境'
-                                  let badgeClass = 'bg-yellow-100 text-yellow-800'
-                                  try {
-                                    const configObj = JSON.parse(config.config)
-                                    if (configObj.production) {
-                                      env = '生产环境'
-                                      badgeClass = 'bg-green-100 text-green-800'
-                                    }
-                                  } catch {
-                                    // 解析失败，默认开发环境
-                                  }
-                                  return (
-                                    <Badge className={badgeClass}>
-                                      {env}
-                                    </Badge>
-                                  )
-                                })()}
                               </TableCell>
                               <TableCell className="text-muted-foreground text-sm">
                                 {new Date(config.created_at).toLocaleString('zh-CN', {
@@ -466,10 +445,10 @@ export function PushConfig() {
                     <div>
                       <h4 className="font-medium mb-3">iOS 推送配置</h4>
                       <ul className="text-sm text-muted-foreground space-y-2">
-                        <li>• 需要提供 Apple Developer 证书文件</li>
-                        <li>• 支持生产环境和开发环境证书</li>
+                        <li>• 使用 Apple 推送 P8 密钥</li>
+                        <li>• 在 Apple Developer 后台的 Keys 中创建</li>
+                        <li>• 开发/生产环境按设备自动选择</li>
                         <li>• 配置 Bundle ID 和 Team ID</li>
-                        <li>• 支持 P8 密钥和 P12 证书两种方式</li>
                       </ul>
                     </div>
                   )}

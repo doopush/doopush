@@ -473,7 +473,6 @@ export interface ScheduledPush {
 // ===== 推送配置相关 =====
 // iOS推送配置
 export interface IOSPushConfig {
-  environment: 'development' | 'production'
   // P8密钥配置（推荐）
   key_id?: string
   team_id?: string

@@ -112,9 +112,8 @@ func (m *PushManager) createAPNsProvider(app *models.App, environment string) (P
 	if err := json.Unmarshal([]byte(config.Config), &apnsConfig); err != nil {
 		// 尝试解析旧格式配置
 		var oldConfig struct {
-			CertPEM     string `json:"cert_pem"`
-			KeyPEM      string `json:"key_pem"`
-			Environment string `json:"environment"`
+			CertPEM string `json:"cert_pem"`
+			KeyPEM  string `json:"key_pem"`
 		}
 
 		if err := json.Unmarshal([]byte(config.Config), &oldConfig); err != nil {
@@ -123,14 +122,12 @@ func (m *PushManager) createAPNsProvider(app *models.App, environment string) (P
 
 		// 转换为新格式
 		apnsConfig = APNsConfig{
-			Environment: oldConfig.Environment,
-			CertPEM:     oldConfig.CertPEM,
-			KeyPEM:      oldConfig.KeyPEM,
+			CertPEM: oldConfig.CertPEM,
+			KeyPEM:  oldConfig.KeyPEM,
 		}
 	}
-	if environment == "development" || environment == "production" {
-		apnsConfig.Environment = environment
-	}
+	// 推送环境以设备上报为准（开发签名走沙盒，Ad Hoc/TestFlight/商店版走正式）
+	apnsConfig.Environment = environment
 
 	// 使用新的配置创建提供者
 	provider, err := NewAPNsProviderWithConfig(apnsConfig)
@@ -337,28 +334,21 @@ func (m *PushManager) validateAPNsConfig(configJSON string) error {
 	if err := json.Unmarshal([]byte(configJSON), &apnsConfig); err != nil {
 		// 尝试解析旧格式
 		var oldConfig struct {
-			CertPEM     string `json:"cert_pem"`
-			KeyPEM      string `json:"key_pem"`
-			Environment string `json:"environment"`
+			CertPEM string `json:"cert_pem"`
+			KeyPEM  string `json:"key_pem"`
 		}
 		if err := json.Unmarshal([]byte(configJSON), &oldConfig); err != nil {
 			return fmt.Errorf("配置格式错误: %v", err)
 		}
 		// 转换为新格式进行验证
 		apnsConfig = APNsConfig{
-			Environment: oldConfig.Environment,
-			CertPEM:     oldConfig.CertPEM,
-			KeyPEM:      oldConfig.KeyPEM,
+			CertPEM: oldConfig.CertPEM,
+			KeyPEM:  oldConfig.KeyPEM,
 		}
 	}
 
 	// 规范化配置字段（处理前端字段名兼容）
 	normalizeConfig(&apnsConfig)
-
-	// 验证必要字段
-	if apnsConfig.Environment != "development" && apnsConfig.Environment != "production" {
-		return fmt.Errorf("environment 必须是 'development' 或 'production'")
-	}
 
 	// 验证P8密钥配置
 	if apnsConfig.AuthKeyP8 != "" {
@@ -488,12 +478,14 @@ func (m *PushManager) validateAndroidConfig(channel, configJSON string) error {
 }
 
 // TestConfigWithDevice 使用指定设备测试推送配置
-func (m *PushManager) TestConfigWithDevice(appID uint, title, content, platform, channel, deviceToken, configJSON string) *models.PushResult {
+// pushEnv 为测试设备的推送环境（development/production），iOS 据此选择 APNs 网关
+func (m *PushManager) TestConfigWithDevice(appID uint, title, content, platform, channel, deviceToken, pushEnv, configJSON string) *models.PushResult {
 	// 创建模拟设备
 	device := &models.Device{
 		Token:    deviceToken,
 		Platform: platform,
 		Channel:  channel,
+		PushEnv:  pushEnv,
 		Status:   1,
 	}
 
@@ -522,8 +514,7 @@ func (m *PushManager) TestConfigWithDevice(appID uint, title, content, platform,
 				ResponseData: "{}", // 初始化为空 JSON 对象
 			}
 		}
-		// 规范化配置字段（处理前端字段名兼容）
-		normalizeConfig(&apnsConfig)
+		apnsConfig.Environment = pushEnv
 		provider, err = NewAPNsProviderWithConfig(apnsConfig)
 	case "android":
 		var androidConfig AndroidConfig

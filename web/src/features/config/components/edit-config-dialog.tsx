@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
 import { useAuthStore } from '@/stores/auth-store'
 import { ConfigService } from '@/services/config-service'
 import { Apple } from '@/components/platform-icon'
@@ -41,7 +40,6 @@ const editConfigSchema = z.object({
   team_id: z.string().optional(),
   bundle_id: z.string().optional(),
   private_key: z.string().optional(),
-  production: z.boolean().optional(),
   // Android FCM v1 字段
   service_account_key: z.string().optional(), // FCM 服务账号密钥 JSON（包含项目ID）
   // Android 其他厂商字段
@@ -76,7 +74,6 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
       team_id: '',
       bundle_id: '',
       private_key: '',
-      production: false,
       service_account_key: '',
       app_id: '',
       app_key: '',
@@ -100,7 +97,6 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
           team_id: '',
           bundle_id: '',
           private_key: '',
-          production: false,
           service_account_key: '',
           app_id: '',
           app_key: '',
@@ -126,7 +122,6 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
           checkAndSetField('team_id', configData.team_id)
           checkAndSetField('bundle_id', configData.bundle_id)
           checkAndSetField('private_key', configData.private_key)
-          form.setValue('production', configData.production || false)
         } else if (config.platform === 'android') {
           switch (config.channel) {
             case 'fcm':
@@ -197,7 +192,6 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
           team_id: buildFieldValue('team_id', data.team_id || ''),
           bundle_id: buildFieldValue('bundle_id', data.bundle_id || ''),
           private_key: buildFieldValue('private_key', data.private_key || ''),
-          production: data.production || false
         }
       } else if (config.platform === 'android') {
         switch (config.channel) {
@@ -407,33 +401,12 @@ export function EditConfigDialog({ config, open, onOpenChange, onSuccess }: Edit
                           />
                         </FormControl>
                         <FormDescription>
-                          {getFieldDescription('private_key', '')}
+                          {getFieldDescription('private_key', 'P8 密钥内容（含 BEGIN/END 行）。在 Apple 后台创建密钥时建议选择 Sandbox & Production，推送时按设备环境自动选择开发或生产网关')}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                         )}
                       />
-
-                  <FormField
-                    control={form.control}
-                    name="production"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>生产环境</FormLabel>
-                          <FormDescription>
-                            勾选表示使用生产环境APNs，否则使用开发环境
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
                 </>
               )}
 

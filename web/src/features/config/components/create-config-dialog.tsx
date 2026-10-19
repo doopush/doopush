@@ -31,7 +31,6 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
 import { useAuthStore } from '@/stores/auth-store'
 import { ConfigService } from '@/services/config-service'
 import { requireApp } from '@/utils/app-utils'
@@ -48,7 +47,6 @@ const createConfigSchema = z.object({
   team_id: z.string().optional(),
   bundle_id: z.string().optional(),
   private_key: z.string().optional(),
-  production: z.boolean().optional(),
   // Android FCM v1 字段
   service_account_key: z.string().optional(), // FCM 服务账号密钥 JSON（包含项目ID）
   // Android 其他厂商字段
@@ -109,7 +107,6 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
       team_id: '',
       bundle_id: currentApp?.package_name || '',
       private_key: '',
-      production: false,
       service_account_key: '',
       app_id: '',
       app_key: '',
@@ -131,7 +128,6 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
         team_id: '',
         bundle_id: currentApp?.package_name || '',
         private_key: '',
-        production: false,
         service_account_key: '',
         app_id: '',
         app_key: '',
@@ -166,7 +162,6 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
           team_id: data.team_id,
           bundle_id: data.bundle_id,
           private_key: data.private_key,
-          production: data.production || false,
         }
       } else if (data.platform === 'android') {
         switch (data.channel) {
@@ -412,30 +407,9 @@ export function CreateConfigDialog({ open, onOpenChange, onSuccess, defaultPlatf
                           />
                         </FormControl>
                         <FormDescription>
-                          APNs私钥内容，包含BEGIN和END标签
+                          P8 密钥内容（含 BEGIN/END 行）。在 Apple 后台创建密钥时建议选择 Sandbox & Production，推送时按设备环境自动选择开发或生产网关
                         </FormDescription>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="production"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>生产环境</FormLabel>
-                          <FormDescription>
-                            勾选表示使用生产环境APNs，否则使用开发环境
-                          </FormDescription>
-                        </div>
                       </FormItem>
                     )}
                   />

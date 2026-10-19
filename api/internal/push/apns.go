@@ -46,15 +46,15 @@ const apnsJWTRefreshInterval = 50 * time.Minute
 // APNsConfig APNs配置结构
 type APNsConfig struct {
 	// 通用配置
-	Environment string `json:"environment"` // development 或 production
-	BundleID    string `json:"bundle_id"`   // 应用Bundle ID
+	// Environment 由目标设备上报的推送环境决定（P8 密钥可同时用于两个环境），不从控制台配置读取
+	Environment string `json:"-"`         // development 或 production
+	BundleID    string `json:"bundle_id"` // 应用Bundle ID
 
 	// P8密钥认证（推荐）
 	AuthKeyP8  string `json:"auth_key_p8,omitempty"` // P8私钥内容
 	PrivateKey string `json:"private_key,omitempty"` // 前端兼容字段名
 	KeyID      string `json:"key_id,omitempty"`      // 密钥ID
 	TeamID     string `json:"team_id,omitempty"`     // 团队ID
-	Production *bool  `json:"production,omitempty"`  // 前端兼容字段（布尔值）
 
 	// P12证书认证（传统）
 	CertPEM    string `json:"cert_pem,omitempty"`    // 证书PEM
@@ -103,16 +103,9 @@ func normalizeConfig(config *APNsConfig) {
 		config.AuthKeyP8 = config.PrivateKey
 	}
 
-	// 前端 production -> 后端 environment
-	if config.Production != nil {
-		if *config.Production {
-			config.Environment = "production"
-		} else {
-			config.Environment = "development"
-		}
-	} else if config.Environment == "" {
-		// 默认开发环境
-		config.Environment = "development"
+	// 未指定设备环境时按正式环境处理（与设备 push_environment 默认值一致）
+	if config.Environment != "development" {
+		config.Environment = "production"
 	}
 }
 
