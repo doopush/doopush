@@ -159,26 +159,6 @@ export function TestConfigDialog({ config, open, onOpenChange }: TestConfigDialo
                   <Badge>
                     {config.platform === 'ios' ? 'iOS' : 'Android'}
                   </Badge>
-                  {(() => {
-                    if (config.platform !== 'ios') return null
-                    
-                    let env = '开发环境'
-                    let badgeClass = 'bg-yellow-100 text-yellow-800'
-                    try {
-                      const configObj = JSON.parse(config.config)
-                      if (configObj.production) {
-                        env = '生产环境'
-                        badgeClass = 'bg-green-100 text-green-800'
-                      }
-                    } catch {
-                      // 解析失败，默认开发环境
-                    }
-                    return (
-                      <Badge className={badgeClass}>
-                        {env}
-                      </Badge>
-                    )
-                  })()}
                 </div>
               </div>
             </CardContent>
