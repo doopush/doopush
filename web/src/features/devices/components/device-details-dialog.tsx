@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Copy, Smartphone, User, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -8,10 +9,21 @@ import {
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Device } from '@/types/api'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+
+// 标签不换行，值过长时在右侧自动折行，避免与标签挤在一起
+function InfoRow({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+  return (
+    <div className={cn('flex items-start justify-between gap-4 text-sm', className)}>
+      <span className="shrink-0 whitespace-nowrap text-muted-foreground">{label}:</span>
+      <span className="min-w-0 break-words text-right font-medium">{children}</span>
+    </div>
+  )
+}
 
 interface DeviceDetailsDialogProps {
   device: Device
@@ -20,6 +32,11 @@ interface DeviceDetailsDialogProps {
 }
 
 export function DeviceDetailsDialog({ device, open, onOpenChange }: DeviceDetailsDialogProps) {
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(String(device.id))
+    toast.success('设备ID已复制到剪贴板')
+  }
+
   const handleCopyToken = () => {
     navigator.clipboard.writeText(device.token)
     toast.success('设备Token已复制到剪贴板')
@@ -64,51 +81,46 @@ export function DeviceDetailsDialog({ device, open, onOpenChange }: DeviceDetail
           {/* 基本信息 */}
           <div>
             <h3 className="text-lg font-medium mb-4">基本信息</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">设备型号:</span>
-                  <span className="text-sm font-medium">{device.model}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">系统版本:</span>
-                  <span className="text-sm font-medium">{device.system_version}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">应用版本:</span>
-                  <span className="text-sm font-medium">{device.app_version}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">平台:</span>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+              <InfoRow label="设备ID" className="sm:col-span-2">
+                <span className="flex items-center gap-1 font-mono">
+                  {device.id}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={handleCopyId}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </span>
+              </InfoRow>
+              <InfoRow label="设备型号" className="sm:col-span-2">{device.model}</InfoRow>
+              {/* 左列文本信息，右列状态标签 */}
+              <div className="space-y-3">
+                <InfoRow label="品牌">{device.brand}</InfoRow>
+                <InfoRow label="推送通道">{device.channel}</InfoRow>
+                <InfoRow label="系统版本">{device.system_version}</InfoRow>
+                <InfoRow label="应用版本">{device.app_version}</InfoRow>
+              </div>
+              <div className="space-y-3">
+                <InfoRow label="平台">
                   <Badge className={getPlatformBadge(device.platform)}>
                     {device.platform.toUpperCase()}
                   </Badge>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">品牌:</span>
-                  <span className="text-sm font-medium">{device.brand}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">推送通道:</span>
-                  <span className="text-sm font-medium">{device.channel}</span>
-                </div>
+                </InfoRow>
                 {device.platform === 'ios' && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">APNs环境:</span>
+                  <InfoRow label="APNs环境">
                     <Badge className={getPushEnvBadge(device.push_environment).className}>
                       {getPushEnvBadge(device.push_environment).label}
                     </Badge>
-                  </div>
+                  </InfoRow>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">状态:</span>
+                <InfoRow label="状态">
                   <Badge className={getStatusBadge(device.status).className}>
                     {getStatusBadge(device.status).label}
                   </Badge>
-                </div>
+                </InfoRow>
               </div>
             </div>
           </div>

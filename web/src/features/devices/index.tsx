@@ -411,7 +411,7 @@ export function Devices() {
                                 }
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {device.app_version} • {device.system_version}
+                                ID {device.id} • {device.app_version} • {device.system_version}
                               </div>
                             </div>
                           </div>
