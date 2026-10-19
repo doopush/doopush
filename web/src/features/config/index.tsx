@@ -442,8 +442,8 @@ export function PushConfig() {
               </TabsContent>
             </Tabs>
 
-            {/* 只在非应用配置tab时显示配置说明 */}
-            {activeTab !== 'app' && (
+            {/* 只在 iOS / Android tab 显示配置说明 */}
+            {(activeTab === 'ios' || activeTab === 'android') && (
               <Card className="mt-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
