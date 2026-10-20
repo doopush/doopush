@@ -31,6 +31,9 @@ jobs:
           
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # 新版 cmdline-tools 已移除默认安装的 tools 包，只装 platform-tools（编译所需平台由 AGP 自动下载）
+          packages: 'platform-tools'
         
       - name: Cache Gradle packages
         uses: actions/cache@v4
