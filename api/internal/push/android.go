@@ -1267,6 +1267,23 @@ func notificationClickIntent(device *models.Device, dataMap map[string]interface
 	})
 }
 
+// oppoNotificationClickParameters OPPO 点击中转页的 action_parameters（JSON，值均为字符串，点击标记同魅族用 "true"）；
+// 旧版 SDK 设备或超长时返回空串
+func oppoNotificationClickParameters(device *models.Device, dataMap map[string]interface{}) string {
+	return fitNotificationClick(notificationClickExtras(device, dataMap), func(extras map[string]string) string {
+		params := make(map[string]string, len(extras)+1)
+		for k, v := range extras {
+			params[k] = v
+		}
+		params["doopush_notification_clicked"] = "true"
+		b, err := json.Marshal(params)
+		if err != nil {
+			return ""
+		}
+		return string(b)
+	})
+}
+
 // buildNotificationClickIntent 生成 intent URI；带上 VIEW action，厂商丢弃 component 时仍可经 intent-filter 匹配中转页
 func buildNotificationClickIntent(pkg string, extras map[string]string) string {
 	keys := make([]string, 0, len(extras))
@@ -1786,11 +1803,14 @@ func (a *AndroidProvider) buildOppoMessage(device *models.Device, pushLog *model
 		}
 	}
 
-	// 点击动作：设备支持时以 intent scheme 打开 SDK 点击中转页，否则启动应用
+	// 点击动作：设备支持时以 scheme URL 打开 SDK 点击中转页，推送数据改由 action_parameters 作为 extras 传入；否则启动应用。
+	// OPPO 的 click_action_url 只接受普通 scheme URL（上限 500），下发 intent:// URI 时系统静默丢弃通知
 	clickActionType := 0
-	clickActionURL := notificationClickIntent(device, customData)
-	if clickActionURL != "" {
+	clickActionURL := ""
+	if params := oppoNotificationClickParameters(device, customData); params != "" {
 		clickActionType = 5 // 5=intent scheme
+		clickActionURL = "doopush://" + device.App.PackageName + "/notification/click"
+		actionParameters = params
 	}
 
 	// 构建OPPO通知消息

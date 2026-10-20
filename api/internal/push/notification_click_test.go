@@ -149,13 +149,19 @@ func TestBuildXiaomiMessageClickIntent(t *testing.T) {
 func TestBuildOppoMessageClickIntent(t *testing.T) {
 	provider := &AndroidProvider{}
 	notification := provider.buildOppoMessage(clickTestDevice("com.example.app.WelcomeActivity"), clickTestPushLog()).Notification
-	if notification.ClickActionType != 5 {
-		t.Fatalf("unexpected click_action_type: %d", notification.ClickActionType)
+	if notification.ClickActionType != 5 || notification.ClickActionUrl != "doopush://com.example.app/notification/click" {
+		t.Fatalf("unexpected click action: %d %s", notification.ClickActionType, notification.ClickActionUrl)
 	}
-	assertClickIntent(t, "oppo", notification.ClickActionUrl)
+	var params map[string]string
+	if err := json.Unmarshal([]byte(notification.ActionParameters), &params); err != nil {
+		t.Fatalf("action_parameters must be string map: %v %s", err, notification.ActionParameters)
+	}
+	if params["doopush_notification_clicked"] != "true" || params["push_log_id"] != "42" || params["push_data_data"] != `{"dialog_id":11827}` {
+		t.Fatalf("unexpected action_parameters: %s", notification.ActionParameters)
+	}
 
 	legacy := provider.buildOppoMessage(clickTestDevice(""), clickTestPushLog()).Notification
-	if legacy.ClickActionType != 0 || legacy.ClickActionUrl != "" {
+	if legacy.ClickActionType != 0 || legacy.ClickActionUrl != "" || strings.Contains(legacy.ActionParameters, "doopush_notification_clicked") {
 		t.Fatalf("legacy SDK should launch app: %+v", legacy)
 	}
 }
