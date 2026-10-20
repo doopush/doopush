@@ -113,6 +113,16 @@ class DooPushManager private constructor() {
         Log.i(TAG, "Expo 通知转播开关: $enabled")
     }
 
+    /** 应用回到前台时是否自动清零角标（默认 false：角标由宿主自行管理，与 iOS SDK 一致） */
+    @Volatile
+    var isAutoClearBadgeEnabled: Boolean = false
+        private set
+
+    fun setAutoClearBadgeEnabled(enabled: Boolean) {
+        isAutoClearBadgeEnabled = enabled
+        Log.i(TAG, "回到前台自动清零角标开关: $enabled")
+    }
+
     // 核心组件
     private var config: DooPushConfig? = null
     private var deviceManager: DooPushDevice? = null
@@ -395,6 +405,7 @@ class DooPushManager private constructor() {
             tokenAcquisitionOnly.set(false)
             throw e
         }
+        DooPushNotificationHandler.flushPendingClick()
     }
 
     /** 配置为仅获取原生推送 token 的模式，不访问 DooPush 服务端。 */
@@ -430,6 +441,9 @@ class DooPushManager private constructor() {
             this.callback = callback
         }
         Log.d(TAG, "回调监听器已${if (callback != null) "设置" else "移除"}")
+        if (callback != null) {
+            DooPushNotificationHandler.flushPendingClick()
+        }
     }
 
     /** 仅移除指定 owner，避免旧桥接实例销毁时清掉新实例的回调。 */
@@ -1141,7 +1155,7 @@ class DooPushManager private constructor() {
     }
 
     /**
-     * 应用进入前台时调用，执行通知清除和角标重置
+     * 应用进入前台时调用，执行通知清除（开启 isAutoClearBadgeEnabled 时同时清零角标）
      * @param context Android 上下文，推荐使用 Application 上下文
      */
     private fun handleApplicationDidBecomeActive(context: Context) {
@@ -1150,7 +1164,7 @@ class DooPushManager private constructor() {
         // TODO 如果应用没有初始化 SDK 也可以清除通知？
         DooPushNotificationHandler.clearNotifications(context)
         if (checkInitialized()) {
-            clearBadge()
+            if (isAutoClearBadgeEnabled) clearBadge()
             val token = cachedToken
             if (!token.isNullOrEmpty()) {
                 // 前台守卫：已有活跃连接则复用（断了才补一次），避免重复 onResume 时无脑重建、

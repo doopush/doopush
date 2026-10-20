@@ -217,7 +217,7 @@ object BadgeManager {
         return true
     }
 
-    private fun getLauncherClassName(context: Context): String? {
+    internal fun getLauncherClassName(context: Context): String? {
         return try {
             val intent = Intent(Intent.ACTION_MAIN).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)

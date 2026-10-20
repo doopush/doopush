@@ -2,6 +2,8 @@ package com.doopush.sdk
 
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.app.NotificationManager
 import com.doopush.sdk.models.PushMessage
@@ -83,7 +85,7 @@ object DooPushNotificationHandler {
                     val extras = intent.extras ?: return null
                     
                     // 检查是否是推送点击意图
-                    if (!extras.getBoolean(EXTRA_NOTIFICATION_CLICKED, false)) {
+                    if (!isClickFlagSet(extras)) {
                         return null
                     }
                     
@@ -160,20 +162,74 @@ object DooPushNotificationHandler {
             }
             
             Log.d(TAG, "处理推送通知点击: ${notificationData.title}")
-            
-            // 记录推送点击统计
-            recordNotificationClick(notificationData)
-            
-            // 通知DooPushManager
-            val manager = DooPushManager.getInstance()
-            if (DooPushManager.isInitialized()) {
-                manager.getInternalCallback()?.onNotificationClick(notificationData)
-            }
-            
+            dispatchClick(notificationData)
             return true
         } catch (e: Exception) {
             Log.e(TAG, "处理推送通知点击失败", e)
             return false
+        }
+    }
+
+    /**
+     * 分发厂商推送接收器回调的通知点击（小米、OPPO、vivo、荣耀、魅族）
+     * 与点击中转页共用暂存补发与去重逻辑
+     */
+    internal fun dispatchVendorClick(notificationData: NotificationData) {
+        Log.d(TAG, "处理厂商通知点击: ${notificationData.title}")
+        dispatchClick(notificationData)
+    }
+
+    // 冷启动点击时 SDK 尚未配置或宿主尚未设置回调：暂存最近一次点击，就绪后补发
+    private var pendingClick: NotificationData? = null
+
+    // 同一条推送的点击可能同时经点击中转页与厂商接收器到达，短时间内只分发一次
+    private const val CLICK_DEDUP_WINDOW_MS = 10_000L
+    private var lastClickKey: String? = null
+    private var lastClickAt = 0L
+
+    private fun isDuplicateClick(notificationData: NotificationData): Boolean {
+        val key = notificationData.pushLogId?.takeIf { it.isNotEmpty() }
+            ?: notificationData.dedupKey?.takeIf { it.isNotEmpty() }
+            ?: return false
+        val now = SystemClock.elapsedRealtime()
+        if (key == lastClickKey && now - lastClickAt < CLICK_DEDUP_WINDOW_MS) {
+            return true
+        }
+        lastClickKey = key
+        lastClickAt = now
+        return false
+    }
+
+    private fun dispatchClick(notificationData: NotificationData, checkDuplicate: Boolean = true) {
+        synchronized(this) {
+            if (checkDuplicate && isDuplicateClick(notificationData)) {
+                Log.d(TAG, "重复的推送点击，忽略")
+                return
+            }
+            if (!DooPushManager.isInitialized() || !DooPushManager.hasActiveCallback()) {
+                Log.d(TAG, "SDK 未就绪，暂存推送点击")
+                pendingClick = notificationData
+                return
+            }
+        }
+        // 记录推送点击统计
+        recordNotificationClick(notificationData)
+        DooPushManager.getInstance().getInternalCallback()?.onNotificationClick(notificationData)
+    }
+
+    /**
+     * 补发暂存的推送点击（SDK 配置完成、设置回调后调用）
+     */
+    internal fun flushPendingClick() {
+        val notificationData = synchronized(this) {
+            if (!DooPushManager.isInitialized() || !DooPushManager.hasActiveCallback()) return
+            pendingClick.also { pendingClick = null }
+        } ?: return
+        try {
+            // 暂存时已做过去重
+            dispatchClick(notificationData, checkDuplicate = false)
+        } catch (e: Exception) {
+            Log.e(TAG, "补发推送点击失败", e)
         }
     }
     
@@ -211,8 +267,17 @@ object DooPushNotificationHandler {
      * 检查Intent是否包含推送点击数据
      */
     fun isNotificationClickIntent(intent: Intent?): Boolean {
-        if (intent?.extras == null) return false
-        return intent.extras!!.getBoolean(EXTRA_NOTIFICATION_CLICKED, false)
+        val extras = intent?.extras ?: return false
+        return isClickFlagSet(extras)
+    }
+
+    // 点击标记：intent URI 下发为 Boolean；魅族 parameters 只能下发字符串 "true"
+    private fun isClickFlagSet(extras: Bundle): Boolean {
+        return when (val flag = extras.get(EXTRA_NOTIFICATION_CLICKED)) {
+            is Boolean -> flag
+            is String -> flag.equals("true", ignoreCase = true)
+            else -> false
+        }
     }
     
     /**

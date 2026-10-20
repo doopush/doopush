@@ -46,6 +46,7 @@ func TestRegisterDeviceRestoresSoftDeletedDevice(t *testing.T) {
 		"18.0",
 		"1.0.0",
 		"TestApp/1.0.0",
+		"",
 	)
 	if err != nil {
 		t.Fatalf("register device: %v", err)
@@ -66,6 +67,7 @@ func TestRegisterDeviceRestoresSoftDeletedDevice(t *testing.T) {
 		"18.1",
 		"1.1.0",
 		"TestApp/1.1.0",
+		"",
 	)
 	if err != nil {
 		t.Fatalf("restore device: %v", err)

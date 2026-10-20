@@ -524,7 +524,44 @@ Log.d("DooPush", "角标清除${if (cleared) "成功" else "失败"}")
 
 // 读取最近一次设置成功的角标值（v1.2.0+，从 SharedPreferences 读取）
 val current = dooPushManager.getBadgeCount()
+
+// 应用回到前台时自动清零角标（v1.3.5+，默认关闭）
+dooPushManager.setAutoClearBadgeEnabled(true)
 ```
+
+> v1.3.5 起，应用回到前台时默认**不再**自动清零角标（与 iOS SDK 一致），角标完全由宿主管理；需要沿用旧行为时调用 `setAutoClearBadgeEnabled(true)`。
+
+#### 推送携带的角标
+
+推送接口的 `badge` 参数在 Android 各通道的效果：
+
+| 通道 | 效果 |
+|------|------|
+| 华为 / 荣耀 | 设置为指定数（0~99，`0` 清零）。服务端按设备注册时上报的 `launcher_class`（Android SDK 1.3.5+ 自动上报）指定桌面入口；未上报时不设置 |
+| FCM | 写入通知的 `notification_count`，效果取决于桌面 |
+| vivo | 厂商只支持「+1」不支持设置指定数，默认不启用；可用 `payload.vivo.add_badge: true` 开启（需在 vivo 开放平台开通角标） |
+| 小米 | 系统按通知栏未读通知数自动显示，推送无法指定 |
+| OPPO / 魅族 | 推送接口不支持角标 |
+
+推送不能精确设置角标的通道，请在应用内用 `setBadgeCount()` 维护。
+
+#### 厂商通知点击
+
+厂商通道的通知由系统直接展示，点击时不经过应用代码。v1.3.5 起 SDK 内置无界面点击中转页 `DooPushNotificationClickActivity`（已在 SDK Manifest 中声明，无需额外配置），服务端会把通知的点击动作指向它并携带推送数据：点击后触发 `onNotificationClick`，再切回应用。冷启动时点击事件会暂存，SDK 配置完成并设置回调后补发。
+
+| 通道 | 服务端点击动作 | 不使用中转页的方式 |
+|------|----------------|--------------------|
+| 华为 | `click_action.type=1` + intent | — |
+| 荣耀 | `clickAction.type=1` + intent | — |
+| 小米 | `notify_effect=2` + `intent_uri` | `payload` 顶层传 `notify_effect` |
+| OPPO | `click_action_type=5` + intent scheme | — |
+| vivo | `skipType=4` + intent URI | `payload.vivo.skip_type` |
+| 魅族 | `clickType=1` 打开中转页，推送数据通过 `parameters` 传入 | `payload.meizu` 中的点击字段（`click_type=0` 且未填 `activity` / `url` / `parameters` 视为未指定） |
+
+- 设备未上报 `launcher_class`（旧版 SDK）时，各通道点击仅打开应用、不触发回调。
+- 点击动作携带的推送数据上限 1024 字符（厂商对字段与消息体有长度限制）：超出时只携带 `push_log_id`、`dedup_key` 等必要字段，`onNotificationClick` 仍会触发但 `payload` 中的自定义数据缺失；精简后仍超出则退回仅打开应用。
+- 宿主若自行注册了厂商推送接收器（继承 SDK 的 `Base*` 接收器），接收器收到的点击同样走暂存补发；同一条推送 10 秒内只回调一次，不会与中转页重复。
+- 除华为外，其他厂商的点击中转尚未经过真机验证。
 
 #### 厂商支持
 
@@ -795,6 +832,7 @@ adb logcat -s HMSService       # 华为推送日志
 | `getDeviceInfo()` | 获取设备信息 | DeviceInfo? |
 | `updateDeviceInfo(callback?)` | 主动把设备信息上报到服务端（v1.2.0+） | void |
 | `setBadgeCount(count) / clearBadge() / getBadgeCount()` | 角标设置 / 清除 / 读取（v1.2.0+） | Boolean / Boolean / Int |
+| `setAutoClearBadgeEnabled(enabled)` | 回到前台时是否自动清零角标，默认 `false`（v1.3.5+） | void |
 | `reportStatistics()` | 立即上报排队中的统计事件（v1.2.0+） | void |
 | `setNotificationManagementMode(mode)` | ACTIVE / PASSIVE 共存标记（v1.1.0+） | void |
 | `setFCMNotificationDisplayEnabled(enabled)` | 是否由 DooPush 自管展示 FCM 通知（v1.1.0+） | void |

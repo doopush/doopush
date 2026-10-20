@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import com.doopush.sdk.badge.BadgeManager
 import com.doopush.sdk.models.DeviceInfo
 import java.util.Locale
 
@@ -71,7 +72,8 @@ class DooPushDevice(private val context: Context) {
             model = getModel(),
             systemVersion = getSystemVersion(),
             appVersion = getAppVersion(),
-            userAgent = getUserAgent()
+            userAgent = getUserAgent(),
+            launcherClass = BadgeManager.getLauncherClassName(context) ?: ""
         )
     }
 

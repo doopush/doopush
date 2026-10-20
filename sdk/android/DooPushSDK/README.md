@@ -41,7 +41,7 @@ allprojects {
 ```kotlin
 dependencies {
     // DooPush SDK
-    implementation 'com.github.doopush:doopush-android-sdk:1.3.4'
+    implementation 'com.github.doopush:doopush-android-sdk:1.3.5'
 
     // 必需：FCM
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
@@ -175,6 +175,9 @@ val success = dooPushManager.setBadgeCount(5)
 
 // 清除角标
 val success = dooPushManager.clearBadge()
+
+// 回到前台时自动清零角标（v1.3.5+，默认关闭）
+dooPushManager.setAutoClearBadgeEnabled(true)
 ```
 
 ### 推送服务状态
@@ -251,6 +254,7 @@ plugins {
 - `setBadgeCount(count: Int) -> Boolean` - 设置应用角标数量
 - `clearBadge() -> Boolean` - 清除应用角标
 - `getBadgeCount() -> Int` - 读取最近一次设置成功的角标值（v1.2.0+）
+- `setAutoClearBadgeEnabled(enabled: Boolean)` - 回到前台时是否自动清零角标，默认 `false`（v1.3.5+）
 
 #### 共存控制（v1.1.0+）
 - `setNotificationManagementMode(mode)` - ACTIVE / PASSIVE 模式标记
@@ -307,6 +311,14 @@ A: SDK 提供了详细的日志输出，使用 `adb logcat -s DooPushManager` �
 如有问题请提交 Issue 或联系技术支持团队。
 
 ## 更新日志
+
+### v1.3.5
+- **Feat (厂商通知点击)**：新增无界面点击中转页 `DooPushNotificationClickActivity`，服务端将华为、荣耀、小米、OPPO、vivo、魅族通知的点击动作指向它并携带推送数据，点击后触发 `onNotificationClick`（冷启动时暂存，SDK 配置完成或设置回调后补发）并切回应用。
+- **Fix (厂商接收器点击)**：各厂商 `Base*` 接收器的点击回调统一走暂存补发并记录点击统计；同一条推送 10 秒内只回调一次，避免与中转页重复。
+- **Feat (角标入口)**：设备注册上报桌面启动入口类名 `launcher_class`，服务端据此设置华为、荣耀推送的桌面角标。
+- **Feat (角标开关)**：新增 `setAutoClearBadgeEnabled(enabled)`，控制应用回到前台时是否自动清零角标。
+- **行为变更**：回到前台默认**不再**自动清零角标（与 iOS SDK 一致），角标由宿主自行管理；需要旧行为请调用 `setAutoClearBadgeEnabled(true)`。
+- **Fix (混淆)**：消费方混淆规则保留 Gson 序列化的请求/响应类，修复宿主 Release 混淆后设备注册请求字段被剔除（HTTP 400）。
 
 ### v1.3.4
 - **Fix (Gateway 握手单飞)**：跟踪首次 WebSocket 握手的在途状态，避免前台恢复与注册成功并发时为同一设备安排额外补连。

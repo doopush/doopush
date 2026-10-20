@@ -28,17 +28,19 @@ func NewDeviceController(rdb *redis.Client) *DeviceController {
 
 // RegisterDeviceRequest 设备注册请求
 type RegisterDeviceRequest struct {
-	Token      string                   `json:"token" binding:"required" example:"device_token_here"`
-	BundleID   string                   `json:"bundle_id" binding:"required" example:"com.example.app"`
-	Platform   string                   `json:"platform" binding:"required,oneof=ios android" example:"ios"`
-	Channel    string                   `json:"channel" binding:"required" example:"apns"`
-	PushEnv    string                   `json:"push_environment" binding:"omitempty,oneof=development production" example:"development"`
-	Brand      string                   `json:"brand" example:"Apple"`
-	Model      string                   `json:"model" example:"iPhone 14"`
-	SystemVer  string                   `json:"system_version" example:"17.0"`
-	AppVersion string                   `json:"app_version" example:"1.0.0"`
-	UserAgent  string                   `json:"user_agent" example:"MyApp/1.0.0 (iOS 17.0)"`
-	Tags       []services.DeviceTagItem `json:"tags" example:"[{\"tag_name\":\"user_type\",\"tag_value\":\"vip\"},{\"tag_name\":\"version\",\"tag_value\":\"1.0\"}]"`
+	Token      string `json:"token" binding:"required" example:"device_token_here"`
+	BundleID   string `json:"bundle_id" binding:"required" example:"com.example.app"`
+	Platform   string `json:"platform" binding:"required,oneof=ios android" example:"ios"`
+	Channel    string `json:"channel" binding:"required" example:"apns"`
+	PushEnv    string `json:"push_environment" binding:"omitempty,oneof=development production" example:"development"`
+	Brand      string `json:"brand" example:"Apple"`
+	Model      string `json:"model" example:"iPhone 14"`
+	SystemVer  string `json:"system_version" example:"17.0"`
+	AppVersion string `json:"app_version" example:"1.0.0"`
+	UserAgent  string `json:"user_agent" example:"MyApp/1.0.0 (iOS 17.0)"`
+	// Android 桌面启动入口类名，用于厂商角标与通知点击中转（Android SDK 1.3.5+ 上报）
+	LauncherClass string                   `json:"launcher_class" binding:"max=255" example:"com.example.app.MainActivity"`
+	Tags          []services.DeviceTagItem `json:"tags" example:"[{\"tag_name\":\"user_type\",\"tag_value\":\"vip\"},{\"tag_name\":\"version\",\"tag_value\":\"1.0\"}]"`
 }
 
 // DeviceListResponse 设备列表响应
@@ -88,6 +90,7 @@ func (d *DeviceController) RegisterDevice(c *gin.Context) {
 		req.SystemVer,
 		req.AppVersion,
 		req.UserAgent,
+		req.LauncherClass,
 	)
 	if err != nil {
 		response.Error(c, http.StatusUnprocessableEntity, err.Error())

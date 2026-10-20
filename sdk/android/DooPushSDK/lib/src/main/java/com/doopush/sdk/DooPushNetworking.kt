@@ -109,6 +109,9 @@ class DooPushNetworking(private val config: DooPushConfig) {
         @SerializedName("user_agent")
         val userAgent: String,
 
+        @SerializedName("launcher_class")
+        val launcherClass: String = "",
+
         @SerializedName("tags")
         val tags: List<DeviceTag> = emptyList()
     )
@@ -185,7 +188,8 @@ class DooPushNetworking(private val config: DooPushConfig) {
                 model = deviceInfo.model,
                 systemVersion = deviceInfo.systemVersion,
                 appVersion = deviceInfo.appVersion,
-                userAgent = deviceInfo.userAgent
+                userAgent = deviceInfo.userAgent,
+                launcherClass = deviceInfo.launcherClass
             )
 
             // 构建HTTP请求

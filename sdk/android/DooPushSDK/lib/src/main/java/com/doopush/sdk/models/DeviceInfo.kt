@@ -55,7 +55,13 @@ data class DeviceInfo(
      * 用户代理字符串
      */
     @SerializedName("user_agent")
-    val userAgent: String
+    val userAgent: String,
+
+    /**
+     * 桌面启动入口 Activity 类名（厂商角标需要；服务端据此判断设备支持点击中转页）
+     */
+    @SerializedName("launcher_class")
+    val launcherClass: String = ""
 ) {
     
     /**
@@ -90,7 +96,8 @@ data class DeviceInfo(
             "model" to model,
             "system_version" to systemVersion,
             "app_version" to appVersion,
-            "user_agent" to userAgent
+            "user_agent" to userAgent,
+            "launcher_class" to launcherClass
         )
     }
 }

@@ -68,6 +68,7 @@ App Key 必须属于路径中的应用，且 `bundle_id` 必须与应用包名�
 | `system_version` | string | 系统版本 |
 | `app_version` | string | 应用版本 |
 | `user_agent` | string | 用户代理字符串 |
+| `launcher_class` | string | Android 桌面启动入口 Activity 的类全名。服务端用于设置华为、荣耀推送的桌面角标，并将各厂商通道的通知点击指向 SDK 点击中转页；Android SDK 1.3.5+ 自动上报，未上报时推送不带角标、点击仅打开应用 |
 | `tags` | array | 注册后绑定的设备标签 |
 
 `tags[]` 中的 `tag_name` 和 `tag_value` 均为字符串。标签写入失败不会回滚已经成功的设备注册。

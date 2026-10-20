@@ -20,6 +20,7 @@ type Device struct {
 	SystemVer     string         `gorm:"size:50;comment:系统版本" json:"system_version" example:"17.0"`
 	AppVersion    string         `gorm:"size:50;comment:应用版本" json:"app_version" example:"1.0.0"`
 	UserAgent     string         `gorm:"size:500;comment:用户代理" json:"user_agent"`
+	LauncherClass string         `gorm:"size:255;comment:桌面启动入口类名（Android SDK 上报）" json:"launcher_class"`
 	Status        int            `gorm:"default:1;comment:设备状态 1=正常 0=禁用" json:"status" example:"1"`
 	IsOnline      bool           `gorm:"default:false;index;comment:实时在线状态" json:"is_online"`
 	LastSeen      *time.Time     `gorm:"comment:最后活跃时间" json:"last_seen"`

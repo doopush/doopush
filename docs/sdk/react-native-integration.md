@@ -203,6 +203,9 @@ await DooPush.setBadge(3);
 await DooPush.clearBadge();
 const badge = await DooPush.getBadge();
 
+// Android：回到前台时自动清零角标（默认关闭；iOS 为空操作）
+DooPush.setAutoClearBadgeEnabled(true);
+
 const permission = await DooPush.checkPermissionStatus();
 // 'authorized' | 'denied' | 'notDetermined' | 'provisional' | 'ephemeral' | 'unknown'
 

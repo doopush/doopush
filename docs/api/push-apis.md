@@ -58,7 +58,7 @@ App Secret 至少需要 `push:send`。广播以及通用接口中的 `target.typ
 | `title` | string | 是 | 标题，最多 200 个字符 |
 | `content` | string | 是 | 推送正文 |
 | `target` | object | 是 | 目标配置 |
-| `badge` | integer | 否 | iOS 角标；省略时服务端按 `1` 处理 |
+| `badge` | integer | 否 | 角标数：iOS 生效；Android 华为、荣耀通道设置为指定数（需 SDK 1.3.5+ 上报 `launcher_class`，取值 0~99），FCM 写入 `notification_count`，其他通道见 Android 集成文档；省略时服务端按 `1` 处理 |
 | `payload` | object | 否 | 自定义载荷和 Android 厂商参数 |
 | `schedule_time` | string | 否 | ISO 8601 时间；提供后创建定时任务 |
 
@@ -192,13 +192,15 @@ curl -X POST "https://doopush.com/api/v1/apps/123/push" \
 
 `payload` 可包含以下厂商对象，服务端会保留并交给对应通道处理：
 
+> 未指定点击行为时，设备上报了 `launcher_class`（Android SDK 1.3.5+）的各厂商通知点击会打开 SDK 点击中转页并回调 `onNotificationClick`；显式传入 `vivo.skip_type`、`meizu` 点击字段（`click_type=0` 且未填 `activity` / `url` / `parameters` 视为未指定）或顶层 `notify_effect`（小米）时以传入值为准。
+
 | 字段 | 常用参数 |
 |------|----------|
 | `huawei` | `importance`、`category` |
 | `honor` | `importance`、`ttl`、`target_user_type` |
 | `xiaomi` | `pass_through`、`notify_type`、`time_to_live`、`channel_id` |
 | `oppo` | `channel_id`、`category`、`notify_level`、`off_line`、`off_line_ttl` |
-| `vivo` | `classification`、`notify_type`、`skip_type`、`skip_content`、`network_type`、`time_to_live` |
+| `vivo` | `classification`、`notify_type`、`skip_type`、`skip_content`、`network_type`、`time_to_live`、`add_badge` |
 | `meizu` | `notice_msg_type`、`notice_bar_type`、`click_type`、`off_line`、`valid_time`、回执字段等 |
 
 ```json

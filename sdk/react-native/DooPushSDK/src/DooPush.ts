@@ -1,4 +1,5 @@
 import { Subscription } from 'expo-modules-core';
+import { Platform } from 'react-native';
 import { DooPushModule } from './DooPushModule';
 import type {
   DooPushConfig,
@@ -21,7 +22,7 @@ import type {
 /**
  * DooPush React Native SDK — imperative API
  *
- * v0.6.6 — registration, local token acquisition, OEM channels, token/device getters, hooks,
+ * v0.6.7 — registration, local token acquisition, OEM channels, token/device getters, hooks,
  * notification events, WebSocket gateway, badge, statistics, and coexistence controls.
  */
 
@@ -138,6 +139,14 @@ export function setNotificationDisplayEnabled(enabled: boolean): void {
   DooPushModule.setNotificationDisplayEnabled(enabled);
 }
 
+/**
+ * Android: whether the SDK clears the app badge when the app returns to foreground (default false).
+ * iOS: no-op; the iOS SDK never clears the badge automatically.
+ */
+export function setAutoClearBadgeEnabled(enabled: boolean): void {
+  DooPushModule.setAutoClearBadgeEnabled(enabled);
+}
+
 /** Manually connect the WebSocket gateway using the registered device token. */
 export function connectGateway(): Promise<void> {
   return DooPushModule.connectGateway();
@@ -171,13 +180,24 @@ export function addMessageListener(
 export function addNotificationClickListener(
   listener: (msg: DooPushMessage) => void
 ): Subscription {
-  return DooPushModule.addListener('onNotificationClick', listener);
+  const subscription = DooPushModule.addListener('onNotificationClick', listener);
+  flushPendingNotifications('onNotificationClick');
+  return subscription;
 }
 
 export function addNotificationOpenListener(
   listener: (msg: DooPushMessage) => void
 ): Subscription {
-  return DooPushModule.addListener('onNotificationOpen', listener);
+  const subscription = DooPushModule.addListener('onNotificationOpen', listener);
+  flushPendingNotifications('onNotificationOpen');
+  return subscription;
+}
+
+/** Android: redeliver notification events that arrived before the first wrapped JS listener (cold start). */
+function flushPendingNotifications(eventName: string): void {
+  if (Platform.OS === 'android') {
+    DooPushModule.flushPendingNotifications(eventName);
+  }
 }
 
 export function addGatewayOpenListener(

@@ -138,13 +138,8 @@ class MeizuPushReceiver {
                         payload = pushMessage.data
                     )
                     
-                    // 通知 DooPushManager
-                    val manager = DooPushManager.getInstance()
-                    val callback = manager.getInternalCallback()
-                    callback?.onNotificationClick(notificationData)
-                    
-                    // 上报点击统计
-                    reportNotificationClick(pushMessage)
+                    // 统一分发：冷启动暂存补发、与点击中转页去重，并记录点击统计
+                    DooPushNotificationHandler.dispatchVendorClick(notificationData)
                 } else {
                     Log.w(TAG, "解析魅族点击消息失败")
                 }
@@ -325,24 +320,6 @@ class MeizuPushReceiver {
             }
         }
         
-        /**
-         * 上报通知点击统计
-         */
-        private fun reportNotificationClick(message: PushMessage) {
-            try {
-                // 创建通知数据用于统计上报
-                val notificationData = DooPushNotificationHandler.NotificationData(
-                    pushLogId = message.pushLogId,
-                    dedupKey = message.dedupKey,
-                    title = message.title,
-                    body = message.body,
-                    payload = message.data
-                )
-                DooPushStatistics.recordNotificationClick(notificationData)
-            } catch (e: Exception) {
-                Log.e(TAG, "上报通知点击统计失败", e)
-            }
-        }
     }
 }
 

@@ -91,6 +91,24 @@
             </intent-filter>
         </receiver>
 
+        <!-- 厂商系统通知（华为、荣耀、小米、OPPO、vivo、魅族）的点击中转页：服务端点击动作指向此页面，分发点击事件后切回应用 -->
+        <activity
+            android:name=".DooPushNotificationClickActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data
+                    android:host="${applicationId}"
+                    android:path="/notification/click"
+                    android:scheme="doopush" />
+            </intent-filter>
+        </activity>
+
         <!-- 小米推送配置 -->
         <meta-data
             android:name="MIPUSH_APPID"

@@ -4,7 +4,7 @@ import UserNotifications
 
 /**
  * DooPush React Native SDK — iOS bridge
- * v0.6.6
+ * v0.6.7
  *
  * Mode: ACTIVE (default) — DooPush owns UNUserNotificationCenterDelegate via the
  * delegate-forwarding mechanism in DooPushSDK. Coexists with
@@ -189,6 +189,10 @@ public class DooPushReactNativeSDKModule: Module, DooPushDelegate {
             // Keep this API as a no-op for cross-platform compatibility; use
             // setNotificationManagementMode('passive') to disable DooPush delegate tracking.
             NSLog("[DooPushReactNativeSDK] setNotificationDisplayEnabled(\(enabled)) is a no-op on iOS")
+        }
+
+        Function("setAutoClearBadgeEnabled") { (_: Bool) in
+            // iOS SDK never clears the badge on foreground; keep as a no-op for cross-platform compatibility.
         }
 
         AsyncFunction("connectGateway") { (promise: Promise) in

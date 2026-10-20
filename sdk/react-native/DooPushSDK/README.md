@@ -21,7 +21,7 @@
 ## 前置条件
 
 - iOS 原生 SDK ≥ **1.4.0**（monorepo 本地开发可路径引用未发布版本）
-- Android 原生 SDK ≥ **1.3.4**
+- Android 原生 SDK ≥ **1.3.5**
 - Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
 ## 快速安装
@@ -110,6 +110,8 @@ export default function App() {
 async function maintenance() {
   await DooPush.setBadge(3);
   await DooPush.clearBadge();
+  // Android：回到前台时自动清零角标（默认关闭，iOS 为空操作）
+  DooPush.setAutoClearBadgeEnabled(true);
   await DooPush.reportStatistics();
   const permission = await DooPush.checkPermissionStatus();
   console.log(permission);
@@ -195,6 +197,11 @@ const { deviceId } = await DooPush.registerWithToken(token, 'fcm');
 MIT
 
 ## CHANGELOG
+
+### v0.6.7
+- **Android 厂商通知点击**：升级到 Android SDK 1.3.5，华为、荣耀、小米、OPPO、vivo、魅族通知点击触发 `onNotificationClick`；冷启动时点击事件暂存，`addNotificationClickListener` / `addNotificationOpenListener` 首次注册后补发（直接用 `DooPushModule.addListener` 的监听照常实时接收，但不补发）。
+- **Android 角标与混淆**：设备注册上报桌面入口类名用于华为、荣耀推送角标；修复宿主 Release 混淆后设备注册失败（HTTP 400）。
+- **角标自动清零开关**：新增 `DooPush.setAutoClearBadgeEnabled(enabled)`；Android 回到前台默认**不再**自动清零角标（与 iOS 一致），需要旧行为请传 `true`。iOS 上为空操作。
 
 ### v0.6.6
 - **Android Gateway 握手单飞**：升级到 Android SDK 1.3.4，避免首次握手在途时由注册成功回调额外安排一次补连。

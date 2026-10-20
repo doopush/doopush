@@ -126,7 +126,7 @@ WebSocket 长连接当前仅用来维护实时在线态；**面向在线设备�
 - **建议**：内容具体，包含行动指引
 
 **角标数量** (`badge`)：
-- **作用**：iOS 应用图标上的红色数字（Android 走厂商角标方案，效果以系统为准）
+- **作用**：iOS 应用图标上的红色数字；Android 华为、荣耀通道随推送设置为指定数（需 Android SDK 1.3.5+），FCM 由桌面决定，vivo 只能 +1（默认不启用），小米按未读通知数自动显示，OPPO、魅族不支持，需应用内调用 SDK 角标 API
 - **格式**：非负整数
 - **默认值**：不传时后端落库为 `1`（不会保持原值）；显式传 `0` 可清零
 
@@ -178,16 +178,17 @@ WebSocket 长连接当前仅用来维护实时在线态；**面向在线设备�
 **VIVO推送参数**（与 vivo 推送 API 字段一一对应）：
 - `classification` - 消息分类，`0`=运营消息 / `1`=系统消息
 - `notify_type` - 通知类型，`1`=通知栏 / `2`=透传
-- `skip_type` - 跳转类型，`1`=打开应用 / `2`=打开 URL / `3`=自定义
+- `skip_type` - 跳转类型，`1`=打开应用 / `2`=打开 URL / `3`=自定义 / `4`=打开应用内页面；不传时 Android SDK 1.3.5+ 设备默认 `4`（打开 SDK 点击中转页以回调点击事件），否则为 `1`
 - `skip_content` - 跳转内容（配合 `skip_type` 使用）
 - `network_type` - 网络类型，`-1`=不限 / `1`=仅 WiFi
 - `time_to_live` - 离线保存时长（秒）
+- `add_badge` - 是否角标 +1（布尔，默认 `false`；vivo 不支持设置指定数，需在 vivo 开放平台开通）
 
 **魅族推送参数**（与魅族 Push API 字段对应；服务端会按字段位置打包到 `noticeBarInfo` / `noticeExpandInfo` / `clickTypeInfo` 等子结构）：
 - `notice_msg_type` - 消息分类，`0`=公信 / `1`=私信
 - `notice_bar_type` - 通知栏样式，`0`=标准 / `2`=原生
 - `notice_expand_type` - 展开方式，`0`=标准 / `1`=文本 / `2`=大图
-- `click_type` - 点击动作，`0`=打开应用 / `1`=打开页面（配合 `activity`）/ `2`=打开 URI（配合 `url`）
+- `click_type` - 点击动作，`0`=打开应用 / `1`=打开页面（配合 `activity`）/ `2`=打开 URI（配合 `url`）；未指定点击行为（未传，或 `click_type=0` 且未填 `activity` / `url` / `parameters`）时，Android SDK 1.3.5+ 设备默认打开 SDK 点击中转页以回调点击事件
 - `off_line` - 离线消息，`0`=否 / `1`=是
 - `valid_time` - 有效时长（小时），`1-72`
 - `subtitle` - 通知副标题（VIP 功能）
@@ -212,13 +213,11 @@ WebSocket 长连接当前仅用来维护实时在线态；**面向在线设备�
   "vivo": {
     "classification": 1,
     "notify_type": 1,
-    "skip_type": 1,
     "time_to_live": 3600
   },
   "meizu": {
     "notice_msg_type": 0,
     "notice_bar_type": 0,
-    "click_type": 0,
     "off_line": 1,
     "valid_time": 24,
     "subtitle": "重要通知"

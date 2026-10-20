@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -307,7 +308,7 @@ type HuaweiClickAction struct {
 // HuaweiBadge 华为角标配置
 type HuaweiBadge struct {
 	AddNum int    `json:"add_num,omitempty"` // 角标数字
-	SetNum int    `json:"set_num,omitempty"` // 设置角标数字
+	SetNum *int   `json:"set_num,omitempty"` // 设置角标数字（0 表示清除，需显式发送）
 	Class  string `json:"class,omitempty"`   // 应用入口Activity类
 }
 
@@ -380,6 +381,7 @@ type OppoNotification struct {
 	SubTitle         string `json:"sub_title,omitempty"`         // 子标题
 	Content          string `json:"content,omitempty"`           // 设置在通知栏展示的通知的正文内容
 	ClickActionType  int    `json:"click_action_type,omitempty"` // 点击通知栏后触发的动作类型
+	ClickActionUrl   string `json:"click_action_url,omitempty"`  // 跳转网页或 intent scheme 地址（click_action_type=2/5）
 	ActionParameters string `json:"action_parameters,omitempty"` // 跳转动作参数（JSON格式）
 	OffLine          bool   `json:"off_line"`                    // 是否是离线消息
 	OffLineTTL       int    `json:"off_line_ttl,omitempty"`      // 离线消息的存活时间，单位是秒
@@ -636,7 +638,7 @@ type HonorButton struct {
 type HonorBadgeNotification struct {
 	AddNum     int    `json:"addNum,omitempty"` // 角标累加数字
 	BadgeClass string `json:"badgeClass"`       // 应用入口Activity类全路径
-	SetNum     int    `json:"setNum,omitempty"` // 角标设置数字
+	SetNum     *int   `json:"setNum,omitempty"` // 角标设置数字（指针：0 表示清零）
 }
 
 // HonorSendResponse 荣耀推送响应结构
@@ -1141,19 +1143,17 @@ func (a *AndroidProvider) buildHuaweiMessage(device *models.Device, pushLog *mod
 			ChannelID:    "default",
 			Importance:   importance, // 华为消息分类，NORMAL=服务通讯类，LOW=资讯营销类
 			// 华为推送要求通知消息必须包含ClickAction
-			ClickAction: &HuaweiClickAction{
-				Type:   1,        // 1=intent/action (打开应用)
-				Action: "Action", // 默认Action，基于官方Demo
-			},
-			// 华为角标支持 - 设置角标数量（仅在角标>=0时设置）
+			ClickAction: huaweiClickAction(device, dataMap),
+			// 华为角标：必须指定桌面入口Activity类，由 Android SDK 注册时上报；未上报时不设置
 			Badge: func() *HuaweiBadge {
-				if pushLog.Badge >= 0 {
-					return &HuaweiBadge{
-						SetNum: pushLog.Badge, // 设置角标数量（不是增加）
-						Class:  "",            // 应用入口Activity类，留空使用默认
-					}
+				if pushLog.Badge < 0 || device.LauncherClass == "" {
+					return nil
 				}
-				return nil // 角标<0时不设置
+				num := min(pushLog.Badge, 99) // 华为角标取值范围 0~99
+				return &HuaweiBadge{
+					SetNum: &num, // 设置角标数量（不是增加）
+					Class:  device.LauncherClass,
+				}
 			}(),
 			ForegroundShow: false, // 是否在前台显示通知
 		},
@@ -1172,6 +1172,139 @@ func (a *AndroidProvider) buildHuaweiMessage(device *models.Device, pushLog *mod
 		ValidateOnly: false,
 		Message:      message,
 	}
+}
+
+// huaweiClickAction 华为通知点击动作：设备支持时打开 SDK 点击中转页并携带推送数据，
+// 否则沿用默认 Action（仅打开应用，无法回调点击事件）
+func huaweiClickAction(device *models.Device, dataMap map[string]interface{}) *HuaweiClickAction {
+	if intent := notificationClickIntent(device, dataMap); intent != "" {
+		return &HuaweiClickAction{Type: 1, Intent: intent}
+	}
+	return &HuaweiClickAction{
+		Type:   1,        // 1=intent/action (打开应用)
+		Action: "Action", // 默认Action，基于官方Demo
+	}
+}
+
+// notificationClickActivity Android SDK 点击中转页，厂商系统通知的点击动作指向它以回调 onNotificationClick
+const notificationClickActivity = "com.doopush.sdk.DooPushNotificationClickActivity"
+
+// supportsNotificationClickRelay 中转页自 Android SDK 1.3.5 起提供，该版本起注册时上报 launcher_class，据此判断
+func supportsNotificationClickRelay(device *models.Device) bool {
+	return device.LauncherClass != "" && device.App.PackageName != ""
+}
+
+// notificationClickExtras 点击中转页所需的推送数据 extras，与 SDK 解析点击 Intent 的格式一致；
+// 旧版 SDK 设备返回 nil
+func notificationClickExtras(device *models.Device, dataMap map[string]interface{}) map[string]string {
+	if !supportsNotificationClickRelay(device) {
+		return nil
+	}
+	extras := map[string]string{}
+	for k, v := range dataMap {
+		var value string
+		switch val := v.(type) {
+		case string:
+			value = val
+		case bool, int, int64, uint, uint64, float64, json.Number:
+			value = fmt.Sprint(val)
+		default:
+			// 厂商参数等嵌套结构不透传
+			continue
+		}
+		extras["push_data_"+k] = value
+		if k == "push_log_id" || k == "dedup_key" {
+			extras[k] = value
+		}
+	}
+	return extras
+}
+
+// notificationClickMaxLen 点击动作携带推送数据的长度上限：厂商对单个字段（vivo skipContent 1024）
+// 与整条消息（华为约 4KB）都有限制，超长会导致整条推送被拒
+const notificationClickMaxLen = 1024
+
+// notificationClickEssentialKeys 超长时仅保留的 extras：足以回调点击并上报点击统计
+var notificationClickEssentialKeys = map[string]bool{
+	"push_log_id":           true,
+	"dedup_key":             true,
+	"push_data_push_log_id": true,
+	"push_data_dedup_key":   true,
+	"push_data_dp_source":   true,
+}
+
+// essentialNotificationClickExtras 只保留回调点击所需的 extras
+func essentialNotificationClickExtras(extras map[string]string) map[string]string {
+	trimmed := make(map[string]string, len(notificationClickEssentialKeys))
+	for k, v := range extras {
+		if notificationClickEssentialKeys[k] {
+			trimmed[k] = v
+		}
+	}
+	return trimmed
+}
+
+// fitNotificationClick 按 build 生成点击动作，超过 notificationClickMaxLen 时先精简为必要 extras 重试，
+// 仍超长返回空串（调用方退回仅打开应用）
+func fitNotificationClick(extras map[string]string, build func(map[string]string) string) string {
+	if extras == nil {
+		return ""
+	}
+	if s := build(extras); len(s) <= notificationClickMaxLen {
+		return s
+	}
+	if s := build(essentialNotificationClickExtras(extras)); len(s) <= notificationClickMaxLen {
+		return s
+	}
+	return ""
+}
+
+// notificationClickIntent 构造指向点击中转页的 intent URI（华为、荣耀、小米、OPPO、vivo 使用）；
+// 旧版 SDK 设备或超长时返回空串
+func notificationClickIntent(device *models.Device, dataMap map[string]interface{}) string {
+	return fitNotificationClick(notificationClickExtras(device, dataMap), func(extras map[string]string) string {
+		return buildNotificationClickIntent(device.App.PackageName, extras)
+	})
+}
+
+// buildNotificationClickIntent 生成 intent URI；带上 VIEW action，厂商丢弃 component 时仍可经 intent-filter 匹配中转页
+func buildNotificationClickIntent(pkg string, extras map[string]string) string {
+	keys := make([]string, 0, len(extras))
+	for k := range extras {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	b.WriteString("intent://" + pkg + "/notification/click#Intent;scheme=doopush;action=android.intent.action.VIEW;launchFlags=0x10000000;")
+	b.WriteString("component=" + pkg + "/" + notificationClickActivity + ";")
+	b.WriteString("B.doopush_notification_clicked=true;")
+	for _, k := range keys {
+		b.WriteString("S." + intentURIEscape(k) + "=" + intentURIEscape(extras[k]) + ";")
+	}
+	b.WriteString("end")
+	return b.String()
+}
+
+// intentURIEscape 按 Android Uri.encode 规则转义（Intent.parseUri 使用 Uri.decode 还原）
+func intentURIEscape(s string) string {
+	var b strings.Builder
+	for _, c := range []byte(s) {
+		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.IndexByte("-_.~", c) >= 0 {
+			b.WriteByte(c)
+		} else {
+			fmt.Fprintf(&b, "%%%02X", c)
+		}
+	}
+	return b.String()
+}
+
+// honorClickAction 荣耀通知点击动作：设备支持时打开 SDK 点击中转页并携带推送数据，否则仅打开应用
+func honorClickAction(device *models.Device, dataMap map[string]interface{}) *HonorClickAction {
+	if intent := notificationClickIntent(device, dataMap); intent != "" {
+		return &HonorClickAction{Type: 1, Intent: intent} // 1=打开应用自定义页面
+	}
+	return &HonorClickAction{Type: 3} // 3=打开应用
 }
 
 // HuaweiResponse 华为推送响应结构
@@ -1568,18 +1701,17 @@ func (a *AndroidProvider) buildHonorMessage(device *models.Device, pushLog *mode
 			Body:       pushLog.Content,
 			Importance: importance,
 			// 荣耀推送要求通知消息必须包含ClickAction
-			ClickAction: &HonorClickAction{
-				Type: 3, // 3=打开应用
-			},
-			// 荣耀角标支持 - 设置角标数量（仅在角标>=0时设置）
+			ClickAction: honorClickAction(device, dataMap),
+			// 荣耀角标：必须指定桌面入口Activity类，由 Android SDK 注册时上报；未上报时不设置
 			Badge: func() *HonorBadgeNotification {
-				if pushLog.Badge >= 0 {
-					return &HonorBadgeNotification{
-						SetNum:     pushLog.Badge,     // 设置角标数量
-						BadgeClass: a.config.CallBack, // 应用入口Activity类，留空使用默认
-					}
+				if pushLog.Badge < 0 || device.LauncherClass == "" {
+					return nil
 				}
-				return nil // 角标<0时不设置
+				num := min(pushLog.Badge, 99) // 荣耀角标取值范围 0~99
+				return &HonorBadgeNotification{
+					SetNum:     &num, // 设置角标数量（不是增加）
+					BadgeClass: device.LauncherClass,
+				}
 			}(),
 		},
 	}
@@ -1654,13 +1786,21 @@ func (a *AndroidProvider) buildOppoMessage(device *models.Device, pushLog *model
 		}
 	}
 
+	// 点击动作：设备支持时以 intent scheme 打开 SDK 点击中转页，否则启动应用
+	clickActionType := 0
+	clickActionURL := notificationClickIntent(device, customData)
+	if clickActionURL != "" {
+		clickActionType = 5 // 5=intent scheme
+	}
+
 	// 构建OPPO通知消息
 	notification := &OppoNotification{
 		AppMessageID:     fmt.Sprintf("dp_%d_%d", pushLog.ID, time.Now().Unix()), // 使用推送日志ID和时间戳作为消息去重ID
 		Style:            1,                                                      // 标准样式
 		Title:            pushLog.Title,
 		Content:          pushLog.Content,
-		ClickActionType:  0,                // 启动应用
+		ClickActionType:  clickActionType,
+		ClickActionUrl:   clickActionURL,
 		ActionParameters: actionParameters, // 自定义数据作为跳转参数
 		OffLine:          offLine,
 		OffLineTTL:       offLineTTL,
@@ -1686,8 +1826,9 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 	// 解析VIVO特有参数
 	notifyType := 1     // 通知类型，默认为1（通知栏）
 	timeToLive := 86400 // 离线保存时长，默认24小时（秒）
-	skipType := 1       // 跳转类型，默认为1（打开应用）
+	skipType := 0       // 跳转类型，未指定时按设备能力选择（见下）
 	skipContent := ""   // 跳转内容
+	addBadge := false   // vivo 角标只能 +1，不能设置为指定数，默认不启用
 	networkType := -1   // 网络类型，默认为-1（不限制）
 	classification := 0 // 消息分类，默认为0（运营消息）
 	extra := make(map[string]string)
@@ -1729,6 +1870,9 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 				if timeToLiveFloat, ok := vivoData["time_to_live"].(float64); ok {
 					timeToLive = int(timeToLiveFloat)
 				}
+				if addBadgeBool, ok := vivoData["add_badge"].(bool); ok {
+					addBadge = addBadgeBool
+				}
 				if clientCustomMapData, ok := vivoData["client_custom_map"].(map[string]interface{}); ok {
 					for k, v := range clientCustomMapData {
 						if strValue := fmt.Sprintf("%v", v); strValue != "" {
@@ -1749,6 +1893,19 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 		}
 	}
 
+	// 点击动作：未指定时，设备支持则打开 SDK 点击中转页（4=打开应用内指定页面，skipContent 为 intent URI），否则打开应用
+	if skipType == 0 {
+		skipType = 1
+		clickData := make(map[string]interface{}, len(customData))
+		for k, v := range customData {
+			clickData[k] = v
+		}
+		if intent := notificationClickIntent(device, clickData); intent != "" {
+			skipType = 4
+			skipContent = intent
+		}
+	}
+
 	// 构建VIVO推送消息
 	message := &VivoMessage{
 		RegID:           device.Token,
@@ -1756,7 +1913,7 @@ func (a *AndroidProvider) buildVivoMessage(device *models.Device, pushLog *model
 		Content:         pushLog.Content,
 		NotifyType:      notifyType,
 		TimeToLive:      timeToLive,
-		AddBadge:        false,
+		AddBadge:        addBadge,
 		PushMode:        0, //0：正式推送；1：测试推送；不填默认为0
 		SkipType:        skipType,
 		SkipContent:     skipContent,
@@ -1984,6 +2141,49 @@ func (a *AndroidProvider) buildMeizuMessage(device *models.Device, pushLog *mode
 		}
 	}
 
+	// 点击动作：未通过 payload.meizu 指定时，设备支持则打开 SDK 点击中转页（1=打开应用页面，parameters 作为 Intent extras）。
+	// 控制台表单默认带 click_type=0 与空字段，与未指定同样处理（中转页同样会打开应用）
+	if info := messageBody.ClickTypeInfo; info == nil ||
+		(info.ClickType == 0 && info.Activity == "" && info.URL == "" && (info.Parameters == "" || info.Parameters == "{}")) {
+		dataMap := map[string]interface{}{
+			"badge":       pushLog.Badge,
+			"push_log_id": pushLog.ID,
+			"dp_source":   "doopush",
+		}
+		if pushLog.DedupKey != "" {
+			dataMap["dedup_key"] = pushLog.DedupKey
+		}
+		if pushLog.Payload != "" && pushLog.Payload != "{}" {
+			var customData map[string]interface{}
+			if err := json.Unmarshal([]byte(pushLog.Payload), &customData); err == nil {
+				for k, v := range customData {
+					if k != "push_log_id" && k != "dp_source" && k != "badge" && k != "meizu" {
+						dataMap[k] = v
+					}
+				}
+			}
+		}
+		params := fitNotificationClick(notificationClickExtras(device, dataMap), func(extras map[string]string) string {
+			withFlag := make(map[string]string, len(extras)+1)
+			for k, v := range extras {
+				withFlag[k] = v
+			}
+			withFlag["doopush_notification_clicked"] = "true" // 魅族 parameters 只能传字符串，SDK 兼容 "true"
+			paramJSON, err := json.Marshal(withFlag)
+			if err != nil {
+				return ""
+			}
+			return string(paramJSON)
+		})
+		if params != "" {
+			messageBody.ClickTypeInfo = &MeizuClickTypeInfo{
+				ClickType:  1,
+				Activity:   notificationClickActivity,
+				Parameters: params,
+			}
+		}
+	}
+
 	// 序列化消息体为JSON字符串
 	messageJSON, err := json.Marshal(messageBody)
 	if err != nil {
@@ -2086,6 +2286,14 @@ func (a *AndroidProvider) buildXiaomiMessage(device *models.Device, pushLog *mod
 	if len(extraMap) > 0 {
 		if payloadJSON, err := json.Marshal(extraMap); err == nil {
 			message.Payload = string(payloadJSON)
+		}
+	}
+
+	// 点击动作（只写入 extra，不进入 payload）：未通过 payload 指定 notify_effect 时，设备支持则打开 SDK 点击中转页（2=打开应用内指定页面，intent_uri）
+	if _, ok := extraMap["notify_effect"]; !ok {
+		if intent := notificationClickIntent(device, extraMap); intent != "" {
+			extraMap["notify_effect"] = "2"
+			extraMap["intent_uri"] = intent
 		}
 	}
 

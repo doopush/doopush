@@ -20,7 +20,7 @@ func NewDeviceService() *DeviceService {
 }
 
 // RegisterDevice 注册设备
-func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, channel, pushEnv, brand, model, systemVer, appVersion, userAgent string) (*models.Device, error) {
+func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, channel, pushEnv, brand, model, systemVer, appVersion, userAgent, launcherClass string) (*models.Device, error) {
 	// 1. 验证应用是否存在并获取应用信息
 	var app models.App
 	if err := database.DB.Where("id = ? AND status = 1", appID).First(&app).Error; err != nil {
@@ -46,6 +46,7 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 		systemVer,
 		appVersion,
 		userAgent,
+		launcherClass,
 	)
 
 	lookupErr := database.DB.Unscoped().
@@ -60,19 +61,20 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 
 	// 创建新设备
 	device := &models.Device{
-		AppID:      appID,
-		Token:      token,
-		TokenHash:  tokenHash,
-		Platform:   platform,
-		Channel:    channel,
-		PushEnv:    pushEnv,
-		Brand:      brand,
-		Model:      model,
-		SystemVer:  systemVer,
-		AppVersion: appVersion,
-		UserAgent:  userAgent,
-		Status:     1,
-		LastSeen:   &[]time.Time{utils.TimeNow()}[0],
+		AppID:         appID,
+		Token:         token,
+		TokenHash:     tokenHash,
+		Platform:      platform,
+		Channel:       channel,
+		PushEnv:       pushEnv,
+		Brand:         brand,
+		Model:         model,
+		SystemVer:     systemVer,
+		AppVersion:    appVersion,
+		UserAgent:     userAgent,
+		LauncherClass: launcherClass,
+		Status:        1,
+		LastSeen:      &[]time.Time{utils.TimeNow()}[0],
 	}
 
 	if err := database.DB.Create(device).Error; err != nil {
@@ -96,16 +98,18 @@ func (s *DeviceService) RegisterDevice(appID uint, token, bundleID, platform, ch
 	return device, nil
 }
 
-func deviceRegistrationUpdates(token, platform, channel, pushEnv, brand, model, systemVer, appVersion, userAgent string) map[string]interface{} {
+func deviceRegistrationUpdates(token, platform, channel, pushEnv, brand, model, systemVer, appVersion, userAgent, launcherClass string) map[string]interface{} {
 	return map[string]interface{}{
-		"token":            token,
-		"platform":         platform,
-		"channel":          channel,
-		"brand":            brand,
-		"model":            model,
-		"system_ver":       systemVer,
-		"app_version":      appVersion,
-		"user_agent":       userAgent,
+		"token":       token,
+		"platform":    platform,
+		"channel":     channel,
+		"brand":       brand,
+		"model":       model,
+		"system_ver":  systemVer,
+		"app_version": appVersion,
+		"user_agent":  userAgent,
+		// 每次注册覆盖：SDK 降级到不上报的版本时随之清空，避免点击指向不存在的中转页
+		"launcher_class":   launcherClass,
 		"push_environment": pushEnv,
 		"status":           1,
 		"last_seen":        utils.TimeNow(),

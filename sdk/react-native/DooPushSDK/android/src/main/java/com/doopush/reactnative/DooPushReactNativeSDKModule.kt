@@ -18,13 +18,20 @@ import expo.modules.kotlin.modules.ModuleDefinition
 
 /**
  * DooPush React Native SDK — Android bridge
- * v0.6.6
+ * v0.6.7
  *
  * Mode: ACTIVE (default) — DooPush owns FCM display via DooPushFirebaseMessagingService.
  * Coexistence with expo-notifications/react-native-firebase is exposed through
  * notification-management / relay APIs.
  */
 class DooPushReactNativeSDKModule : Module(), DooPushCallback {
+
+    // 冷启动点击通知时，事件可能早于 JS 注册监听到达：事件照常发送（直接用 DooPushModule.addListener
+    // 的监听不受影响），同时在 addNotification*Listener 首次注册前按事件名留存副本，注册后由
+    // flushPendingNotifications 补发
+    private val pendingLock = Any()
+    private val readyNotificationEvents = mutableSetOf<String>()
+    private val pendingNotificationEvents = mutableListOf<Pair<String, Map<String, Any?>>>()
 
     override fun definition() = ModuleDefinition {
         Name("DooPushReactNativeSDK")
@@ -218,6 +225,10 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
             DooPushManager.getInstance().setFCMNotificationDisplayEnabled(enabled)
         }
 
+        Function("setAutoClearBadgeEnabled") { enabled: Boolean ->
+            DooPushManager.getInstance().setAutoClearBadgeEnabled(enabled)
+        }
+
         AsyncFunction("connectGateway") { promise: Promise ->
             if (DooPushManager.getInstance().getDeviceToken().isNullOrBlank()) {
                 promise.reject("E_GATEWAY", "device token is required before connecting gateway", null)
@@ -230,6 +241,16 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
         AsyncFunction("disconnectGateway") { promise: Promise ->
             DooPushManager.getInstance().disconnectWebSocket()
             promise.resolve(null)
+        }
+
+        Function("flushPendingNotifications") { eventName: String ->
+            val events = synchronized(pendingLock) {
+                readyNotificationEvents.add(eventName)
+                val matched = pendingNotificationEvents.filter { it.first == eventName }
+                pendingNotificationEvents.removeAll { it.first == eventName }
+                matched
+            }
+            events.forEach { (name, body) -> sendEvent(name, body) }
         }
     }
 
@@ -281,11 +302,22 @@ class DooPushReactNativeSDKModule : Module(), DooPushCallback {
     }
 
     override fun onNotificationClick(notificationData: DooPushNotificationHandler.NotificationData) {
-        sendEvent("onNotificationClick", normalizeNotification(notificationData))
+        sendNotificationEvent("onNotificationClick", normalizeNotification(notificationData))
     }
 
     override fun onNotificationOpen(notificationData: DooPushNotificationHandler.NotificationData) {
-        sendEvent("onNotificationOpen", normalizeNotification(notificationData))
+        sendNotificationEvent("onNotificationOpen", normalizeNotification(notificationData))
+    }
+
+    private fun sendNotificationEvent(eventName: String, body: Map<String, Any?>) {
+        synchronized(pendingLock) {
+            if (eventName !in readyNotificationEvents) {
+                pendingNotificationEvents.add(eventName to body)
+                // 只保留最近几次，避免长期无人监听时堆积
+                while (pendingNotificationEvents.size > 10) pendingNotificationEvents.removeAt(0)
+            }
+        }
+        sendEvent(eventName, body)
     }
 
     override fun onWebSocketOpen() {
