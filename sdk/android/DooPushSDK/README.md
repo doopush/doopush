@@ -312,6 +312,9 @@ A: SDK 提供了详细的日志输出，使用 `adb logcat -s DooPushManager` �
 
 ## 更新日志
 
+### v1.3.7
+- **Fix (小米角标空白通知)**：小米（MIUI 11+ / HyperOS）设置角标时不再发送空白占位通知。此前每次 `setBadgeCount()` 都会在通知栏留下一条无内容、以应用名为标题的通知。小米桌面角标由系统按通知栏未读通知数自动显示，SDK 无法指定数字，因此在小米设备上 `setBadgeCount()` 现返回 `false`，并自动删除旧版本创建的占位通知渠道 `doopush_channel` / `doopush`（连同其中残留的占位通知）。
+
 ### v1.3.6
 - **Fix (小米注册超时)**：SDK Manifest 内置小米推送接收器 `DooPushXiaomiMessageReceiver`。此前宿主未自行声明 `PushMessageReceiver` 子类时，小米推送服务找不到接收器而丢弃 RegId（xmsf 日志 `we can see the app, but we can't see the receiver`），`register()` 超时、设备无法注册（HyperOS 等新系统必现）。
 - **Fix (魅族接收器)**：同理内置魅族推送接收器 `DooPushMeizuMessageReceiver`，PushId 回传与消息到达、点击回调无需宿主声明。

@@ -11,8 +11,6 @@
 package com.doopush.sdk.badge
 
 import android.annotation.SuppressLint
-import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.ContentProviderClient
 import android.content.Context
@@ -20,7 +18,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import com.doopush.sdk.R
 
 /**
  * 角标管理器
@@ -28,6 +25,9 @@ import com.doopush.sdk.R
  */
 object BadgeManager {
     private const val TAG = "DooPush_BadgeManager"
+
+    /** 1.3.6 及之前小米角标占位通知使用的渠道 */
+    private val LEGACY_XIAOMI_BADGE_CHANNELS = listOf("doopush_channel", "doopush")
 
     private enum class Vendor { HUAWEI, HONOR, XIAOMI, OPPO, VIVO, MEIZU, GENERIC }
 
@@ -140,35 +140,18 @@ object BadgeManager {
         )
     }
 
+    /**
+     * 小米（MIUI / HyperOS）桌面角标由系统按通知栏未读通知数自动显示，没有可指定数字的公开接口。
+     * 1.3.6 及之前通过发一条空白占位通知携带数字，会在通知栏留下无内容的"应用名"通知，现已移除：
+     * 不再设置，并删除旧版本创建的占位渠道（连同其中残留的占位通知），返回 false 表示不支持。
+     */
     private fun setXiaomiBadge(context: Context, count: Int): Boolean {
-        Log.d(TAG, "小米设备设置角标: $count")
+        Log.d(TAG, "小米设备角标由系统按未读通知数显示，忽略设置: $count")
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val miuiVersion = getSystemProperty("ro.miui.ui.version.code", "").toIntOrNull() ?: 0
-        if (miuiVersion >= 11) {
-            val channel = NotificationChannel("doopush_channel", "doopush", NotificationManager.IMPORTANCE_HIGH)
-            nm.createNotificationChannel(channel)
-            val notification = Notification.Builder(context, "doopush_channel")
-                .setSmallIcon(R.drawable.ic_transparent)
-                .setContentTitle("")
-                .setContentText("")
-                .setNumber(count)
-                .build()
-            nm.notify(0, notification)
-        } else {
-            val channel = NotificationChannel("doopush", "", NotificationManager.IMPORTANCE_HIGH)
-            nm.createNotificationChannel(channel)
-            val notification = Notification.Builder(context, "doopush")
-                .setSmallIcon(R.drawable.ic_transparent)
-                .setContentTitle("")
-                .setContentText("")
-                .build()
-            // MIUI < 11 走反射设置 setMessageCount
-            val field = notification.javaClass.getDeclaredField("extraNotification")
-            val extra = field.get(notification)
-            extra.javaClass.getDeclaredMethod("setMessageCount", Int::class.java).invoke(extra, count)
-            nm.notify(0, notification)
+        for (channelId in LEGACY_XIAOMI_BADGE_CHANNELS) {
+            if (nm.getNotificationChannel(channelId) != null) nm.deleteNotificationChannel(channelId)
         }
-        return true
+        return false
     }
 
     private fun setOppoBadge(context: Context, count: Int): Boolean {

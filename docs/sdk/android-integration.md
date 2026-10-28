@@ -574,7 +574,7 @@ SDK 内部按机型分派到对应的厂商方案：
 |------|----------|------|
 | 华为 | ContentProvider (`com.huawei.android.launcher`) | 需启用桌面角标权限 |
 | 荣耀 | ContentProvider (`com.hihonor.android.launcher`) | 需启用桌面角标权限 |
-| 小米 | NotificationChannel + 通知数 | MIUI < 11 走反射 `setMessageCount` |
+| 小米 | 不支持（系统按通知栏未读通知数自动显示） | `setBadgeCount()` 返回 `false`；v1.3.7 起不再发送空白占位通知 |
 | vivo | ContentProvider (Origin OS) / 广播 (Funtouch OS) | 自动按系统识别 |
 | 魅族 | ContentProvider (`com.meizu.flyme.launcher.app_extras`) | — |
 | OPPO | 广播 `com.oppo.unsettledevent` | 部分 ROM 限制第三方角标，效果以系统为准 |

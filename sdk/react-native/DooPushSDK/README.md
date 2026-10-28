@@ -21,7 +21,7 @@
 ## 前置条件
 
 - iOS 原生 SDK ≥ **1.4.0**（monorepo 本地开发可路径引用未发布版本）
-- Android 原生 SDK ≥ **1.3.6**
+- Android 原生 SDK ≥ **1.3.7**
 - Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
 ## 快速安装
@@ -197,6 +197,9 @@ const { deviceId } = await DooPush.registerWithToken(token, 'fcm');
 MIT
 
 ## CHANGELOG
+
+### v0.6.9
+- **Android 小米角标空白通知**：升级到 Android SDK 1.3.7，小米设备调用 `setBadge()` 不再在通知栏留下无内容的应用名通知；小米桌面角标由系统按未读通知数自动显示，`setBadge()` 在小米设备上返回 `false`。
 
 ### v0.6.8
 - **Android 小米推送注册超时**：升级到 Android SDK 1.3.6，SDK 内置小米、魅族推送接收器；修复小米（HyperOS 等）设备 `register()` 超时、无法注册设备的问题。宿主无需改动。
