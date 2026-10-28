@@ -90,21 +90,8 @@
             android:name="firebase_analytics_collection_enabled"
             android:value="false" />
             
-        <!-- 小米推送接收器 -->
-        <receiver 
-            android:name=".XiaomiPushMessageReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.xiaomi.mipush.RECEIVE_MESSAGE" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="com.xiaomi.mipush.MESSAGE_ARRIVED" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="com.xiaomi.mipush.ERROR" />
-            </intent-filter>
-        </receiver>
-        
+        <!-- 小米、魅族推送接收器已由 SDK Manifest 内置（v1.3.6+），无需在此声明 -->
+
         <!-- 小米推送服务 -->
         <service
             android:name="com.xiaomi.push.service.XMPushService"
@@ -129,20 +116,6 @@
                 <action android:name="com.heytap.msp.push.RECEIVE_MCS_MESSAGE" />
             </intent-filter>
         </service>
-
-        <!-- 魅族推送接收器 -->
-        <receiver
-            android:name=".MeizuPushMessageReceiver"
-            android:enabled="true"
-            android:exported="true"
-            android:permission="com.meizu.cloud.push.permission.MESSAGE">
-            <intent-filter>
-                <action android:name="com.meizu.flyme.push.intent.MESSAGE" />
-                <action android:name="com.meizu.flyme.push.intent.REGISTER.FEEDBACK" />
-                <action android:name="com.meizu.flyme.push.intent.UNREGISTER.FEEDBACK" />
-                <category android:name="com.doopush.DooPushSDKExample" />
-            </intent-filter>
-        </receiver>
 
     </application>
 

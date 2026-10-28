@@ -312,6 +312,12 @@ A: SDK 提供了详细的日志输出，使用 `adb logcat -s DooPushManager` �
 
 ## 更新日志
 
+### v1.3.6
+- **Fix (小米注册超时)**：SDK Manifest 内置小米推送接收器 `DooPushXiaomiMessageReceiver`。此前宿主未自行声明 `PushMessageReceiver` 子类时，小米推送服务找不到接收器而丢弃 RegId（xmsf 日志 `we can see the app, but we can't see the receiver`），`register()` 超时、设备无法注册（HyperOS 等新系统必现）。
+- **Fix (魅族接收器)**：同理内置魅族推送接收器 `DooPushMeizuMessageReceiver`，PushId 回传与消息到达、点击回调无需宿主声明。
+- **升级注意**：此前在宿主 Manifest 中自行声明了小米 / 魅族接收器并转发给 `BaseMiPushMessageReceiver` / `BaseMeizuPushMessageReceiver` 的，请删除，否则回调会重复触发。
+- **混淆**：消费方规则对未引入的厂商 SDK 加 `-dontwarn`，宿主未依赖小米 / 魅族 / vivo SDK 时 R8 不再因内置接收器缺父类而报错。
+
 ### v1.3.5
 - **Feat (厂商通知点击)**：新增无界面点击中转页 `DooPushNotificationClickActivity`，服务端将华为、荣耀、小米、OPPO、vivo、魅族通知的点击动作指向它并携带推送数据，点击后触发 `onNotificationClick`（冷启动时暂存，SDK 配置完成或设置回调后补发）并切回应用。
 - **Fix (厂商接收器点击)**：各厂商 `Base*` 接收器的点击回调统一走暂存补发并记录点击统计；同一条推送 10 秒内只回调一次，避免与中转页重复。

@@ -21,7 +21,7 @@
 ## 前置条件
 
 - iOS 原生 SDK ≥ **1.4.0**（monorepo 本地开发可路径引用未发布版本）
-- Android 原生 SDK ≥ **1.3.5**
+- Android 原生 SDK ≥ **1.3.6**
 - Expo SDK 50+（或 RN 0.73+ bare）。**新项目推荐 Expo SDK 54+**
 
 ## 快速安装
@@ -197,6 +197,9 @@ const { deviceId } = await DooPush.registerWithToken(token, 'fcm');
 MIT
 
 ## CHANGELOG
+
+### v0.6.8
+- **Android 小米推送注册超时**：升级到 Android SDK 1.3.6，SDK 内置小米、魅族推送接收器；修复小米（HyperOS 等）设备 `register()` 超时、无法注册设备的问题。宿主无需改动。
 
 ### v0.6.7
 - **Android 厂商通知点击**：升级到 Android SDK 1.3.5，华为、荣耀、小米、OPPO、vivo、魅族通知点击触发 `onNotificationClick`；冷启动时点击事件暂存，`addNotificationClickListener` / `addNotificationOpenListener` 首次注册后补发（直接用 `DooPushModule.addListener` 的监听照常实时接收，但不补发）。

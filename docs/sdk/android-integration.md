@@ -253,6 +253,8 @@ plugins {
 }
 ```
 
+> **说明**：SDK 1.3.6+ 已在 Manifest 内置小米推送接收器 `DooPushXiaomiMessageReceiver`，**无需**（也不要）在宿主中再声明 `PushMessageReceiver` 子类，否则回调会重复。低于 1.3.6 的版本缺少接收器时，小米推送服务会丢弃 RegId（logcat 出现 `we can see the app, but we can't see the receiver`），`register()` 超时。
+
 #### OPPO推送配置
 
 1. 在 [OPPO开放平台](https://open.oppomobile.com) 创建应用
@@ -327,6 +329,7 @@ plugins {
 - 客户端 SDK 只需要 `app_id` 和 `app_key` 两个参数
 - `app_secret` 仅在服务端推送时使用，确保客户端安全
 - 需要在魅族开放平台申请推送权限并通过审核
+- SDK 1.3.6+ 已在 Manifest 内置魅族推送接收器 `DooPushMeizuMessageReceiver`，无需在宿主中再声明 `MzPushMessageReceiver` 子类
 
 ### 4. SDK初始化
 
@@ -717,6 +720,7 @@ A:
 1. 检查 `xiaomi-services.json` 配置文件是否正确
 2. 确保应用已添加自启动权限
 3. 在小米开放平台检查推送配额和限制
+4. `register()` 超时且 logcat 出现 `we can see the app, but we can't see the receiver`：升级到 SDK 1.3.6+（内置接收器）
 
 #### Q: OPPO设备无法注册推送？
 A: 

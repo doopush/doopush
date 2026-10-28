@@ -91,6 +91,35 @@
             </intent-filter>
         </receiver>
 
+        <!-- 小米推送广播接收器（注册结果、消息到达/点击） -->
+        <receiver
+            android:name=".DooPushXiaomiMessageReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.xiaomi.mipush.RECEIVE_MESSAGE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.xiaomi.mipush.MESSAGE_ARRIVED" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.xiaomi.mipush.ERROR" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 魅族推送广播接收器（PushId 回传、消息到达/点击） -->
+        <receiver
+            android:name=".DooPushMeizuMessageReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="com.meizu.cloud.push.permission.MESSAGE">
+            <intent-filter>
+                <action android:name="com.meizu.flyme.push.intent.MESSAGE" />
+                <action android:name="com.meizu.flyme.push.intent.REGISTER.FEEDBACK" />
+                <action android:name="com.meizu.flyme.push.intent.UNREGISTER.FEEDBACK" />
+                <category android:name="${applicationId}" />
+            </intent-filter>
+        </receiver>
+
         <!-- 厂商系统通知（华为、荣耀、小米、OPPO、vivo、魅族）的点击中转页：服务端点击动作指向此页面，分发点击事件后切回应用 -->
         <activity
             android:name=".DooPushNotificationClickActivity"

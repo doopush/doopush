@@ -13,3 +13,9 @@
 -keepclassmembers,allowobfuscation class * {
   @com.google.gson.annotations.SerializedName <fields>;
 }
+
+# SDK Manifest 内置的厂商接收器继承各厂商推送 SDK 的类（vivo/小米/魅族）；
+# 宿主未引入对应厂商依赖时父类缺失，忽略警告避免 Release 混淆失败（该通道不会收到广播）
+-dontwarn com.vivo.push.**
+-dontwarn com.xiaomi.mipush.sdk.**
+-dontwarn com.meizu.cloud.pushsdk.**
